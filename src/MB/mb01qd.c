@@ -47,7 +47,7 @@ void mb01qd(char type, int32_t m, int32_t n, int32_t kl, int32_t ku,
     if (imin(m, n) == 0)
         return;
 
-    smlnum = 2.2250738585072014e-308;
+    smlnum = 2.2250738585072014e-308;  // DBL_MIN for IEEE 754 double
     bignum = one / smlnum;
 
     cfromc = cfrom;
