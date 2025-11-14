@@ -1,5 +1,5 @@
 set(SLICOT_SOURCES
-    # Add source files here as they are created
+    MB/mb01qd.c
 )
 
 if(BUILD_SHARED_LIBS)
