@@ -23,29 +23,30 @@ def test_sg03bd_continuous_basic():
     n = 3
     m = 1
 
-    # A matrix (N x N) - row-wise read
+    # A matrix (N x N) - Fortran READ row-wise means data in C row-major order
     a = np.array([
         [-1.0,  3.0, -4.0],
         [ 0.0,  5.0, -2.0],
         [-4.0,  4.0,  1.0]
-    ], dtype=np.float64, order='F')
+    ], dtype=np.float64, order='C').T.copy(order='F')
 
-    # E matrix (N x N) - row-wise read
+    # E matrix (N x N) - Fortran READ row-wise means data in C row-major order
     e = np.array([
         [2.0, 1.0, 3.0],
         [2.0, 0.0, 1.0],
         [4.0, 5.0, 1.0]
-    ], dtype=np.float64, order='F')
+    ], dtype=np.float64, order='C').T.copy(order='F')
 
-    # B matrix (M x N) - row-wise read
+    # B matrix (M x N) - Fortran READ row-wise means data in C row-major order
     # For TRANS='N', need LDB >= max(1,M,N) since B is overwritten with N×N matrix U
     b = np.array([
         [2.0, -1.0, 7.0],
         [0.0,  0.0,  0.0],
         [0.0,  0.0,  0.0]
-    ], dtype=np.float64, order='F')  # Shape (3, 3)
+    ], dtype=np.float64, order='C').T.copy(order='F')  # Shape (3, 3)
 
     # Expected result from Program Results
+    # Fortran prints row-by-row, giving upper triangular matrix directly
     expected_u = np.array([
         [1.6003, -0.4418, -0.1523],
         [0.0000,  0.6795, -0.2499],
@@ -93,7 +94,7 @@ def test_sg03bd_zero_m():
 
 
 def test_sg03bd_zero_n():
-    """Test SG03BD with N=0 (quick return) - expects INFO=-7 per SLICOT spec"""
+    """Test SG03BD with N=0 (quick return)"""
     n = 0
     m = 0
 
@@ -103,9 +104,12 @@ def test_sg03bd_zero_n():
 
     u, scale, alphar, alphai, beta, info = sg03bd('C', 'N', 'N', n, m, a, e, b)
 
-    # LDA validation requires LDA >= max(1,N), so with LDA=1 and N=0, this passes
-    # But wrapper may have different validation
-    assert info == -7  # Parameter 7 (LDA) validation might fail with N=0
+    # With N=0, should be quick return with INFO=0
+    assert info == 0
+    assert u.shape == (0, 0)
+    assert alphar.shape == (0,)
+    assert alphai.shape == (0,)
+    assert beta.shape == (0,)
 
 
 def test_sg03bd_discrete():

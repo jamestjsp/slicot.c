@@ -350,7 +350,7 @@ void sg03bd(
             i32 nr = ldwork / n;
             for (i32 i = 0; i < m; i += nr) {
                 i32 bl = (m - i) < nr ? (m - i) : nr;
-                SLC_DGEMM("T", "N", &bl, &n, &n, &one, &b[i + 0*ldb],
+                SLC_DGEMM(trans, "N", &bl, &n, &n, &one, &b[i + 0*ldb],
                          &ldb, z, &ldz, &zero, dwork, &bl);
                 SLC_DLACPY("A", &bl, &n, dwork, &bl, &b[i + 0*ldb], &ldb);
             }
@@ -359,9 +359,10 @@ void sg03bd(
 
     i32 minmn = m < n ? m : n;
     i32 info1;
+    i32 lwork_qr = ldwork - n;
 
     if (istran) {
-        SLC_DGERQF(&n, &m, b, &ldb, dwork, &dwork[n], &ldwork - n, &info1);
+        SLC_DGERQF(&n, &m, b, &ldb, dwork, &dwork[n], &lwork_qr, &info1);
 
         if (n >= m) {
             if (lbscl && !scalb) {
@@ -401,11 +402,12 @@ void sg03bd(
 
         for (i32 i = n - minmn; i < n; i++) {
             if (b[i + i*ldb] < zero) {
-                SLC_DSCAL(&i + 1, &mone, &b[0 + i*ldb], &int1);
+                i32 ip1 = i + 1;
+                SLC_DSCAL(&ip1, &mone, &b[0 + i*ldb], &int1);
             }
         }
     } else {
-        SLC_DGEQRF(&m, &n, b, &ldb, dwork, &dwork[n], &ldwork - n, &info1);
+        SLC_DGEQRF(&m, &n, b, &ldb, dwork, &dwork[n], &lwork_qr, &info1);
 
         if (lbscl && !scalb) {
             SLC_DLASCL("U", &kl0, &ku0, &mb, &mbto, &m, &n, b, &ldb, &info_tmp);
@@ -452,7 +454,7 @@ void sg03bd(
         if (nunitz) {
             mb01uy("R", "U", "N", n, n, one, b, ldb, z, ldz, dwork, ldwork, info);
 
-            SLC_DGERQF(&n, &n, b, &ldb, dwork, &dwork[n], &ldwork - n, &info1);
+            SLC_DGERQF(&n, &n, b, &ldb, dwork, &dwork[n], &lwork_qr, &info1);
 
             if (n > 1) {
                 i32 n1 = n - 1;
@@ -461,7 +463,8 @@ void sg03bd(
 
             for (i32 i = 0; i < n; i++) {
                 if (b[i + i*ldb] < zero) {
-                    SLC_DSCAL(&i + 1, &mone, &b[0 + i*ldb], &int1);
+                    i32 ip1 = i + 1;
+                    SLC_DSCAL(&ip1, &mone, &b[0 + i*ldb], &int1);
                 }
             }
         }
@@ -470,10 +473,11 @@ void sg03bd(
             mb01uy("R", "U", "T", n, n, one, b, ldb, q, ldq, dwork, ldwork, info);
 
             for (i32 i = 0; i < n; i++) {
-                SLC_DSWAP(&i + 1, &b[i + 0*ldb], &ldb, &b[0 + i*ldb], &int1);
+                i32 ip1 = i + 1;
+                SLC_DSWAP(&ip1, &b[i + 0*ldb], &ldb, &b[0 + i*ldb], &int1);
             }
 
-            SLC_DGEQRF(&n, &n, b, &ldb, dwork, &dwork[n], &ldwork - n, &info1);
+            SLC_DGEQRF(&n, &n, b, &ldb, dwork, &dwork[n], &lwork_qr, &info1);
 
             if (n > 1) {
                 i32 n1 = n - 1;
