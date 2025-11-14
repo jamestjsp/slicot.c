@@ -3,6 +3,7 @@ set(SLICOT_SOURCES
     MB/mb03oy.c
     SG/sg03br.c
     SG/sg03bw.c
+    SG/sg03bx.c
     TG/tg01fd.c
 )
 

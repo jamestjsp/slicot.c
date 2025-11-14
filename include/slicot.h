@@ -164,6 +164,52 @@ void sg03bw(
 );
 
 /**
+ * @brief Solve 2-by-2 generalized Lyapunov equation.
+ *
+ * Solves for Cholesky factor U (X = op(U)^T * op(U)) the generalized
+ * continuous-time or discrete-time Lyapunov equation:
+ *
+ *   Continuous (DICO='C'):
+ *     op(A)^T * X * op(E) + op(E)^T * X * op(A) = -SCALE^2 * op(B)^T * op(B)
+ *
+ *   Discrete (DICO='D'):
+ *     op(A)^T * X * op(A) - op(E)^T * X * op(E) = -SCALE^2 * op(B)^T * op(B)
+ *
+ * where op(K) = K or K^T, A,B,E,U are 2x2 real matrices, E and B upper triangular.
+ * Pencil A-lambda*E must have complex conjugate eigenvalues in the stability region.
+ * Also computes auxiliary matrices M1 and M2.
+ *
+ * @param[in] dico 'C' for continuous-time, 'D' for discrete-time
+ * @param[in] trans 'N' for op(K)=K, 'T' for op(K)=K^T
+ * @param[in] a DOUBLE PRECISION array, dimension (lda,2), matrix A
+ * @param[in] lda Leading dimension of A (lda >= 2)
+ * @param[in] e DOUBLE PRECISION array, dimension (lde,2), upper triangular E
+ * @param[in] lde Leading dimension of E (lde >= 2)
+ * @param[in] b DOUBLE PRECISION array, dimension (ldb,2), upper triangular B
+ * @param[in] ldb Leading dimension of B (ldb >= 2)
+ * @param[out] u DOUBLE PRECISION array, dimension (ldu,2), Cholesky factor
+ * @param[in] ldu Leading dimension of U (ldu >= 2)
+ * @param[out] scale Scaling factor (0 < scale <= 1)
+ * @param[out] m1 DOUBLE PRECISION array, dimension (ldm1,2), auxiliary matrix
+ * @param[in] ldm1 Leading dimension of M1 (ldm1 >= 2)
+ * @param[out] m2 DOUBLE PRECISION array, dimension (ldm2,2), auxiliary matrix
+ * @param[in] ldm2 Leading dimension of M2 (ldm2 >= 2)
+ * @param[out] info Exit code (0=success, 2=not complex conjugate,
+ *                  3=eigenvalues not stable, 4=ZSTEIN failed)
+ */
+void sg03bx(
+    const char* dico, const char* trans,
+    const f64* a, const i32 lda,
+    const f64* e, const i32 lde,
+    const f64* b, const i32 ldb,
+    f64* u, const i32 ldu,
+    f64* scale,
+    f64* m1, const i32 ldm1,
+    f64* m2, const i32 ldm2,
+    i32* info
+);
+
+/**
  * @brief Orthogonal reduction of descriptor system to SVD-like coordinate form.
  *
  * Computes orthogonal transformation matrices Q and Z such that the transformed
