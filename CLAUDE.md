@@ -95,7 +95,19 @@ rm -rf build/macos-arm64-debug && cmake --preset macos-arm64-debug && cmake --bu
 
 2. **Update build files:**
    - Add to `src/CMakeLists.txt` → `SLICOT_SOURCES`
-   - Add declaration to `include/slicot.h`
+   - Add declaration to `include/slicot.h` with Doxygen documentation:
+     ```c
+     /**
+      * @brief Brief description from Fortran PURPOSE section.
+      *
+      * Extended description if needed.
+      *
+      * @param[in] param1 Description
+      * @param[in,out] param2 Description
+      * @param[out] info Exit code (0 = success, <0 = invalid param, >0 = error)
+      */
+     void routine_name(int32_t param1, double* param2, int32_t* info);
+     ```
 
 3. **Verify tests pass:**
    ```bash
@@ -170,6 +182,7 @@ python tools/extract_dependencies.py SLICOT-Reference/src/ | grep "Level 0"
 - [ ] Test data from SLICOT docs
 - [ ] BLAS/LAPACK used correctly
 - [ ] **Test arrays use column-major storage** (common pitfall!)
+- [ ] **Doxygen documentation** in include/slicot.h header
 
 ## Reference
 
