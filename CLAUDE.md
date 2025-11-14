@@ -1,202 +1,190 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Project Overview
 C11 translation of SLICOT (Subroutine Library In Control Theory) from Fortran77.
 
-**Reference:** Fortran77 source in `SLICOT-Reference/src/`
+**Reference:** `SLICOT-Reference/src/` (Fortran77), `SLICOT-Reference/doc/` (HTML docs with examples)
 
-## Build Commands
+## Quick Commands
 
 ```bash
-# Configure and build
+# Setup (first time)
+./scripts/setup_venv.sh && source venv/bin/activate
+
+# Build & test
+source venv/bin/activate  # Always activate first!
 cmake --preset macos-arm64-debug
 cmake --build --preset macos-arm64-debug-build
-
-# Test
-ctest --preset macos-arm64-debug-test              # All tests
-ctest --preset macos-arm64-debug-test -R AB01MD    # Specific test
-ctest --preset macos-arm64-debug-test -V           # Verbose
+pip install -e .
+pytest tests/python/ -v
 
 # Clean rebuild
-rm -rf build/macos-arm64-debug && cmake --preset macos-arm64-debug && cmake --build --preset macos-arm64-debug-build
+rm -rf build/macos-arm64-debug && cmake --preset macos-arm64-debug && cmake --build --preset macos-arm64-debug-build && pip install -e .
 ```
 
-**Presets:** `macos-x64-{debug,release}`, `macos-arm64-{debug,release}`
+**Presets:** `macos-{x64,arm64}-{debug,release}`
 
-## Architecture
+## Directory Structure
 
-### Directory Structure
+```
+src/XX/routine.c          # C11 implementation (XX=AB,MB,MC...)
+include/slicot.h          # Public API + Doxygen docs
+include/slicot_types.h    # Type aliases (i32, f64)
+include/slicot_blas.h     # BLAS/LAPACK wrappers (SLC_DGEMM, etc.)
+python/slicot_module.c    # Python/C extension (manual, not generated)
+python/slicot/__init__.py # Python exports
+tests/python/test_*.py    # pytest tests
+tools/extract_dependencies.py  # Dependency analyzer
+```
 
-- `src/` - C11 sources, organized by SLICOT chapter (AB/, MB/, MC/, etc.)
-- `include/slicot.h` - Public API declarations
-- `tests/unit/` - GTest unit tests
-- `SLICOT-Reference/src/` - Fortran source (XXYYZZ.f format)
-- `SLICOT-Reference/doc/` - HTML documentation with examples
-- `tools/extract_dependencies.py` - Dependency analyzer
-- `.claude/skills/slicot-knowledge/` - Translation knowledge base
+**Naming:** `AB01MD.f` (Fortran) → `src/AB/ab01md.c` (C, lowercase)
 
-### SLICOT Naming: `XXYYZZ`
-- `XX` - Chapter (AB, MB, MC, etc.)
-- `YY` - Section number
-- `ZZ` - Variant
+## TDD Workflow: RED → GREEN → REFACTOR → VERIFY
 
-**Translation:** `AB01MD.f` → `src/AB/ab01md.c` (lowercase)
+### RED: Write Test First
 
-## Translation Workflow: TDD Cycle
+1. **Use skill**: `/skill slicot-knowledge` for parsing docs & test data
+2. Check dependencies: `python3 tools/extract_dependencies.py SLICOT-Reference/src/ AB01MD`
+3. Find test data (priority order):
+   - `SLICOT-Reference/doc/AB01MD.html` (parse with skill)
+   - `SLICOT-Reference/examples/TAB01MD.f` + `data/AB01MD.dat` + `results/AB01MD.res`
+   - `SLICOT-Reference/benchmark_data/BB01*.dat`
+   - NumPy/SciPy synthetic data (get approval first)
+4. Create `tests/python/test_ab01md.py` with 3+ tests (basic, edge, error)
+5. Verify failure: `pytest tests/python/test_ab01md.py -v`
+6. Commit: `git commit -m "RED: Add tests for AB01MD"`
 
-**🚨 MANDATORY: RED → GREEN → REFACTOR → VERIFY**
+**Test template:**
+```python
+import pytest
+import numpy as np
+from slicot import ab01md
 
-### Phase 1: RED - Write Tests First
+def test_ab01md_basic():
+    a = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64, order='F')
+    result, info = ab01md(a)
+    assert info == 0
+    np.testing.assert_allclose(result, expected, rtol=1e-14)
+```
 
-1. **Check dependencies:**
-   ```bash
-   python3 tools/extract_dependencies.py SLICOT-Reference/src/ AB01MD
-   ```
+### GREEN: Implement
 
-2. **Create test** `tests/unit/test_ab01md.cpp` with 3+ tests:
-   - Basic case (from `SLICOT-Reference/doc/AB01MD.html`)
-   - Edge case (N=0)
-   - Error case (invalid parameters)
-   - **Remember:** Test arrays stored column-major (col1, col2, ...), NOT row-major
+1. Create `src/AB/ab01md.c`
+2. Update:
+   - `src/CMakeLists.txt` → add to `SLICOT_SOURCES`
+   - `include/slicot.h` → add declaration + Doxygen
+   - `python/slicot_module.c` → add wrapper (see existing for pattern)
+   - `python/slicot/__init__.py` → export function
+3. Build & test: `cmake --build --preset macos-arm64-debug-build && pip install -e . && pytest tests/python/test_ab01md.py -v`
+4. Commit: `git commit -m "GREEN: Implement AB01MD"`
 
-3. **Add to** `tests/unit/CMakeLists.txt`:
-   ```cmake
-   set(UNIT_TEST_SOURCES
-       test_ab01md.cpp
-   )
-   ```
+### REFACTOR: Clean Up
 
-4. **Verify failure:**
-   ```bash
-   cmake --build --preset macos-arm64-debug-build  # Should fail - function doesn't exist
-   ```
+1. Minimal comments (only for bugs/TODOs/known issues)
+2. Verify BLAS/LAPACK usage
+3. Test: `pytest tests/python/test_ab01md.py -v`
+4. Commit: `git commit -m "REFACTOR: Clean up AB01MD"`
 
-5. **Commit:**
-   ```bash
-   git commit -m "RED: Add tests for AB01MD"
-   ```
-
-### Phase 2: GREEN - Implement
-
-1. **Create** `src/AB/ab01md.c`:
-   ```c
-   #include "slicot.h"
-   #include <stdint.h>
-
-   void ab01md(int32_t n, double* a, int32_t* info) {
-       *info = 0;
-       if (n < 0) { *info = -1; return; }
-       if (n == 0) return;
-       // ... translate from Fortran ...
-   }
-   ```
-
-2. **Update build files:**
-   - Add to `src/CMakeLists.txt` → `SLICOT_SOURCES`
-   - Add declaration to `include/slicot.h` with Doxygen documentation:
-     ```c
-     /**
-      * @brief Brief description from Fortran PURPOSE section.
-      *
-      * Extended description if needed.
-      *
-      * @param[in] param1 Description
-      * @param[in,out] param2 Description
-      * @param[out] info Exit code (0 = success, <0 = invalid param, >0 = error)
-      */
-     void routine_name(int32_t param1, double* param2, int32_t* info);
-     ```
-
-3. **Verify tests pass:**
-   ```bash
-   cmake --build --preset macos-arm64-debug-build
-   ctest --preset macos-arm64-debug-test -R AB01MD -V
-   ```
-
-4. **Commit:**
-   ```bash
-   git commit -m "GREEN: Implement AB01MD"
-   ```
-
-### Phase 3: REFACTOR - Clean Up
-
-1. Review: minimal comments, verify BLAS/LAPACK usage
-2. Test: `ctest --preset macos-arm64-debug-test -R AB01MD -V`
-3. Commit: `git commit -m "REFACTOR: Clean up AB01MD"`
-
-### Phase 4: VERIFY - Full Suite
+### VERIFY: Full Suite
 
 ```bash
-ctest --preset macos-arm64-debug-test  # All tests must pass
+pytest tests/python/ -v  # All tests must pass
 ```
-
-## Translation Strategy
-
-**Bottom-up by dependency level:**
-
-```bash
-# Find Level 0 (leaves - only BLAS/LAPACK deps)
-python3 tools/extract_dependencies.py SLICOT-Reference/src/ | grep "Level 0"
-```
-
-- Level 0 first (297 routines, can parallelize)
-- Then Level 1, 2, etc.
-- Always check dependencies before translating
 
 ## Key Patterns
 
-**Types:**
-- `INTEGER` → `int32_t`
-- `DOUBLE PRECISION` → `double`
+### Types
+- `INTEGER` → `i32` (int32_t)
+- `DOUBLE PRECISION` → `f64` (double)
+- `LOGICAL` → `bool`
 
-**Arrays:**
-- 0-based indexing (Fortran uses 1-based)
-- Column-major layout preserved
-- Leading dimensions (lda, ldb) preserved
-- **TEST DATA:** C arrays use row-major literals, but SLICOT stores column-major
+### Arrays (Column-Major)
+- **Index:** `a[i + j*lda]` (row i, col j)
+- **Storage:** Column-major (Fortran-compatible, zero BLAS/LAPACK overhead)
+- **NumPy:** `order='F'` mandatory in tests
+- **Example:**
   ```c
-  // Matrix in math notation:  [1 2]
-  //                            [3 4]
-  // Column-major C array (column 1, then column 2):
+  // Math: [1 2]  Memory: [1, 3, 2, 4]  (col0, col1)
+  //       [3 4]
   double a[] = {1.0, 3.0, 2.0, 4.0};  // NOT {1, 2, 3, 4}
   ```
 
-**Error codes (`info` parameter):**
-- `0` = success
-- `< 0` = parameter `-info` invalid
-- `> 0` = algorithm error
+### Error Codes
+- `info = 0`: success
+- `info < 0`: parameter `-info` invalid
+- `info > 0`: algorithm error
 
-**CRITICAL:** Never reimplement LAPACK routines - use existing macros/implementations
+### BLAS/LAPACK
+- Use `SLC_DGEMM()` etc. from `include/slicot_blas.h`
+- Pass scalars by pointer: `SLC_DGEMM("N", "N", &m, &n, &k, &alpha, a, &lda, ...)`
+- Never reimplement LAPACK routines
 
-## C Code Quality
+### Python Wrapper Pattern
 
-**Portability:**
-- Use `DBL_MIN` from `<float.h>`, not hardcoded values
-- Use `NULL` from `<stddef.h>`
+```c
+static PyObject* py_routine(PyObject* self, PyObject* args) {
+    i32 m, n;
+    PyObject *a_obj;
+    PyArrayObject *a_array;
 
-**Safety:**
-- Initialize all variables (especially used in conditional paths)
-- NULL-check optional pointers before dereferencing
-- Follow Fortran validation policy (check comments for "no tests performed")
+    if (!PyArg_ParseTuple(args, "iiO", &m, &n, &a_obj)) return NULL;
+
+    // CRITICAL: Use NPY_ARRAY_FARRAY to preserve Fortran order
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) return NULL;
+
+    f64 *a = (f64*)PyArray_DATA(a_array);
+    npy_intp *dims = PyArray_DIMS(a_array);
+    i32 lda = (i32)dims[0];  // Auto-compute leading dimension
+
+    i32 info;
+    routine(m, n, a, lda, &info);
+
+    PyObject *result = Py_BuildValue("Oi", a_array, info);
+    Py_DECREF(a_array);
+    return result;
+}
+```
+
+**Register in method table:**
+```c
+static PyMethodDef SlicotMethods[] = {
+    {"routine", py_routine, METH_VARARGS, "Docstring..."},
+    // ...
+};
+```
+
+**Export in `python/slicot/__init__.py`:**
+```python
+from ._slicot import routine
+__all__ = ['routine', ...]
+```
 
 ## Quality Checklist
 
-- [ ] Tests written FIRST (RED)
-- [ ] Tests initially failed
+- [ ] Tests from `SLICOT-Reference/doc/*.html`
+- [ ] NumPy arrays use `order='F'`
+- [ ] Python wrapper uses `NPY_ARRAY_FARRAY`
+- [ ] Function exported in `__init__.py`
+- [ ] Doxygen docs in `include/slicot.h`
 - [ ] Min 3 tests (basic, edge, error)
-- [ ] All tests pass (GREEN)
-- [ ] Code cleaned (REFACTOR)
-- [ ] Full suite passes (VERIFY)
 - [ ] TDD commits (RED/GREEN/REFACTOR)
-- [ ] Test data from SLICOT docs
-- [ ] BLAS/LAPACK used correctly
-- [ ] **Test arrays use column-major storage** (common pitfall!)
-- [ ] **Doxygen documentation** in include/slicot.h header
 
-## Reference
+## Translation Strategy
 
-- `tools/README.md` - Detailed workflow, examples
-- `.claude/skills/slicot-knowledge/SKILL.md` - Comprehensive knowledge base
-- `SLICOT-Reference/doc/*.html` - Official documentation
+Bottom-up by dependency level (use `tools/extract_dependencies.py`):
+
+```bash
+# Find Level 0 (297 routines, only BLAS/LAPACK deps, parallelizable)
+python3 tools/extract_dependencies.py SLICOT-Reference/src/ | grep "Level 0"
+```
+
+Translate Level 0 first, then Level 1, 2, etc.
+
+## Reference Docs
+
+- `SLICUTLET_ANALYSIS.md` - Reference C11 implementation patterns
+- `PYTHON_SETUP.md` - Virtual environment guide
+- `TESTING.md` - Testing infrastructure
+- `tools/README.md` - Detailed workflow examples
+- `.claude/skills/slicot-knowledge/SKILL.md` - Translation knowledge base
