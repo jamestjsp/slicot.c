@@ -170,6 +170,17 @@ python tools/extract_dependencies.py SLICOT-Reference/src/ | grep "Level 0"
 
 **CRITICAL:** Never reimplement LAPACK routines - use existing macros/implementations
 
+## C Code Quality
+
+**Portability:**
+- Use `DBL_MIN` from `<float.h>`, not hardcoded values
+- Use `NULL` from `<stddef.h>`
+
+**Safety:**
+- Initialize all variables (especially used in conditional paths)
+- NULL-check optional pointers before dereferencing
+- Follow Fortran validation policy (check comments for "no tests performed")
+
 ## Quality Checklist
 
 - [ ] Tests written FIRST (RED)
