@@ -204,6 +204,78 @@ void sg03bw(
 );
 
 /**
+ * @brief Solve generalized discrete-time Lyapunov equation for Cholesky factor.
+ *
+ * Computes Cholesky factor U (X = U^T * U or X = U * U^T) solving
+ * generalized d-stable discrete-time Lyapunov equation:
+ *
+ *   TRANS='N': A^T * X * A - E^T * X * E = -SCALE^2 * B^T * B
+ *   TRANS='T': A * X * A^T - E * X * E^T = -SCALE^2 * B * B^T
+ *
+ * A quasitriangular, E and B upper triangular. Pencil A-lambda*E must be
+ * d-stable (eigenvalue moduli < 1).
+ *
+ * @param[in] trans 'N' for equation (1), 'T' for equation (2)
+ * @param[in] n Order of matrices (N >= 0)
+ * @param[in] a DOUBLE PRECISION array, dimension (lda,N), quasitriangular A
+ * @param[in] lda Leading dimension of A (lda >= max(1,N))
+ * @param[in] e DOUBLE PRECISION array, dimension (lde,N), upper triangular E
+ * @param[in] lde Leading dimension of E (lde >= max(1,N))
+ * @param[in,out] b DOUBLE PRECISION array, dimension (ldb,N)
+ *                  On entry: upper triangular B
+ *                  On exit: Cholesky factor U
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,N))
+ * @param[out] scale Scaling factor (0 < scale <= 1)
+ * @param[out] dwork DOUBLE PRECISION workspace, dimension (6*N-6)
+ * @param[out] info Exit code (0=success, <0=parameter error, 1=near singular,
+ *                  2=not complex conjugate, 3=not d-stable, 4=DSYEVX failed)
+ */
+void sg03bu(
+    const char* trans, const i32 n,
+    const f64* a, const i32 lda,
+    const f64* e, const i32 lde,
+    f64* b, const i32 ldb,
+    f64* scale, f64* dwork,
+    i32* info
+);
+
+/**
+ * @brief Solve generalized continuous-time Lyapunov equation for Cholesky factor.
+ *
+ * Computes Cholesky factor U (X = U^T * U or X = U * U^T) solving
+ * generalized c-stable continuous-time Lyapunov equation:
+ *
+ *   TRANS='N': A^T * X * E + E^T * X * A = -SCALE^2 * B^T * B
+ *   TRANS='T': A * X * E^T + E * X * A^T = -SCALE^2 * B * B^T
+ *
+ * A quasitriangular, E and B upper triangular. Pencil A-lambda*E must be
+ * c-stable (eigenvalues with negative real parts).
+ *
+ * @param[in] trans 'N' for equation (1), 'T' for equation (2)
+ * @param[in] n Order of matrices (N >= 0)
+ * @param[in] a DOUBLE PRECISION array, dimension (lda,N), quasitriangular A
+ * @param[in] lda Leading dimension of A (lda >= max(1,N))
+ * @param[in] e DOUBLE PRECISION array, dimension (lde,N), upper triangular E
+ * @param[in] lde Leading dimension of E (lde >= max(1,N))
+ * @param[in,out] b DOUBLE PRECISION array, dimension (ldb,N)
+ *                  On entry: upper triangular B
+ *                  On exit: Cholesky factor U
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,N))
+ * @param[out] scale Scaling factor (0 < scale <= 1)
+ * @param[out] dwork DOUBLE PRECISION workspace, dimension (6*N-6)
+ * @param[out] info Exit code (0=success, <0=parameter error, 1=near singular,
+ *                  2=not complex conjugate, 3=not c-stable)
+ */
+void sg03bv(
+    const char* trans, const i32 n,
+    const f64* a, const i32 lda,
+    const f64* e, const i32 lde,
+    f64* b, const i32 ldb,
+    f64* scale, f64* dwork,
+    i32* info
+);
+
+/**
  * @brief Solve 2-by-2 generalized Lyapunov equation.
  *
  * Solves for Cholesky factor U (X = op(U)^T * op(U)) the generalized

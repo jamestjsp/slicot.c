@@ -194,6 +194,21 @@ void SLC_FC_FUNC(dtzrzf, DTZRZF)(const int* m, const int* n, f64* a,
                                   const int* lda, f64* tau, f64* work,
                                   const int* lwork, int* info);
 
+void SLC_FC_FUNC(dlartg, DLARTG)(const f64* f, const f64* g, f64* cs, f64* sn,
+                                  f64* r);
+
+void SLC_FC_FUNC(drot, DROT)(const int* n, f64* dx, const int* incx,
+                              f64* dy, const int* incy, const f64* c,
+                              const f64* s);
+
+void SLC_FC_FUNC(dsyevx, DSYEVX)(const char* jobz, const char* range, const char* uplo,
+                                  const int* n, f64* a, const int* lda,
+                                  const f64* vl, const f64* vu, const int* il,
+                                  const int* iu, const f64* abstol, int* m,
+                                  f64* w, f64* z, const int* ldz, f64* work,
+                                  const int* lwork, int* iwork, int* ifail,
+                                  int* info);
+
 #undef int
 
 /* Convenience macros for calling BLAS/LAPACK */
@@ -234,6 +249,9 @@ void SLC_FC_FUNC(dtzrzf, DTZRZF)(const int* m, const int* n, f64* a,
 #define SLC_XERBLA   SLC_FC_FUNC(xerbla, XERBLA)
 #define SLC_DGETC2   SLC_FC_FUNC(dgetc2, DGETC2)
 #define SLC_DGESC2   SLC_FC_FUNC(dgesc2, DGESC2)
+#define SLC_DLARTG   SLC_FC_FUNC(dlartg, DLARTG)
+#define SLC_DROT     SLC_FC_FUNC(drot, DROT)
+#define SLC_DSYEVX   SLC_FC_FUNC(dsyevx, DSYEVX)
 
 #ifdef __cplusplus
 }

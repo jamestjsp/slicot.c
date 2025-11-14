@@ -453,6 +453,134 @@ static PyObject* py_sg03bw(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for sg03bu */
+static PyObject* py_sg03bu(PyObject* self, PyObject* args) {
+    char *trans;
+    PyObject *a_obj, *e_obj, *b_obj;
+    PyArrayObject *a_array, *e_array, *b_array;
+    f64 scale;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "sOOO", &trans, &a_obj, &e_obj, &b_obj)) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (a_array == NULL) return NULL;
+
+    e_array = (PyArrayObject*)PyArray_FROM_OTF(e_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (e_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        return NULL;
+    }
+
+    npy_intp n_rows = PyArray_DIM(b_array, 0);
+    npy_intp n_cols = PyArray_DIM(b_array, 1);
+    i32 n = (i32)(n_rows < n_cols ? n_rows : n_cols);
+    i32 lda = (i32)PyArray_DIM(a_array, 0);
+    i32 lde = (i32)PyArray_DIM(e_array, 0);
+    i32 ldb = (i32)PyArray_DIM(b_array, 0);
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *e_data = (f64*)PyArray_DATA(e_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+
+    i32 ldwork = (n > 1) ? 6 * n - 6 : 1;
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+
+    if (dwork == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    sg03bu(trans, n, a_data, lda, e_data, lde, b_data, ldb, &scale, dwork, &info);
+
+    free(dwork);
+
+    PyObject *result = Py_BuildValue("Odi", b_array, scale, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(e_array);
+    Py_DECREF(b_array);
+
+    return result;
+}
+
+/* Python wrapper for sg03bv */
+static PyObject* py_sg03bv(PyObject* self, PyObject* args) {
+    char *trans;
+    PyObject *a_obj, *e_obj, *b_obj;
+    PyArrayObject *a_array, *e_array, *b_array;
+    f64 scale;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "sOOO", &trans, &a_obj, &e_obj, &b_obj)) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (a_array == NULL) return NULL;
+
+    e_array = (PyArrayObject*)PyArray_FROM_OTF(e_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (e_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        return NULL;
+    }
+
+    npy_intp n_rows = PyArray_DIM(b_array, 0);
+    npy_intp n_cols = PyArray_DIM(b_array, 1);
+    i32 n = (i32)(n_rows < n_cols ? n_rows : n_cols);
+    i32 lda = (i32)PyArray_DIM(a_array, 0);
+    i32 lde = (i32)PyArray_DIM(e_array, 0);
+    i32 ldb = (i32)PyArray_DIM(b_array, 0);
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *e_data = (f64*)PyArray_DATA(e_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+
+    i32 ldwork = (n > 1) ? 6 * n - 6 : 1;
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+
+    if (dwork == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    sg03bv(trans, n, a_data, lda, e_data, lde, b_data, ldb, &scale, dwork, &info);
+
+    free(dwork);
+
+    PyObject *result = Py_BuildValue("Odi", b_array, scale, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(e_array);
+    Py_DECREF(b_array);
+
+    return result;
+}
+
 /* Python wrapper for sg03bx */
 static PyObject* py_sg03bx(PyObject* self, PyObject* args) {
     char *dico, *trans;
@@ -591,6 +719,26 @@ static PyMethodDef SlicotMethods[] = {
      "  x (ndarray): Right-hand side Y, overwritten with solution (m x n, F-order)\n\n"
      "Returns:\n"
      "  (x, scale, info): Solution matrix, scale factor, and exit code\n"},
+
+    {"sg03bu", py_sg03bu, METH_VARARGS,
+     "Solve generalized discrete-time Lyapunov equation for Cholesky factor.\n\n"
+     "Parameters:\n"
+     "  trans (str): 'N' for TRANS='N', 'T' for TRANS='T'\n"
+     "  a (ndarray): Quasitriangular matrix A (n x n, F-order)\n"
+     "  e (ndarray): Upper triangular matrix E (n x n, F-order)\n"
+     "  b (ndarray): Upper triangular matrix B (n x n, F-order)\n\n"
+     "Returns:\n"
+     "  (u, scale, info): Cholesky factor U, scale factor, exit code\n"},
+
+    {"sg03bv", py_sg03bv, METH_VARARGS,
+     "Solve generalized continuous-time Lyapunov equation for Cholesky factor.\n\n"
+     "Parameters:\n"
+     "  trans (str): 'N' for TRANS='N', 'T' for TRANS='T'\n"
+     "  a (ndarray): Quasitriangular matrix A (n x n, F-order)\n"
+     "  e (ndarray): Upper triangular matrix E (n x n, F-order)\n"
+     "  b (ndarray): Upper triangular matrix B (n x n, F-order)\n\n"
+     "Returns:\n"
+     "  (u, scale, info): Cholesky factor U, scale factor, exit code\n"},
 
     {"sg03bx", py_sg03bx, METH_VARARGS,
      "Solve 2x2 generalized Lyapunov equation.\n\n"

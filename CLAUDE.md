@@ -164,6 +164,20 @@ q_array = PyArray_New(&PyArray_Type, 2, dims, NPY_DOUBLE, strides, q, 0, NPY_ARR
 PyArray_ENABLEFLAGS((PyArrayObject*)q_array, NPY_ARRAY_OWNDATA);
 ```
 
+**CRITICAL: In-place modification - return input array directly:**
+```c
+// When routine modifies input array in-place (e.g., B becomes U):
+// CORRECT: Return the modified input array
+PyObject *result = Py_BuildValue("Odi", b_array, scale, info);
+Py_DECREF(a_array);
+Py_DECREF(b_array);
+
+// WRONG: Creating wrapper around same memory causes double-free
+// PyObject *u_array = PyArray_New(..., b_data, ...);  // DON'T DO THIS!
+// PyArray_ENABLEFLAGS(u_array, NPY_ARRAY_OWNDATA);    // b_data already owned by b_array
+// Result: segfault from double-free on cleanup
+```
+
 **Register in method table:**
 ```c
 static PyMethodDef SlicotMethods[] = {
