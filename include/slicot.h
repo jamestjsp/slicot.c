@@ -84,6 +84,86 @@ void mb03oy(i32 m, i32 n, f64* a, i32 lda, f64 rcond,
             f64* tau, f64* dwork, i32* info);
 
 /**
+ * @brief Compute complex Givens rotation in real arithmetic.
+ *
+ * Computes parameters for complex Givens rotation such that:
+ *
+ *     (    C      SR+SI*I )   ( XR+XI*I )   ( ZR+ZI*I )
+ *     (                   ) * (         ) = (         )
+ *     ( -SR+SI*I     C    )   ( YR+YI*I )   (    0    )
+ *
+ * where C**2 + |SR+SI*I|**2 = 1.
+ *
+ * Adapted from LAPACK ZLARTG for real data representation.
+ * Avoids unnecessary overflow/underflow.
+ *
+ * @param[in] xr Real part of X
+ * @param[in] xi Imaginary part of X
+ * @param[in] yr Real part of Y
+ * @param[in] yi Imaginary part of Y
+ * @param[out] c Cosine parameter (real)
+ * @param[out] sr Real part of sine parameter
+ * @param[out] si Imaginary part of sine parameter
+ * @param[out] zr Real part of result Z
+ * @param[out] zi Imaginary part of result Z
+ */
+void sg03br(
+    const f64 xr, const f64 xi, const f64 yr, const f64 yi,
+    f64* c, f64* sr, f64* si, f64* zr, f64* zi
+);
+
+/**
+ * @brief Solve generalized Sylvester equation for small systems.
+ *
+ * Solves for X the generalized Sylvester equation:
+ *
+ *     A^T * X * C + E^T * X * D = SCALE * Y,    (TRANS='N')
+ *
+ * or the transposed equation:
+ *
+ *     A * X * C^T + E * X * D^T = SCALE * Y,    (TRANS='T')
+ *
+ * where A and E are M-by-M matrices (A upper quasitriangular, E upper triangular),
+ * C and D are N-by-N matrices, X and Y are M-by-N matrices. N must be 1 or 2.
+ * The pencil A - lambda*E must be in generalized real Schur form.
+ * SCALE is set to avoid overflow in X.
+ *
+ * @param[in] trans 'N' for equation (1), 'T' for transposed equation
+ * @param[in] m Order of matrices A and E (m >= 0)
+ * @param[in] n Order of matrices C and D (n = 1 or 2)
+ * @param[in] a DOUBLE PRECISION array, dimension (lda,m)
+ *              Upper quasitriangular matrix A
+ * @param[in] lda Leading dimension of A (lda >= max(1,m))
+ * @param[in] c DOUBLE PRECISION array, dimension (ldc,n)
+ *              Matrix C
+ * @param[in] ldc Leading dimension of C (ldc >= max(1,n))
+ * @param[in] e DOUBLE PRECISION array, dimension (lde,m)
+ *              Upper triangular matrix E
+ * @param[in] lde Leading dimension of E (lde >= max(1,m))
+ * @param[in] d DOUBLE PRECISION array, dimension (ldd,n)
+ *              Matrix D
+ * @param[in] ldd Leading dimension of D (ldd >= max(1,n))
+ * @param[in,out] x DOUBLE PRECISION array, dimension (ldx,n)
+ *                  In: Right-hand side Y
+ *                  Out: Solution X
+ * @param[in] ldx Leading dimension of X (ldx >= max(1,m))
+ * @param[out] scale Scaling factor (0 < scale <= 1)
+ * @param[out] info Exit code (0 = success, <0 = invalid parameter,
+ *                  1 = nearly singular, perturbed values used)
+ */
+void sg03bw(
+    const char* trans,
+    const i32 m, const i32 n,
+    const f64* a, const i32 lda,
+    const f64* c, const i32 ldc,
+    const f64* e, const i32 lde,
+    const f64* d, const i32 ldd,
+    f64* x, const i32 ldx,
+    f64* scale,
+    i32* info
+);
+
+/**
  * @brief Orthogonal reduction of descriptor system to SVD-like coordinate form.
  *
  * Computes orthogonal transformation matrices Q and Z such that the transformed

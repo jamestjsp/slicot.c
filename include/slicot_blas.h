@@ -134,6 +134,21 @@ void SLC_FC_FUNC(dlaic1, DLAIC1)(const int* job, const int* j, const f64* x,
 f64 SLC_FC_FUNC(dlange, DLANGE)(const char* norm, const int* m, const int* n,
                                   const f64* a, const int* lda, f64* work);
 
+f64 SLC_FC_FUNC(dlapy2, DLAPY2)(const f64* x, const f64* y);
+
+void SLC_FC_FUNC(dlascl, DLASCL)(const char* type, const int* kl, const int* ku,
+                                  const f64* cfrom, const f64* cto, const int* m,
+                                  const int* n, f64* a, const int* lda, int* info);
+
+void SLC_FC_FUNC(xerbla, XERBLA)(const char* srname, const int* info);
+
+void SLC_FC_FUNC(dgetc2, DGETC2)(const int* n, f64* a, const int* lda,
+                                  int* ipiv, int* jpiv, int* info);
+
+void SLC_FC_FUNC(dgesc2, DGESC2)(const int* n, const f64* a, const int* lda,
+                                  f64* rhs, const int* ipiv, const int* jpiv,
+                                  f64* scale);
+
 /* LAPACK - Orthogonal transformations */
 void SLC_FC_FUNC(dormqr, DORMQR)(const char* side, const char* trans,
                                   const int* m, const int* n, const int* k,
@@ -178,6 +193,11 @@ void SLC_FC_FUNC(dtzrzf, DTZRZF)(const int* m, const int* n, f64* a,
 #define SLC_DORMQR   SLC_FC_FUNC(dormqr, DORMQR)
 #define SLC_DORMRZ   SLC_FC_FUNC(dormrz, DORMRZ)
 #define SLC_DTZRZF   SLC_FC_FUNC(dtzrzf, DTZRZF)
+#define SLC_DLAPY2   SLC_FC_FUNC(dlapy2, DLAPY2)
+#define SLC_DLASCL   SLC_FC_FUNC(dlascl, DLASCL)
+#define SLC_XERBLA   SLC_FC_FUNC(xerbla, XERBLA)
+#define SLC_DGETC2   SLC_FC_FUNC(dgetc2, DGETC2)
+#define SLC_DGESC2   SLC_FC_FUNC(dgesc2, DGESC2)
 
 #ifdef __cplusplus
 }
