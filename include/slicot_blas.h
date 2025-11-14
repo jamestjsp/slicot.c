@@ -124,6 +124,10 @@ void SLC_FC_FUNC(dgeqrf, DGEQRF)(const int* m, const int* n, f64* a,
                                   const int* lda, f64* tau, f64* work,
                                   const int* lwork, int* info);
 
+void SLC_FC_FUNC(dgerqf, DGERQF)(const int* m, const int* n, f64* a,
+                                  const int* lda, f64* tau, f64* work,
+                                  const int* lwork, int* info);
+
 void SLC_FC_FUNC(dlarfg, DLARFG)(const int* n, f64* alpha, f64* x,
                                   const int* incx, f64* tau);
 
@@ -209,6 +213,15 @@ void SLC_FC_FUNC(dsyevx, DSYEVX)(const char* jobz, const char* range, const char
                                   const int* lwork, int* iwork, int* ifail,
                                   int* info);
 
+void SLC_FC_FUNC(dgges, DGGES)(const char* jobvsl, const char* jobvsr,
+                                const char* sort, int (*selctg)(),
+                                const int* n, f64* a, const int* lda,
+                                f64* b, const int* ldb, int* sdim,
+                                f64* alphar, f64* alphai, f64* beta,
+                                f64* vsl, const int* ldvsl, f64* vsr,
+                                const int* ldvsr, f64* work, const int* lwork,
+                                int* bwork, int* info);
+
 #undef int
 
 /* Convenience macros for calling BLAS/LAPACK */
@@ -230,6 +243,7 @@ void SLC_FC_FUNC(dsyevx, DSYEVX)(const char* jobz, const char* range, const char
 #define SLC_DLASET   SLC_FC_FUNC(dlaset, DLASET)
 #define SLC_DGETRF   SLC_FC_FUNC(dgetrf, DGETRF)
 #define SLC_DGEQRF   SLC_FC_FUNC(dgeqrf, DGEQRF)
+#define SLC_DGERQF   SLC_FC_FUNC(dgerqf, DGERQF)
 #define SLC_DLARFG   SLC_FC_FUNC(dlarfg, DLARFG)
 #define SLC_DLARF    SLC_FC_FUNC(dlarf, DLARF)
 #define SLC_DLAIC1   SLC_FC_FUNC(dlaic1, DLAIC1)
@@ -252,6 +266,7 @@ void SLC_FC_FUNC(dsyevx, DSYEVX)(const char* jobz, const char* range, const char
 #define SLC_DLARTG   SLC_FC_FUNC(dlartg, DLARTG)
 #define SLC_DROT     SLC_FC_FUNC(drot, DROT)
 #define SLC_DSYEVX   SLC_FC_FUNC(dsyevx, DSYEVX)
+#define SLC_DGGES    SLC_FC_FUNC(dgges, DGGES)
 
 #ifdef __cplusplus
 }
