@@ -118,32 +118,27 @@ pytest tests/python/ -v  # All tests must pass
 - Pass scalars by pointer: `SLC_DGEMM("N", "N", &m, &n, &k, &alpha, a, &lda, ...)`
 - Never reimplement LAPACK routines
 
+### Index Conversion (Fortran ↔ C)
+- **SLICOT routines return 1-based indices** (e.g., `mb03oy` pivot arrays)
+- **Always convert to 0-based before C array access:** `k = iwork[j] - 1;`
+- Common bug: using 1-based value directly as C index causes wrong array access
+
 ### Python Wrapper Pattern
 
+**Input arrays (modify in-place):**
 ```c
-static PyObject* py_routine(PyObject* self, PyObject* args) {
-    i32 m, n;
-    PyObject *a_obj;
-    PyArrayObject *a_array;
+// Use NPY_ARRAY_FARRAY to preserve Fortran order
+a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                           NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+```
 
-    if (!PyArg_ParseTuple(args, "iiO", &m, &n, &a_obj)) return NULL;
-
-    // CRITICAL: Use NPY_ARRAY_FARRAY to preserve Fortran order
-    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
-                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
-    if (a_array == NULL) return NULL;
-
-    f64 *a = (f64*)PyArray_DATA(a_array);
-    npy_intp *dims = PyArray_DIMS(a_array);
-    i32 lda = (i32)dims[0];  // Auto-compute leading dimension
-
-    i32 info;
-    routine(m, n, a, lda, &info);
-
-    PyObject *result = Py_BuildValue("Oi", a_array, info);
-    Py_DECREF(a_array);
-    return result;
-}
+**Output arrays (allocated in C):**
+```c
+// Use PyArray_New with explicit Fortran strides
+npy_intp dims[2] = {m, n};
+npy_intp strides[2] = {sizeof(f64), m * sizeof(f64)};  // Column-major
+q_array = PyArray_New(&PyArray_Type, 2, dims, NPY_DOUBLE, strides, q, 0, NPY_ARRAY_FARRAY, NULL);
+PyArray_ENABLEFLAGS((PyArrayObject*)q_array, NPY_ARRAY_OWNDATA);
 ```
 
 **Register in method table:**
