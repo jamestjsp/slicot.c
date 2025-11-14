@@ -66,12 +66,13 @@ void sg03bw(
                 me = m;
                 mb = 1;
             } else {
-                if (a[(ma + 1 - 1) + (ma - 1) * lda] == zero) {
-                    me = ma;
-                    mb = 1;
-                } else {
+                // Check for 2x2 quasitriangular block (ensure ma+1 is within bounds)
+                if (ma + 1 < m && a[(ma + 1 - 1) + (ma - 1) * lda] != zero) {
                     me = ma + 1;
                     mb = 2;
+                } else {
+                    me = ma;
+                    mb = 1;
                 }
             }
 
@@ -139,12 +140,13 @@ void sg03bw(
                 ma = 1;
                 mb = 1;
             } else {
-                if (a[(me - 1) + (me - 1 - 1) * lda] == zero) {
-                    ma = me;
-                    mb = 1;
-                } else {
+                // Check for 2x2 quasitriangular block (ensure me-1 >= 0)
+                if (me > 1 && a[(me - 1) + (me - 1 - 1) * lda] != zero) {
                     ma = me - 1;
                     mb = 2;
+                } else {
+                    ma = me;
+                    mb = 1;
                 }
             }
 
