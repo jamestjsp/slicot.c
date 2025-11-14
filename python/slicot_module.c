@@ -70,6 +70,12 @@ static PyObject* py_mb03oy(PyObject* self, PyObject* args) {
         return NULL;
     }
 
+    /* Validate dimensions before allocation */
+    if (m < 0 || n < 0) {
+        PyErr_Format(PyExc_ValueError, "Dimensions must be non-negative (m=%d, n=%d)", m, n);
+        return NULL;
+    }
+
     /* Convert to NumPy array - preserve Fortran-order (column-major) */
     a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
                                                NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
@@ -77,18 +83,21 @@ static PyObject* py_mb03oy(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    /* Extract leading dimension */
+    /* Extract leading dimension (ensure lda >= 1 even if m=0) */
     npy_intp *a_dims = PyArray_DIMS(a_array);
     lda = (i32)a_dims[0];
+    if (lda < 1) lda = 1;
 
-    /* Allocate output arrays */
-    f64 sval[3];
-    i32 *jpvt = (i32*)malloc(n * sizeof(i32));
-    f64 *tau = (f64*)malloc((m < n ? m : n) * sizeof(f64));
-    f64 *dwork = (f64*)malloc((3*n - 1) * sizeof(f64));
+    /* Allocate output arrays (handle n=0 edge case) */
+    f64 *sval = (f64*)malloc(3 * sizeof(f64));
+    i32 *jpvt = (n > 0) ? (i32*)malloc(n * sizeof(i32)) : NULL;
+    i32 mn = (m < n) ? m : n;
+    f64 *tau = (mn > 0) ? (f64*)malloc(mn * sizeof(f64)) : NULL;
+    i32 dwork_size = (n > 0) ? (3*n - 1) : 1;
+    f64 *dwork = (f64*)malloc(dwork_size * sizeof(f64));
 
-    if (jpvt == NULL || tau == NULL || dwork == NULL) {
-        free(jpvt); free(tau); free(dwork);
+    if (sval == NULL || dwork == NULL || (n > 0 && jpvt == NULL) || (mn > 0 && tau == NULL)) {
+        free(sval); free(jpvt); free(tau); free(dwork);
         Py_DECREF(a_array);
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate work arrays");
         return NULL;
@@ -100,19 +109,22 @@ static PyObject* py_mb03oy(PyObject* self, PyObject* args) {
 
     /* Create output NumPy arrays */
     npy_intp sval_dims[1] = {3};
-    npy_intp jpvt_dims[1] = {n};
-    npy_intp tau_dims[1] = {m < n ? m : n};
+    npy_intp jpvt_dims[1] = {n > 0 ? n : 0};
+    npy_intp tau_dims[1] = {mn};
 
     PyObject *sval_array = PyArray_SimpleNewFromData(1, sval_dims, NPY_DOUBLE, sval);
-    PyObject *jpvt_array = PyArray_SimpleNewFromData(1, jpvt_dims, NPY_INT32, jpvt);
-    PyObject *tau_array = PyArray_SimpleNewFromData(1, tau_dims, NPY_DOUBLE, tau);
+    PyObject *jpvt_array = (n > 0) ? PyArray_SimpleNewFromData(1, jpvt_dims, NPY_INT32, jpvt) : PyArray_EMPTY(1, jpvt_dims, NPY_INT32, 0);
+    PyObject *tau_array = (mn > 0) ? PyArray_SimpleNewFromData(1, tau_dims, NPY_DOUBLE, tau) : PyArray_EMPTY(1, tau_dims, NPY_DOUBLE, 0);
 
     /* Transfer ownership to NumPy arrays */
     PyArray_ENABLEFLAGS((PyArrayObject*)sval_array, NPY_ARRAY_OWNDATA);
-    PyArray_ENABLEFLAGS((PyArrayObject*)jpvt_array, NPY_ARRAY_OWNDATA);
-    PyArray_ENABLEFLAGS((PyArrayObject*)tau_array, NPY_ARRAY_OWNDATA);
+    if (n > 0) PyArray_ENABLEFLAGS((PyArrayObject*)jpvt_array, NPY_ARRAY_OWNDATA);
+    if (mn > 0) PyArray_ENABLEFLAGS((PyArrayObject*)tau_array, NPY_ARRAY_OWNDATA);
 
     free(dwork);
+
+    /* Resolve writebackifcopy before decref */
+    PyArray_ResolveWritebackIfCopy(a_array);
 
     /* Build result tuple */
     PyObject *result = Py_BuildValue("(OiiOOO)", a_array, rank, info,

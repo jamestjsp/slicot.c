@@ -8,45 +8,59 @@ from slicot import mb03oy
 
 
 def test_mb03oy_rank_deficient_matrix():
-    """Test MB03OY with rank-deficient matrix (6x4, rank 3)."""
+    """Test MB03OY with rank-deficient matrix (6x4, rank 3).
+
+    Synthetic test: Construct rank-3 matrix via SVD with known singular values.
+    Strategy per CLAUDE.md: Use NumPy/SciPy for mathematically sound test cases.
+    """
     m, n = 6, 4
     rcond = 1.0e-10
     svlmax = 0.0
 
-    # Rank-deficient matrix with rank ~3 (column-major storage)
-    a = np.array([
-        [6.9352668323e-01, -1.0442760938e+00, -1.0312245858e+00, -1.6794289521e-01],
-        [-1.3954146423e+00, -2.6089798788e-02, -5.8559390779e-01, 6.1803578721e-01],
-        [-3.2058987212e+00, 3.6415744214e-01, 2.2737438267e+00, 8.0734713252e-02],
-        [-5.2076729914e-01, -3.8916678618e-01, -2.3420832454e-01, 7.8113716229e-01],
-        [-4.5698494441e-02, 1.6414232666e+00, 1.8928814982e-01, 1.7432426363e+00],
-        [2.4015719701e+00, 2.6929887908e-01, 3.0543126382e-01, 0.0]
-    ], dtype=np.float64, order='F')
+    # Construct rank-3 matrix using SVD: A = U @ Sigma @ V.T
+    # Singular values: [10.0, 5.0, 2.0, 1e-14] - last one below threshold
+    np.random.seed(42)
+    U = np.linalg.qr(np.random.randn(m, m))[0]  # Orthogonal m x m
+    V = np.linalg.qr(np.random.randn(n, n))[0]  # Orthogonal n x n
+
+    # Singular values: 3 large + 1 tiny (below rcond * max)
+    sigma = np.array([10.0, 5.0, 2.0, 1e-14])
+    Sigma = np.zeros((m, n))
+    for i in range(4):
+        Sigma[i, i] = sigma[i]
+
+    a = U @ Sigma @ V.T
+    a = np.asfortranarray(a)
+
+    # Verify construction: check rank via NumPy
+    true_rank = np.linalg.matrix_rank(a, tol=rcond * sigma[0])
+    assert true_rank == 3, f"Synthetic matrix should be rank 3, got {true_rank}"
 
     a_result, rank, info, sval, jpvt, tau = mb03oy(m, n, a.copy(), rcond, svlmax)
 
     # Verify successful execution
     assert info == 0
 
-    # Verify estimated rank
-    assert rank == 3
+    # Verify estimated rank matches construction
+    assert rank == 3, f"Expected rank 3 (from SVD construction), got {rank}"
 
-    # Verify singular value estimates
+    # Verify singular value estimates are reasonable
     assert sval[0] > 0.0  # Largest singular value positive
     assert sval[1] > 0.0  # Rank-th singular value positive
     assert sval[2] < sval[1]  # (rank+1)-th smaller
 
-    # Verify condition number estimate
+    # Verify condition number of rank-3 submatrix
     cond_estimate = sval[0] / sval[1]
     assert cond_estimate < 1.0 / rcond
 
-    # Verify singular value estimates (approximate values)
-    np.testing.assert_allclose(sval[0], 4.329756e+00, rtol=1e-5)
-    np.testing.assert_allclose(sval[1], 1.288771e+00, rtol=1e-5)
-    assert sval[2] < 1e-8  # Near-zero for rank-deficient
+    # Compare with NumPy SVD (QR-based estimates less accurate than full SVD)
+    # MB03OY uses incremental condition estimation, not full SVD
+    true_svd = np.linalg.svd(a, compute_uv=False)
+    np.testing.assert_allclose(sval[0], true_svd[0], rtol=0.15)  # ~15% tolerance for QR estimate
+    np.testing.assert_allclose(sval[1], true_svd[2], rtol=0.3)   # Rank-th SV (less accurate)
+    assert sval[2] < 1e-10  # Near-zero for 4th singular value
 
     # Verify R matrix upper triangle (first rank columns)
-    # Note: exact values depend on LAPACK implementation details
     for j in range(rank):
         for i in range(j + 1):
             assert not np.isnan(a_result[i, j])
@@ -130,7 +144,7 @@ def test_mb03oy_error_negative_m():
 
     a = np.zeros((1, 4), dtype=np.float64, order='F')
 
-    with pytest.raises(Exception):  # Should fail in C validation or Python wrapper
+    with pytest.raises(ValueError, match="Dimensions must be non-negative"):
         a_result, rank, info, sval, jpvt, tau = mb03oy(m, n, a, rcond, svlmax)
 
 
@@ -142,7 +156,7 @@ def test_mb03oy_error_negative_n():
 
     a = np.zeros((4, 1), dtype=np.float64, order='F')
 
-    with pytest.raises(Exception):  # Should fail in C validation or Python wrapper
+    with pytest.raises(ValueError, match="Dimensions must be non-negative"):
         a_result, rank, info, sval, jpvt, tau = mb03oy(m, n, a, rcond, svlmax)
 
 
