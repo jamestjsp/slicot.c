@@ -52,7 +52,7 @@ rm -rf build/macos-arm64-debug && cmake --preset macos-arm64-debug && cmake --bu
 
 1. **Check dependencies:**
    ```bash
-   python tools/extract_dependencies.py SLICOT-Reference/src/ AB01MD
+   python3 tools/extract_dependencies.py SLICOT-Reference/src/ AB01MD
    ```
 
 2. **Create test** `tests/unit/test_ab01md.cpp` with 3+ tests:
@@ -138,7 +138,7 @@ ctest --preset macos-arm64-debug-test  # All tests must pass
 
 ```bash
 # Find Level 0 (leaves - only BLAS/LAPACK deps)
-python tools/extract_dependencies.py SLICOT-Reference/src/ | grep "Level 0"
+python3 tools/extract_dependencies.py SLICOT-Reference/src/ | grep "Level 0"
 ```
 
 - Level 0 first (297 routines, can parallelize)
