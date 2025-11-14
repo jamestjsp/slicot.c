@@ -1,6 +1,7 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <numpy/arrayobject.h>
+#include <stdbool.h>
 #include "slicot.h"
 
 /* Python wrapper for mb01qd */
@@ -138,6 +139,140 @@ static PyObject* py_mb03oy(PyObject* self, PyObject* args) {
     return result;
 }
 
+static PyObject* py_tg01fd(PyObject* self, PyObject* args) {
+    const char *compq, *compz, *joba;
+    i32 l, n, m, p;
+    PyObject *a_obj, *e_obj, *b_obj, *c_obj;
+    f64 tol;
+    PyArrayObject *a_array, *e_array, *b_array, *c_array;
+    i32 ranke, rnka22, info;
+    i32 lda, lde, ldb, ldc, ldq, ldz;
+
+    if (!PyArg_ParseTuple(args, "sssiiiiOOOOd", &compq, &compz, &joba,
+                          &l, &n, &m, &p, &a_obj, &e_obj, &b_obj, &c_obj, &tol)) {
+        return NULL;
+    }
+
+    if (l < 0 || n < 0 || m < 0 || p < 0) {
+        PyErr_Format(PyExc_ValueError, "Dimensions must be non-negative");
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    e_array = (PyArrayObject*)PyArray_FROM_OTF(e_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+
+    if (a_array == NULL || e_array == NULL || b_array == NULL || c_array == NULL) {
+        Py_XDECREF(a_array);
+        Py_XDECREF(e_array);
+        Py_XDECREF(b_array);
+        Py_XDECREF(c_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *e_dims = PyArray_DIMS(e_array);
+    npy_intp *b_dims = PyArray_DIMS(b_array);
+    npy_intp *c_dims = PyArray_DIMS(c_array);
+
+    lda = (l > 0) ? (i32)a_dims[0] : 1;
+    lde = (l > 0) ? (i32)e_dims[0] : 1;
+    ldb = (l > 0) ? (i32)b_dims[0] : 1;
+    ldc = (p > 0) ? (i32)c_dims[0] : 1;
+    ldq = (l > 0) ? l : 1;
+    ldz = (n > 0) ? n : 1;
+
+    i32 ln = (l < n) ? l : n;
+    i32 temp1 = n + p;
+    i32 temp2 = (3 * n - 1 > m) ? 3 * n - 1 : m;
+    temp2 = (temp2 > l) ? temp2 : l;
+    temp2 = ln + temp2;
+    i32 ldwork = (temp1 > temp2) ? temp1 : temp2;
+    ldwork = (ldwork > 1) ? ldwork : 1;
+
+    i32 *iwork = (n > 0) ? (i32*)malloc(n * sizeof(i32)) : NULL;
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    f64 *q = NULL;
+    f64 *z = NULL;
+
+    bool compq_needed = (compq[0] == 'I' || compq[0] == 'i' || compq[0] == 'U' || compq[0] == 'u');
+    bool compz_needed = (compz[0] == 'I' || compz[0] == 'i' || compz[0] == 'U' || compz[0] == 'u');
+
+    if (compq_needed && l > 0) {
+        q = (f64*)calloc(l * l, sizeof(f64));
+    }
+    if (compz_needed && n > 0) {
+        z = (f64*)calloc(n * n, sizeof(f64));
+    }
+
+    if (dwork == NULL || (n > 0 && iwork == NULL) ||
+        (compq_needed && l > 0 && q == NULL) ||
+        (compz_needed && n > 0 && z == NULL)) {
+        free(iwork);
+        free(dwork);
+        free(q);
+        free(z);
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate work arrays");
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *e_data = (f64*)PyArray_DATA(e_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+
+    tg01fd(compq, compz, joba, l, n, m, p, a_data, lda, e_data, lde,
+           b_data, ldb, c_data, ldc, q, ldq, z, ldz, &ranke, &rnka22,
+           tol, iwork, dwork, ldwork, &info);
+
+    npy_intp q_dims[2] = {l, l};
+    npy_intp z_dims[2] = {n, n};
+
+    PyObject *q_array, *z_array;
+    if (compq_needed && l > 0) {
+        q_array = PyArray_SimpleNewFromData(2, q_dims, NPY_DOUBLE, q);
+        PyArray_ENABLEFLAGS((PyArrayObject*)q_array, NPY_ARRAY_OWNDATA);
+    } else {
+        q_array = PyArray_EMPTY(2, q_dims, NPY_DOUBLE, 1);
+    }
+
+    if (compz_needed && n > 0) {
+        z_array = PyArray_SimpleNewFromData(2, z_dims, NPY_DOUBLE, z);
+        PyArray_ENABLEFLAGS((PyArrayObject*)z_array, NPY_ARRAY_OWNDATA);
+    } else {
+        z_array = PyArray_EMPTY(2, z_dims, NPY_DOUBLE, 1);
+    }
+
+    free(iwork);
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(e_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    PyArray_ResolveWritebackIfCopy(c_array);
+
+    PyObject *result = Py_BuildValue("(OOOOOOiii)", a_array, e_array, b_array, c_array,
+                                     q_array, z_array, ranke, rnka22, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(e_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(q_array);
+    Py_DECREF(z_array);
+
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"mb01qd", py_mb01qd, METH_VARARGS,
@@ -165,6 +300,24 @@ static PyMethodDef SlicotMethods[] = {
      "  svlmax (float): Estimate of largest singular value\n\n"
      "Returns:\n"
      "  (a, rank, info, sval, jpvt, tau): QR factorization results\n"},
+
+    {"tg01fd", py_tg01fd, METH_VARARGS,
+     "Orthogonal reduction of descriptor system to SVD-like form.\n\n"
+     "Parameters:\n"
+     "  compq (str): 'N', 'I', or 'U' - Q computation mode\n"
+     "  compz (str): 'N', 'I', or 'U' - Z computation mode\n"
+     "  joba (str): 'N', 'R', or 'T' - A22 reduction mode\n"
+     "  l (int): Number of rows of A, B, E\n"
+     "  n (int): Number of columns of A, E, C\n"
+     "  m (int): Number of columns of B\n"
+     "  p (int): Number of rows of C\n"
+     "  a (ndarray): State dynamics matrix (l x n, F-order)\n"
+     "  e (ndarray): Descriptor matrix (l x n, F-order)\n"
+     "  b (ndarray): Input/state matrix (l x m, F-order)\n"
+     "  c (ndarray): State/output matrix (p x n, F-order)\n"
+     "  tol (float): Tolerance for rank determination\n\n"
+     "Returns:\n"
+     "  (a, e, b, c, q, z, ranke, rnka22, info): Transformed system and ranks\n"},
 
     {NULL, NULL, 0, NULL}
 };

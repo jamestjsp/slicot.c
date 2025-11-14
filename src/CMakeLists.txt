@@ -1,6 +1,7 @@
 set(SLICOT_SOURCES
     MB/mb01qd.c
     MB/mb03oy.c
+    TG/tg01fd.c
 )
 
 if(BUILD_SHARED_LIBS)

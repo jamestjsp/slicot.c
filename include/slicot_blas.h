@@ -131,6 +131,26 @@ void SLC_FC_FUNC(dlaic1, DLAIC1)(const int* job, const int* j, const f64* x,
                                   const f64* sest, const f64* w, const f64* gamma,
                                   f64* sestpr, f64* s, f64* c);
 
+f64 SLC_FC_FUNC(dlange, DLANGE)(const char* norm, const int* m, const int* n,
+                                  const f64* a, const int* lda, f64* work);
+
+/* LAPACK - Orthogonal transformations */
+void SLC_FC_FUNC(dormqr, DORMQR)(const char* side, const char* trans,
+                                  const int* m, const int* n, const int* k,
+                                  const f64* a, const int* lda, const f64* tau,
+                                  f64* c, const int* ldc, f64* work,
+                                  const int* lwork, int* info);
+
+void SLC_FC_FUNC(dormrz, DORMRZ)(const char* side, const char* trans,
+                                  const int* m, const int* n, const int* k,
+                                  const int* l, const f64* a, const int* lda,
+                                  const f64* tau, f64* c, const int* ldc,
+                                  f64* work, const int* lwork, int* info);
+
+void SLC_FC_FUNC(dtzrzf, DTZRZF)(const int* m, const int* n, f64* a,
+                                  const int* lda, f64* tau, f64* work,
+                                  const int* lwork, int* info);
+
 #undef int
 
 /* Convenience macros for calling BLAS/LAPACK */
@@ -154,6 +174,10 @@ void SLC_FC_FUNC(dlaic1, DLAIC1)(const int* job, const int* j, const f64* x,
 #define SLC_DLARFG   SLC_FC_FUNC(dlarfg, DLARFG)
 #define SLC_DLARF    SLC_FC_FUNC(dlarf, DLARF)
 #define SLC_DLAIC1   SLC_FC_FUNC(dlaic1, DLAIC1)
+#define SLC_DLANGE   SLC_FC_FUNC(dlange, DLANGE)
+#define SLC_DORMQR   SLC_FC_FUNC(dormqr, DORMQR)
+#define SLC_DORMRZ   SLC_FC_FUNC(dormrz, DORMRZ)
+#define SLC_DTZRZF   SLC_FC_FUNC(dtzrzf, DTZRZF)
 
 #ifdef __cplusplus
 }
