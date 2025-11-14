@@ -34,7 +34,7 @@ jobs:
         run: |
           python3 -m venv copilot-venv
           source copilot-venv/bin/activate
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt numpy pytest
 
       - name: Configure linux-x64-debug preset
