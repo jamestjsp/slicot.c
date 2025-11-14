@@ -1,0 +1,58 @@
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Remove blocked Ubuntu ESM sources
+        run: |
+          sudo sed -i '/esm\.ubuntu\.com/d' /etc/apt/sources.list || true
+          if ls /etc/apt/sources.list.d/*.list > /dev/null 2>&1; then
+            sudo sed -i '/esm\.ubuntu\.com/d' /etc/apt/sources.list.d/*.list || true
+          fi
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake pkg-config libopenblas-dev liblapack-dev python3-venv python3-dev
+
+      - name: Prepare Python environment
+        run: |
+          python3 -m venv copilot-venv
+          source copilot-venv/bin/activate
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt numpy pytest
+
+      - name: Configure linux-x64-debug preset
+        run: |
+          source copilot-venv/bin/activate
+          cmake --preset linux-x64-debug
+
+      - name: Build slicot library
+        run: |
+          source copilot-venv/bin/activate
+          cmake --build --preset linux-x64-debug-build
+
+      - name: Install Python extension (editable)
+        run: |
+          source copilot-venv/bin/activate
+          pip install -e .
+
+      - name: Smoke test (ctest)
+        run: |
+          source copilot-venv/bin/activate
+          cmake --build --preset linux-x64-debug-build --target unit_tests

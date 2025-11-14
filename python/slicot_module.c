@@ -275,6 +275,97 @@ static PyObject* py_tg01fd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for sg03br */
+static PyObject* py_sg03br(PyObject* self, PyObject* args) {
+    f64 xr, xi, yr, yi;
+    f64 c, sr, si, zr, zi;
+
+    if (!PyArg_ParseTuple(args, "dddd", &xr, &xi, &yr, &yi)) {
+        return NULL;
+    }
+
+    sg03br(xr, xi, yr, yi, &c, &sr, &si, &zr, &zi);
+
+    return Py_BuildValue("(ddddd)", c, sr, si, zr, zi);
+}
+
+/* Python wrapper for sg03bw */
+static PyObject* py_sg03bw(PyObject* self, PyObject* args) {
+    char* trans;
+    PyObject *a_obj, *c_obj, *e_obj, *d_obj, *x_obj;
+    PyArrayObject *a_array, *c_array, *e_array, *d_array, *x_array;
+    f64 scale;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "sOOOOO", &trans, &a_obj, &e_obj, &c_obj, &d_obj, &x_obj)) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (a_array == NULL) return NULL;
+
+    e_array = (PyArrayObject*)PyArray_FROM_OTF(e_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (e_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (c_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        return NULL;
+    }
+
+    d_array = (PyArrayObject*)PyArray_FROM_OTF(d_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (d_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(c_array);
+        return NULL;
+    }
+
+    x_array = (PyArrayObject*)PyArray_FROM_OTF(x_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (x_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *c_dims = PyArray_DIMS(c_array);
+    npy_intp *x_dims = PyArray_DIMS(x_array);
+
+    i32 m = (i32)a_dims[0];
+    i32 n = (i32)c_dims[0];
+    i32 lda = (i32)a_dims[0];
+    i32 ldc = (i32)c_dims[0];
+    i32 lde = (i32)PyArray_DIM(e_array, 0);
+    i32 ldd = (i32)PyArray_DIM(d_array, 0);
+    i32 ldx = (i32)x_dims[0];
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *e_data = (f64*)PyArray_DATA(e_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+    f64 *d_data = (f64*)PyArray_DATA(d_array);
+    f64 *x_data = (f64*)PyArray_DATA(x_array);
+
+    sg03bw(trans, m, n, a_data, lda, c_data, ldc, e_data, lde, d_data, ldd, x_data, ldx, &scale, &info);
+
+    PyObject *result = Py_BuildValue("Odi", x_array, scale, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(e_array);
+    Py_DECREF(c_array);
+    Py_DECREF(d_array);
+    Py_DECREF(x_array);
+
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"mb01qd", py_mb01qd, METH_VARARGS,
@@ -302,6 +393,28 @@ static PyMethodDef SlicotMethods[] = {
      "  svlmax (float): Estimate of largest singular value\n\n"
      "Returns:\n"
      "  (a, rank, info, sval, jpvt, tau): QR factorization results\n"},
+
+    {"sg03br", py_sg03br, METH_VARARGS,
+     "Compute complex Givens rotation in real arithmetic.\n\n"
+     "Parameters:\n"
+     "  xr (float): Real part of X\n"
+     "  xi (float): Imaginary part of X\n"
+     "  yr (float): Real part of Y\n"
+     "  yi (float): Imaginary part of Y\n\n"
+     "Returns:\n"
+     "  (c, sr, si, zr, zi): Givens rotation parameters and result\n"},
+
+    {"sg03bw", py_sg03bw, METH_VARARGS,
+     "Solve generalized Sylvester equation for small systems.\n\n"
+     "Parameters:\n"
+     "  trans (str): 'N' or 'T' - equation form\n"
+     "  a (ndarray): Upper quasitriangular matrix (m x m, F-order)\n"
+     "  e (ndarray): Upper triangular matrix (m x m, F-order)\n"
+     "  c (ndarray): Matrix C (n x n, F-order)\n"
+     "  d (ndarray): Matrix D (n x n, F-order)\n"
+     "  x (ndarray): Right-hand side Y, overwritten with solution (m x n, F-order)\n\n"
+     "Returns:\n"
+     "  (x, scale, info): Solution matrix, scale factor, and exit code\n"},
 
     {"tg01fd", py_tg01fd, METH_VARARGS,
      "Orthogonal reduction of descriptor system to SVD-like form.\n\n"

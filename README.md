@@ -15,7 +15,12 @@ pip install -e .
 pytest tests/python/ -v
 ```
 
-**Presets:** `macos-{x64,arm64}-{debug,release}`
+**Presets:** `macos-{x64,arm64}-{debug,release}`, `linux-x64-{debug,release}`
+
+### Copilot / CI helpers
+
+- `.github/workflows/copilot-setup-steps.yml` pre-installs Ninja, BLAS/LAPACK, and primes the Linux debug preset so Copilot agents and CI jobs start with a ready-to-build environment.
+- Custom CMake target `unit_tests` wraps `ctest --output-on-failure` for consistent local, CI, and Copilot runs.
 
 ## Translation Status
 

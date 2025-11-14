@@ -21,6 +21,8 @@ build_dirs = [
     'build/macos-arm64-release/src',
     'build/macos-x64-debug/src',
     'build/macos-x64-release/src',
+    'build/linux-x64-debug/src',
+    'build/linux-x64-release/src',
     'build/src',
 ]
 
