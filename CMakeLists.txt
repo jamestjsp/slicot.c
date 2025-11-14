@@ -58,6 +58,19 @@ add_subdirectory(src)
 if(BUILD_TESTING)
     enable_testing()
     add_subdirectory(tests)
+
+    add_custom_target(unit_tests
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C $<CONFIG>
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Running unit tests"
+        USES_TERMINAL
+    )
+
+    add_dependencies(unit_tests slicot)
+
+    if(TARGET python_build)
+        add_dependencies(unit_tests python_build)
+    endif()
 endif()
 
 if(BUILD_EXAMPLES)
