@@ -213,8 +213,33 @@ python3 tools/extract_dependencies.py SLICOT-Reference/src/ | grep "Level 0"
 
 Translate Level 0 first, then Level 1, 2, etc.
 
+## Debugging: Fortran Diagnostic Workflow
+
+When C implementation produces wrong results, compare against Fortran reference:
+
+```bash
+# Enable diagnostic tools
+cmake --preset macos-arm64-debug -DBUILD_FORTRAN_DIAG=ON
+
+# Run side-by-side comparison (builds, executes, compares)
+cmake --build --preset macos-arm64-debug-build --target diag_all
+
+# View results
+grep -A3 "OUTPUT" build/macos-arm64-debug/fortran_diag/*_trace.txt
+```
+
+**When to use:**
+- Test fails but unsure where C diverges from Fortran
+- Need to isolate bug to specific computation step
+- Debugging complex multi-step algorithms (Schur, Lyapunov, etc.)
+
+**Output:** High-precision traces (16 digits) in `build/macos-arm64-debug/fortran_diag/`
+
+**See:** `fortran_diag/README.md` for adding new routines
+
 ## Reference Docs
 
+- `fortran_diag/README.md` - Diagnostic workflow for debugging C vs Fortran
 - `tools/README.md` - Detailed workflow examples
 - `.claude/skills/slicot-knowledge/SKILL.md` - Translation knowledge base
 - `scripts/setup_venv.sh` - Virtual environment setup
