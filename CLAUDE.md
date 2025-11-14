@@ -59,6 +59,7 @@ rm -rf build/macos-arm64-debug && cmake --preset macos-arm64-debug && cmake --bu
    - Basic case (from `SLICOT-Reference/doc/AB01MD.html`)
    - Edge case (N=0)
    - Error case (invalid parameters)
+   - **Remember:** Test arrays stored column-major (col1, col2, ...), NOT row-major
 
 3. **Add to** `tests/unit/CMakeLists.txt`:
    ```cmake
@@ -94,7 +95,19 @@ rm -rf build/macos-arm64-debug && cmake --preset macos-arm64-debug && cmake --bu
 
 2. **Update build files:**
    - Add to `src/CMakeLists.txt` → `SLICOT_SOURCES`
-   - Add declaration to `include/slicot.h`
+   - Add declaration to `include/slicot.h` with Doxygen documentation:
+     ```c
+     /**
+      * @brief Brief description from Fortran PURPOSE section.
+      *
+      * Extended description if needed.
+      *
+      * @param[in] param1 Description
+      * @param[in,out] param2 Description
+      * @param[out] info Exit code (0 = success, <0 = invalid param, >0 = error)
+      */
+     void routine_name(int32_t param1, double* param2, int32_t* info);
+     ```
 
 3. **Verify tests pass:**
    ```bash
@@ -142,6 +155,13 @@ python tools/extract_dependencies.py SLICOT-Reference/src/ | grep "Level 0"
 - 0-based indexing (Fortran uses 1-based)
 - Column-major layout preserved
 - Leading dimensions (lda, ldb) preserved
+- **TEST DATA:** C arrays use row-major literals, but SLICOT stores column-major
+  ```c
+  // Matrix in math notation:  [1 2]
+  //                            [3 4]
+  // Column-major C array (column 1, then column 2):
+  double a[] = {1.0, 3.0, 2.0, 4.0};  // NOT {1, 2, 3, 4}
+  ```
 
 **Error codes (`info` parameter):**
 - `0` = success
@@ -161,6 +181,8 @@ python tools/extract_dependencies.py SLICOT-Reference/src/ | grep "Level 0"
 - [ ] TDD commits (RED/GREEN/REFACTOR)
 - [ ] Test data from SLICOT docs
 - [ ] BLAS/LAPACK used correctly
+- [ ] **Test arrays use column-major storage** (common pitfall!)
+- [ ] **Doxygen documentation** in include/slicot.h header
 
 ## Reference
 

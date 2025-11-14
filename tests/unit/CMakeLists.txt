@@ -1,5 +1,5 @@
 set(UNIT_TEST_SOURCES
-    # Add unit test files here
+    test_mb01qd.cpp
 )
 
 if(UNIT_TEST_SOURCES)
