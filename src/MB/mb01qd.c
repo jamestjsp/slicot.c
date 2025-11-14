@@ -1,6 +1,8 @@
 #include "slicot.h"
 #include <math.h>
 #include <stdbool.h>
+#include <float.h>
+#include <stddef.h>
 
 static bool lsame(char ca, char cb) {
     if (ca >= 'a' && ca <= 'z') ca -= 32;
@@ -24,7 +26,7 @@ void mb01qd(char type, int32_t m, int32_t n, int32_t kl, int32_t ku,
     int32_t itype;
     bool done, noblc;
     double smlnum, bignum, cfromc, ctoc, cfrom1, cto1, mul;
-    int32_t i, j, jini, jfin, ifin, k, k1, k2, k3, k4;
+    int32_t i, j, jini, jfin, ifin = 0, k, k1, k2, k3, k4;
 
     *info = 0;
 
@@ -47,7 +49,7 @@ void mb01qd(char type, int32_t m, int32_t n, int32_t kl, int32_t ku,
     if (imin(m, n) == 0)
         return;
 
-    smlnum = 2.2250738585072014e-308;  // DBL_MIN for IEEE 754 double
+    smlnum = DBL_MIN;
     bignum = one / smlnum;
 
     cfromc = cfrom;
@@ -79,7 +81,7 @@ void mb01qd(char type, int32_t m, int32_t n, int32_t kl, int32_t ku,
                 }
             }
         } else if (itype == 1) {
-            if (noblc) {
+            if (noblc || nrows == NULL) {
                 for (j = 0; j < n; j++) {
                     for (i = j; i < m; i++) {
                         a[j * lda + i] *= mul;
@@ -98,7 +100,7 @@ void mb01qd(char type, int32_t m, int32_t n, int32_t kl, int32_t ku,
                 }
             }
         } else if (itype == 2) {
-            if (noblc) {
+            if (noblc || nrows == NULL) {
                 for (j = 0; j < n; j++) {
                     for (i = 0; i < imin(j + 1, m); i++) {
                         a[j * lda + i] *= mul;
@@ -118,7 +120,7 @@ void mb01qd(char type, int32_t m, int32_t n, int32_t kl, int32_t ku,
                 }
             }
         } else if (itype == 3) {
-            if (noblc) {
+            if (noblc || nrows == NULL) {
                 for (j = 0; j < n; j++) {
                     for (i = 0; i < imin(j + 2, m); i++) {
                         a[j * lda + i] *= mul;

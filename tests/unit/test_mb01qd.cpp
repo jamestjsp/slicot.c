@@ -133,3 +133,4 @@ TEST(MB01QD, BlockLowerTriangular) {
         EXPECT_NEAR(a[i], expected[i], 1e-14);
     }
 }
+
