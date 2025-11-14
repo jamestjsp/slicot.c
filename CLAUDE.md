@@ -183,8 +183,6 @@ Translate Level 0 first, then Level 1, 2, etc.
 
 ## Reference Docs
 
-- `SLICUTLET_ANALYSIS.md` - Reference C11 implementation patterns
-- `PYTHON_SETUP.md` - Virtual environment guide
-- `TESTING.md` - Testing infrastructure
 - `tools/README.md` - Detailed workflow examples
 - `.claude/skills/slicot-knowledge/SKILL.md` - Translation knowledge base
+- `scripts/setup_venv.sh` - Virtual environment setup
