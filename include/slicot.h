@@ -83,6 +83,92 @@ void mb03oy(i32 m, i32 n, f64* a, i32 lda, f64 rcond,
             f64 svlmax, i32* rank, f64* sval, i32* jpvt,
             f64* tau, f64* dwork, i32* info);
 
+/**
+ * @brief Orthogonal reduction of descriptor system to SVD-like coordinate form.
+ *
+ * Computes orthogonal transformation matrices Q and Z such that the transformed
+ * descriptor system (Q'*A*Z - lambda*Q'*E*Z, Q'*B, C*Z) is in SVD-like form:
+ *
+ *            ( A11  A12 )             ( Er  0 )
+ *   Q'*A*Z = (          ) ,  Q'*E*Z = (       )
+ *            ( A21  A22 )             (  0  0 )
+ *
+ * where Er is upper triangular and invertible. Optionally reduces A22 to:
+ *
+ *        ( Ar  X )                ( Ar  0 )
+ *  A22 = (       )  (JOBA='T') or (       )  (JOBA='R')
+ *        (  0  0 )                (  0  0 )
+ *
+ * with Ar upper triangular invertible, X full or zero.
+ *
+ * @param[in] compq Controls Q computation:
+ *                  'N' = do not compute Q
+ *                  'I' = initialize Q to identity and return Q
+ *                  'U' = update existing Q (Q := Q1*Q)
+ * @param[in] compz Controls Z computation:
+ *                  'N' = do not compute Z
+ *                  'I' = initialize Z to identity and return Z
+ *                  'U' = update existing Z (Z := Z1*Z)
+ * @param[in] joba Controls A22 reduction:
+ *                 'N' = do not reduce A22
+ *                 'R' = reduce A22 to SVD-like upper triangular form
+ *                 'T' = reduce A22 to upper trapezoidal form
+ * @param[in] l Number of rows of A, B, E (L >= 0)
+ * @param[in] n Number of columns of A, E, C (N >= 0)
+ * @param[in] m Number of columns of B (M >= 0)
+ * @param[in] p Number of rows of C (P >= 0)
+ * @param[in,out] a DOUBLE PRECISION array, dimension (lda,n)
+ *                  In: L-by-N state dynamics matrix A
+ *                  Out: Transformed matrix Q'*A*Z
+ * @param[in] lda Leading dimension of A (lda >= max(1,l))
+ * @param[in,out] e DOUBLE PRECISION array, dimension (lde,n)
+ *                  In: L-by-N descriptor matrix E
+ *                  Out: Transformed matrix Q'*E*Z in SVD-like form
+ * @param[in] lde Leading dimension of E (lde >= max(1,l))
+ * @param[in,out] b DOUBLE PRECISION array, dimension (ldb,m)
+ *                  In: L-by-M input/state matrix B
+ *                  Out: Transformed matrix Q'*B
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,l) if m>0, else >= 1)
+ * @param[in,out] c DOUBLE PRECISION array, dimension (ldc,n)
+ *                  In: P-by-N state/output matrix C
+ *                  Out: Transformed matrix C*Z
+ * @param[in] ldc Leading dimension of C (ldc >= max(1,p))
+ * @param[in,out] q DOUBLE PRECISION array, dimension (ldq,l)
+ *                  If compq='I': Out: orthogonal matrix Q
+ *                  If compq='U': In: Q1, Out: Q1*Q
+ *                  If compq='N': Not referenced
+ * @param[in] ldq Leading dimension of Q (ldq >= max(1,l) if compq!='N', else >= 1)
+ * @param[in,out] z DOUBLE PRECISION array, dimension (ldz,n)
+ *                  If compz='I': Out: orthogonal matrix Z
+ *                  If compz='U': In: Z1, Out: Z1*Z
+ *                  If compz='N': Not referenced
+ * @param[in] ldz Leading dimension of Z (ldz >= max(1,n) if compz!='N', else >= 1)
+ * @param[out] ranke Rank of matrix E (order of Er)
+ * @param[out] rnka22 Rank of A22 (order of Ar, if joba='R' or 'T')
+ * @param[in] tol Tolerance for rank determination (0 < tol < 1)
+ *                If tol <= 0, uses default: l*n*eps
+ * @param[out] iwork INTEGER array, dimension (n)
+ * @param[out] dwork DOUBLE PRECISION array, dimension (ldwork)
+ *                   On exit, dwork[0] returns optimal ldwork
+ * @param[in] ldwork Length of dwork (>= max(1, n+p, min(l,n)+max(3*n-1,m,l)))
+ *                   If ldwork=-1, workspace query (returns optimal size in dwork[0])
+ * @param[out] info Exit code (0 = success, <0 = invalid parameter -i)
+ */
+void tg01fd(
+    const char* compq, const char* compz, const char* joba,
+    const i32 l, const i32 n, const i32 m, const i32 p,
+    f64* a, const i32 lda,
+    f64* e, const i32 lde,
+    f64* b, const i32 ldb,
+    f64* c, const i32 ldc,
+    f64* q, const i32 ldq,
+    f64* z, const i32 ldz,
+    i32* ranke, i32* rnka22,
+    const f64 tol,
+    i32* iwork, f64* dwork, const i32 ldwork,
+    i32* info
+);
+
 #ifdef __cplusplus
 }
 #endif
