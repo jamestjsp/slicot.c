@@ -26,6 +26,7 @@ venv/
 env/
 ENV/
 .env
+copilot-venv/
 
 # Python bytecode
 __pycache__/
