@@ -83,6 +83,11 @@ void SLC_FC_FUNC(dtrmv, DTRMV)(const char* uplo, const char* trans, const char* 
                                 f64* x, const int* incx);
 
 /* BLAS Level 3 - Matrix-matrix operations */
+void SLC_FC_FUNC(dtrmm, DTRMM)(const char* side, const char* uplo, const char* transa,
+                                const char* diag, const int* m, const int* n,
+                                const f64* alpha, const f64* a, const int* lda,
+                                f64* b, const int* ldb);
+
 void SLC_FC_FUNC(dgemm, DGEMM)(const char* transa, const char* transb,
                                 const int* m, const int* n, const int* k,
                                 const f64* alpha, const f64* a, const int* lda,
@@ -201,6 +206,7 @@ void SLC_FC_FUNC(dtzrzf, DTZRZF)(const int* m, const int* n, f64* a,
 #define SLC_IDAMAX   SLC_FC_FUNC(idamax, IDAMAX)
 #define SLC_DGEMV    SLC_FC_FUNC(dgemv, DGEMV)
 #define SLC_DTRMV    SLC_FC_FUNC(dtrmv, DTRMV)
+#define SLC_DTRMM    SLC_FC_FUNC(dtrmm, DTRMM)
 #define SLC_DGEMM    SLC_FC_FUNC(dgemm, DGEMM)
 #define SLC_DSYRK    SLC_FC_FUNC(dsyrk, DSYRK)
 #define SLC_DSYR2K   SLC_FC_FUNC(dsyr2k, DSYR2K)
