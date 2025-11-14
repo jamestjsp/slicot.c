@@ -50,6 +50,46 @@ void mb01qd(char type, i32 m, i32 n, i32 kl, i32 ku,
             f64* a, i32 lda, i32* info);
 
 /**
+ * @brief Compute matrix product T := alpha*op(T)*A or T := alpha*A*op(T).
+ *
+ * Computes one of the matrix products:
+ *   T := alpha*op(T)*A (SIDE='L'), or
+ *   T := alpha*A*op(T) (SIDE='R'),
+ * where alpha is a scalar, A is M-by-N, T is triangular, and op(T) is T or T^T.
+ * Uses block algorithm with BLAS 3 when possible. Result overwrites T.
+ *
+ * @param[in] side 'L' for T:=alpha*op(T)*A, 'R' for T:=alpha*A*op(T)
+ * @param[in] uplo 'U' for upper triangular T, 'L' for lower triangular
+ * @param[in] trans 'N' for op(T)=T, 'T'/'C' for op(T)=T^T
+ * @param[in] m Number of rows of A (m >= 0)
+ * @param[in] n Number of columns of A (n >= 0)
+ * @param[in] alpha Scalar multiplier (alpha=0: T set to zero)
+ * @param[in,out] t DOUBLE PRECISION array, dimension (ldt,max(K,N)) if SIDE='L',
+ *                  (ldt,K) if SIDE='R', where K=M if SIDE='L', K=N if SIDE='R'.
+ *                  In: K-by-K triangular matrix T
+ *                  Out: M-by-N result matrix
+ * @param[in] ldt Leading dimension of T (ldt >= max(1,M) if SIDE='L',
+ *                ldt >= max(1,M,N) if SIDE='R')
+ * @param[in] a DOUBLE PRECISION array, dimension (lda,n), M-by-N matrix A
+ * @param[in] lda Leading dimension of A (lda >= max(1,M))
+ * @param[out] dwork DOUBLE PRECISION array, dimension (ldwork), workspace
+ *                   On exit, dwork[0] returns optimal ldwork
+ * @param[in] ldwork Workspace size (ldwork >= 1 if alpha=0 or min(M,N)=0,
+ *                   ldwork >= M if SIDE='L', ldwork >= N if SIDE='R'.
+ *                   If ldwork=-1, workspace query mode)
+ * @param[out] info Exit code (0=success, <0=invalid parameter)
+ */
+void mb01uy(
+    const char* side, const char* uplo, const char* trans,
+    const i32 m, const i32 n,
+    const f64 alpha,
+    f64* t, const i32 ldt,
+    const f64* a, const i32 lda,
+    f64* dwork, const i32 ldwork,
+    i32* info
+);
+
+/**
  * @brief Matrix rank determination by incremental condition estimation during QR factorization.
  *
  * Computes a rank-revealing QR factorization of a real general M-by-N matrix A,
@@ -160,6 +200,52 @@ void sg03bw(
     const f64* d, const i32 ldd,
     f64* x, const i32 ldx,
     f64* scale,
+    i32* info
+);
+
+/**
+ * @brief Solve 2-by-2 generalized Lyapunov equation.
+ *
+ * Solves for Cholesky factor U (X = op(U)^T * op(U)) the generalized
+ * continuous-time or discrete-time Lyapunov equation:
+ *
+ *   Continuous (DICO='C'):
+ *     op(A)^T * X * op(E) + op(E)^T * X * op(A) = -SCALE^2 * op(B)^T * op(B)
+ *
+ *   Discrete (DICO='D'):
+ *     op(A)^T * X * op(A) - op(E)^T * X * op(E) = -SCALE^2 * op(B)^T * op(B)
+ *
+ * where op(K) = K or K^T, A,B,E,U are 2x2 real matrices, E and B upper triangular.
+ * Pencil A-lambda*E must have complex conjugate eigenvalues in the stability region.
+ * Also computes auxiliary matrices M1 and M2.
+ *
+ * @param[in] dico 'C' for continuous-time, 'D' for discrete-time
+ * @param[in] trans 'N' for op(K)=K, 'T' for op(K)=K^T
+ * @param[in] a DOUBLE PRECISION array, dimension (lda,2), matrix A
+ * @param[in] lda Leading dimension of A (lda >= 2)
+ * @param[in] e DOUBLE PRECISION array, dimension (lde,2), upper triangular E
+ * @param[in] lde Leading dimension of E (lde >= 2)
+ * @param[in] b DOUBLE PRECISION array, dimension (ldb,2), upper triangular B
+ * @param[in] ldb Leading dimension of B (ldb >= 2)
+ * @param[out] u DOUBLE PRECISION array, dimension (ldu,2), Cholesky factor
+ * @param[in] ldu Leading dimension of U (ldu >= 2)
+ * @param[out] scale Scaling factor (0 < scale <= 1)
+ * @param[out] m1 DOUBLE PRECISION array, dimension (ldm1,2), auxiliary matrix
+ * @param[in] ldm1 Leading dimension of M1 (ldm1 >= 2)
+ * @param[out] m2 DOUBLE PRECISION array, dimension (ldm2,2), auxiliary matrix
+ * @param[in] ldm2 Leading dimension of M2 (ldm2 >= 2)
+ * @param[out] info Exit code (0=success, 2=not complex conjugate,
+ *                  3=eigenvalues not stable, 4=ZSTEIN failed)
+ */
+void sg03bx(
+    const char* dico, const char* trans,
+    const f64* a, const i32 lda,
+    const f64* e, const i32 lde,
+    const f64* b, const i32 ldb,
+    f64* u, const i32 ldu,
+    f64* scale,
+    f64* m1, const i32 ldm1,
+    f64* m2, const i32 ldm2,
     i32* info
 );
 

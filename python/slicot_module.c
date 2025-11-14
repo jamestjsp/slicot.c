@@ -275,6 +275,93 @@ static PyObject* py_tg01fd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for mb01uy */
+static PyObject* py_mb01uy(PyObject* self, PyObject* args) {
+    char *side, *uplo, *trans;
+    i32 m, n;
+    f64 alpha;
+    PyObject *t_obj, *a_obj;
+    PyArrayObject *t_array, *a_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "sssiidOO", &side, &uplo, &trans, &m, &n, &alpha, &t_obj, &a_obj)) {
+        return NULL;
+    }
+
+    t_array = (PyArrayObject*)PyArray_FROM_OTF(t_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (t_array == NULL) return NULL;
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (a_array == NULL) {
+        Py_DECREF(t_array);
+        return NULL;
+    }
+
+    i32 ldt = (m > n) ? m : n;
+    if ((*side == 'R' || *side == 'r') && ldt < n) ldt = n;
+    i32 lda = (i32)PyArray_DIM(a_array, 0);
+
+    f64 *t_in = (f64*)PyArray_DATA(t_array);
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+
+    npy_intp t_dims[2] = {ldt, (ldt > n) ? ldt : n};
+    npy_intp t_strides[2] = {sizeof(f64), ldt * sizeof(f64)};
+    PyObject *t_out = PyArray_New(&PyArray_Type, 2, t_dims, NPY_DOUBLE, t_strides,
+                                   NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    if (t_out == NULL) {
+        Py_DECREF(t_array);
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    f64 *t_data = (f64*)PyArray_DATA((PyArrayObject*)t_out);
+    i32 k = (*side == 'L' || *side == 'l') ? m : n;
+    for (i32 j = 0; j < k; j++) {
+        for (i32 i = 0; i < k; i++) {
+            t_data[i + j * ldt] = t_in[i + j * PyArray_DIM(t_array, 0)];
+        }
+    }
+
+    i32 ldwork = m * n;
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (dwork == NULL) {
+        Py_DECREF(t_array);
+        Py_DECREF(a_array);
+        Py_DECREF(t_out);
+        return PyErr_NoMemory();
+    }
+
+    mb01uy(side, uplo, trans, m, n, alpha, t_data, ldt, a_data, lda, dwork, ldwork, &info);
+
+    free(dwork);
+
+    npy_intp result_dims[2] = {m, n};
+    npy_intp result_strides[2] = {sizeof(f64), m * sizeof(f64)};
+    PyObject *result_array = PyArray_New(&PyArray_Type, 2, result_dims, NPY_DOUBLE, result_strides,
+                                          NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    if (result_array == NULL) {
+        Py_DECREF(t_array);
+        Py_DECREF(a_array);
+        Py_DECREF(t_out);
+        return NULL;
+    }
+
+    f64 *result_data = (f64*)PyArray_DATA((PyArrayObject*)result_array);
+    for (i32 j = 0; j < n; j++) {
+        for (i32 i = 0; i < m; i++) {
+            result_data[i + j * m] = t_data[i + j * ldt];
+        }
+    }
+
+    PyObject *result = Py_BuildValue("Oi", result_array, info);
+    Py_DECREF(t_array);
+    Py_DECREF(a_array);
+    Py_DECREF(t_out);
+    Py_DECREF(result_array);
+
+    return result;
+}
+
 /* Python wrapper for sg03br */
 static PyObject* py_sg03br(PyObject* self, PyObject* args) {
     f64 xr, xi, yr, yi;
@@ -366,6 +453,81 @@ static PyObject* py_sg03bw(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for sg03bx */
+static PyObject* py_sg03bx(PyObject* self, PyObject* args) {
+    char *dico, *trans;
+    PyObject *a_obj, *e_obj, *b_obj;
+    PyArrayObject *a_array, *e_array, *b_array;
+    f64 scale;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "ssOOO", &dico, &trans, &a_obj, &e_obj, &b_obj)) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (a_array == NULL) return NULL;
+
+    e_array = (PyArrayObject*)PyArray_FROM_OTF(e_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (e_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        return NULL;
+    }
+
+    i32 lda = (i32)PyArray_DIM(a_array, 0);
+    i32 lde = (i32)PyArray_DIM(e_array, 0);
+    i32 ldb = (i32)PyArray_DIM(b_array, 0);
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *e_data = (f64*)PyArray_DATA(e_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+
+    npy_intp dims[2] = {2, 2};
+    npy_intp strides[2] = {sizeof(f64), 2 * sizeof(f64)};
+
+    PyObject *u_array = PyArray_New(&PyArray_Type, 2, dims, NPY_DOUBLE, strides,
+                                     NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    PyObject *m1_array = PyArray_New(&PyArray_Type, 2, dims, NPY_DOUBLE, strides,
+                                      NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    PyObject *m2_array = PyArray_New(&PyArray_Type, 2, dims, NPY_DOUBLE, strides,
+                                      NULL, 0, NPY_ARRAY_FARRAY, NULL);
+
+    if (u_array == NULL || m1_array == NULL || m2_array == NULL) {
+        Py_XDECREF(u_array);
+        Py_XDECREF(m1_array);
+        Py_XDECREF(m2_array);
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    f64 *u_data = (f64*)PyArray_DATA((PyArrayObject*)u_array);
+    f64 *m1_data = (f64*)PyArray_DATA((PyArrayObject*)m1_array);
+    f64 *m2_data = (f64*)PyArray_DATA((PyArrayObject*)m2_array);
+
+    sg03bx(dico, trans, a_data, lda, e_data, lde, b_data, ldb,
+           u_data, 2, &scale, m1_data, 2, m2_data, 2, &info);
+
+    PyObject *result = Py_BuildValue("OdOOi", u_array, scale, m1_array, m2_array, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(e_array);
+    Py_DECREF(b_array);
+    Py_DECREF(u_array);
+    Py_DECREF(m1_array);
+    Py_DECREF(m2_array);
+
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"mb01qd", py_mb01qd, METH_VARARGS,
@@ -394,6 +556,20 @@ static PyMethodDef SlicotMethods[] = {
      "Returns:\n"
      "  (a, rank, info, sval, jpvt, tau): QR factorization results\n"},
 
+    {"mb01uy", py_mb01uy, METH_VARARGS,
+     "Compute matrix product T := alpha*op(T)*A or T := alpha*A*op(T).\n\n"
+     "Parameters:\n"
+     "  side (str): 'L' or 'R' - triangular matrix position\n"
+     "  uplo (str): 'U' or 'L' - upper/lower triangular\n"
+     "  trans (str): 'N'/'T'/'C' - transpose option\n"
+     "  m (int): Number of rows of A\n"
+     "  n (int): Number of columns of A\n"
+     "  alpha (float): Scalar multiplier\n"
+     "  t (ndarray): Triangular matrix (F-order), overwritten with result\n"
+     "  a (ndarray): Matrix A (F-order)\n\n"
+     "Returns:\n"
+     "  (t, info): Result matrix and exit code\n"},
+
     {"sg03br", py_sg03br, METH_VARARGS,
      "Compute complex Givens rotation in real arithmetic.\n\n"
      "Parameters:\n"
@@ -415,6 +591,17 @@ static PyMethodDef SlicotMethods[] = {
      "  x (ndarray): Right-hand side Y, overwritten with solution (m x n, F-order)\n\n"
      "Returns:\n"
      "  (x, scale, info): Solution matrix, scale factor, and exit code\n"},
+
+    {"sg03bx", py_sg03bx, METH_VARARGS,
+     "Solve 2x2 generalized Lyapunov equation.\n\n"
+     "Parameters:\n"
+     "  dico (str): 'C' for continuous-time, 'D' for discrete-time\n"
+     "  trans (str): 'N' for op(K)=K, 'T' for op(K)=K^T\n"
+     "  a (ndarray): Matrix A (2 x 2, F-order)\n"
+     "  e (ndarray): Upper triangular matrix E (2 x 2, F-order)\n"
+     "  b (ndarray): Upper triangular matrix B (2 x 2, F-order)\n\n"
+     "Returns:\n"
+     "  (u, scale, m1, m2, info): Cholesky factor, scale, auxiliary matrices, exit code\n"},
 
     {"tg01fd", py_tg01fd, METH_VARARGS,
      "Orthogonal reduction of descriptor system to SVD-like form.\n\n"

@@ -83,6 +83,11 @@ void SLC_FC_FUNC(dtrmv, DTRMV)(const char* uplo, const char* trans, const char* 
                                 f64* x, const int* incx);
 
 /* BLAS Level 3 - Matrix-matrix operations */
+void SLC_FC_FUNC(dtrmm, DTRMM)(const char* side, const char* uplo, const char* transa,
+                                const char* diag, const int* m, const int* n,
+                                const f64* alpha, const f64* a, const int* lda,
+                                f64* b, const int* ldb);
+
 void SLC_FC_FUNC(dgemm, DGEMM)(const char* transa, const char* transb,
                                 const int* m, const int* n, const int* k,
                                 const f64* alpha, const f64* a, const int* lda,
@@ -136,9 +141,32 @@ f64 SLC_FC_FUNC(dlange, DLANGE)(const char* norm, const int* m, const int* n,
 
 f64 SLC_FC_FUNC(dlapy2, DLAPY2)(const f64* x, const f64* y);
 
+f64 SLC_FC_FUNC(dlapy3, DLAPY3)(const f64* x, const f64* y, const f64* z);
+
 void SLC_FC_FUNC(dlascl, DLASCL)(const char* type, const int* kl, const int* ku,
                                   const f64* cfrom, const f64* cto, const int* m,
                                   const int* n, f64* a, const int* lda, int* info);
+
+void SLC_FC_FUNC(dlabad, DLABAD)(f64* small, f64* large);
+
+void SLC_FC_FUNC(dlag2, DLAG2)(const f64* a, const int* lda, const f64* b, const int* ldb,
+                                const f64* safmin, f64* scale1, f64* scale2,
+                                f64* wr1, f64* wr2, f64* wi);
+
+void SLC_FC_FUNC(dlasv2, DLASV2)(const f64* f, const f64* g, const f64* h,
+                                  f64* ssmin, f64* ssmax, f64* snr, f64* csr,
+                                  f64* snl, f64* csl);
+
+void SLC_FC_FUNC(dladiv, DLADIV)(const f64* a, const f64* b, const f64* c, const f64* d,
+                                  f64* p, f64* q);
+
+void SLC_FC_FUNC(zlarfg, ZLARFG)(const int* n, double complex* alpha, double complex* x,
+                                  const int* incx, double complex* tau);
+
+void SLC_FC_FUNC(zstein, ZSTEIN)(const int* n, const f64* d, const f64* e, const int* m,
+                                  const f64* w, const int* iblock, const int* isplit,
+                                  double complex* z, const int* ldz, f64* work,
+                                  int* iwork, int* ifail, int* info);
 
 void SLC_FC_FUNC(xerbla, XERBLA)(const char* srname, const int* info);
 
@@ -178,6 +206,7 @@ void SLC_FC_FUNC(dtzrzf, DTZRZF)(const int* m, const int* n, f64* a,
 #define SLC_IDAMAX   SLC_FC_FUNC(idamax, IDAMAX)
 #define SLC_DGEMV    SLC_FC_FUNC(dgemv, DGEMV)
 #define SLC_DTRMV    SLC_FC_FUNC(dtrmv, DTRMV)
+#define SLC_DTRMM    SLC_FC_FUNC(dtrmm, DTRMM)
 #define SLC_DGEMM    SLC_FC_FUNC(dgemm, DGEMM)
 #define SLC_DSYRK    SLC_FC_FUNC(dsyrk, DSYRK)
 #define SLC_DSYR2K   SLC_FC_FUNC(dsyr2k, DSYR2K)
@@ -194,7 +223,14 @@ void SLC_FC_FUNC(dtzrzf, DTZRZF)(const int* m, const int* n, f64* a,
 #define SLC_DORMRZ   SLC_FC_FUNC(dormrz, DORMRZ)
 #define SLC_DTZRZF   SLC_FC_FUNC(dtzrzf, DTZRZF)
 #define SLC_DLAPY2   SLC_FC_FUNC(dlapy2, DLAPY2)
+#define SLC_DLAPY3   SLC_FC_FUNC(dlapy3, DLAPY3)
 #define SLC_DLASCL   SLC_FC_FUNC(dlascl, DLASCL)
+#define SLC_DLABAD   SLC_FC_FUNC(dlabad, DLABAD)
+#define SLC_DLAG2    SLC_FC_FUNC(dlag2, DLAG2)
+#define SLC_DLASV2   SLC_FC_FUNC(dlasv2, DLASV2)
+#define SLC_DLADIV   SLC_FC_FUNC(dladiv, DLADIV)
+#define SLC_ZLARFG   SLC_FC_FUNC(zlarfg, ZLARFG)
+#define SLC_ZSTEIN   SLC_FC_FUNC(zstein, ZSTEIN)
 #define SLC_XERBLA   SLC_FC_FUNC(xerbla, XERBLA)
 #define SLC_DGETC2   SLC_FC_FUNC(dgetc2, DGETC2)
 #define SLC_DGESC2   SLC_FC_FUNC(dgesc2, DGESC2)
