@@ -8,9 +8,9 @@ This tool parses Fortran 77 source files to identify:
 3. Dependency levels (leaf routines vs. higher-level routines)
 
 Usage:
-    python extract_dependencies.py <fortran_source_dir>
-    python extract_dependencies.py reference/src/
-    python extract_dependencies.py reference/src/AB01MD.f  # Single file
+    python3 extract_dependencies.py <fortran_source_dir>
+    python3 extract_dependencies.py reference/src/
+    python3 extract_dependencies.py reference/src/AB01MD.f  # Single file
 """
 
 import re
@@ -235,8 +235,8 @@ class FortranDependencyAnalyzer:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python extract_dependencies.py <fortran_source_dir|file>")
-        print("   or: python extract_dependencies.py <fortran_source_dir> <routine_name>")
+        print("Usage: python3 extract_dependencies.py <fortran_source_dir|file>")
+        print("   or: python3 extract_dependencies.py <fortran_source_dir> <routine_name>")
         sys.exit(1)
 
     source_path = Path(sys.argv[1])

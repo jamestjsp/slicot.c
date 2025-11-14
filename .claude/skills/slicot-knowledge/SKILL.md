@@ -553,7 +553,7 @@ mb01pd(scun, type, m, n, kl, ku, anrm, nbl, nrows, a, lda, info);
 
 **Show Overall Summary:**
 ```bash
-python tools/extract_dependencies.py SLICOT-Reference/src/
+python3 tools/extract_dependencies.py SLICOT-Reference/src/
 ```
 
 Output:
@@ -564,7 +564,7 @@ Output:
 
 **Analyze Specific Routine:**
 ```bash
-python tools/extract_dependencies.py SLICOT-Reference/src/ AB01MD
+python3 tools/extract_dependencies.py SLICOT-Reference/src/ AB01MD
 ```
 
 Output:
@@ -575,13 +575,13 @@ Output:
 
 **Analyze Single File:**
 ```bash
-python tools/extract_dependencies.py SLICOT-Reference/src/MB01PD.f
+python3 tools/extract_dependencies.py SLICOT-Reference/src/MB01PD.f
 ```
 
 #### Example: Understanding AB01MD Dependencies
 
 ```bash
-$ python tools/extract_dependencies.py SLICOT-Reference/src/ AB01MD
+$ python3 tools/extract_dependencies.py SLICOT-Reference/src/ AB01MD
 
 ================================================================================
 ROUTINE: AB01MD
@@ -625,7 +625,7 @@ LAPACK/BLAS Dependencies (5):
 ### Step 1: Check Dependencies
 
 ```bash
-python tools/extract_dependencies.py SLICOT-Reference/src/ AB01MD
+python3 tools/extract_dependencies.py SLICOT-Reference/src/ AB01MD
 ```
 
 Ensure SLICOT dependencies are translated and identify required LAPACK/BLAS routines.
@@ -942,7 +942,7 @@ ctest --preset macos-arm64-debug-test -V
 | What's the complexity? | HTML: **Numerical Aspects** section |
 | Where's the Fortran source? | `SLICOT-Reference/src/XYZ.f` |
 | Where are Fortran examples? | `SLICOT-Reference/examples/TXYZ.f` |
-| What are the dependencies? | `python tools/extract_dependencies.py SLICOT-Reference/src/ XYZ` |
+| What are the dependencies? | `python3 tools/extract_dependencies.py SLICOT-Reference/src/ XYZ` |
 | What LAPACK calls are needed? | Dependency tool output: **LAPACK/BLAS Dependencies** |
 
 ### Essential Reminders
