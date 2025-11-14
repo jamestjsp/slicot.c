@@ -1,5 +1,6 @@
 set(SLICOT_SOURCES
     MB/mb01qd.c
+    MB/mb03oy.c
 )
 
 if(BUILD_SHARED_LIBS)
@@ -10,8 +11,12 @@ endif()
 
 target_include_directories(slicot PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
+
+# Link BLAS and LAPACK (already found in root CMakeLists.txt)
+target_link_libraries(slicot PUBLIC ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 
 set_target_properties(slicot PROPERTIES
     VERSION ${PROJECT_VERSION}

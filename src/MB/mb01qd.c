@@ -10,23 +10,23 @@ static bool lsame(char ca, char cb) {
     return ca == cb;
 }
 
-static int32_t imin(int32_t a, int32_t b) {
+static i32 imin(i32 a, i32 b) {
     return a < b ? a : b;
 }
 
-static int32_t imax(int32_t a, int32_t b) {
+static i32 imax(i32 a, i32 b) {
     return a > b ? a : b;
 }
 
-void mb01qd(char type, int32_t m, int32_t n, int32_t kl, int32_t ku,
-            double cfrom, double cto, int32_t nbl, const int32_t* nrows,
-            double* a, int32_t lda, int32_t* info) {
+void mb01qd(char type, i32 m, i32 n, i32 kl, i32 ku,
+            f64 cfrom, f64 cto, i32 nbl, const i32* nrows,
+            f64* a, i32 lda, i32* info) {
 
-    const double zero = 0.0, one = 1.0;
-    int32_t itype;
+    const f64 zero = 0.0, one = 1.0;
+    i32 itype;
     bool done, noblc;
-    double smlnum, bignum, cfromc, ctoc, cfrom1, cto1, mul;
-    int32_t i, j, jini, jfin, ifin = 0, k, k1, k2, k3, k4;
+    f64 smlnum, bignum, cfromc, ctoc, cfrom1, cto1, mul;
+    i32 i, j, jini, jfin, ifin = 0, k, k1, k2, k3, k4;
 
     *info = 0;
 
@@ -84,7 +84,7 @@ void mb01qd(char type, int32_t m, int32_t n, int32_t kl, int32_t ku,
             if (noblc || nrows == NULL) {
                 for (j = 0; j < n; j++) {
                     for (i = j; i < m; i++) {
-                        a[j * lda + i] *= mul;
+                        a[i + j * lda] *= mul;
                     }
                 }
             } else {
