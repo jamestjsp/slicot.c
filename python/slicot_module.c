@@ -656,6 +656,139 @@ static PyObject* py_sg03bx(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for sg03bd */
+static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
+    char *dico, *fact, *trans;
+    i32 n, m;
+    PyObject *a_obj, *e_obj, *b_obj;
+    PyArrayObject *a_array, *e_array, *b_array;
+    f64 scale;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "sssiiOOO", &dico, &fact, &trans, &n, &m, &a_obj, &e_obj, &b_obj)) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) return NULL;
+
+    e_array = (PyArrayObject*)PyArray_FROM_OTF(e_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (e_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        return NULL;
+    }
+
+    i32 lda = (i32)PyArray_DIM(a_array, 0);
+    i32 lde = (i32)PyArray_DIM(e_array, 0);
+    i32 ldb = (i32)PyArray_DIM(b_array, 0);
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *e_data = (f64*)PyArray_DATA(e_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+
+    npy_intp dims_q[2] = {n, n};
+    npy_intp strides_q[2] = {sizeof(f64), n * sizeof(f64)};
+
+    PyObject *q_array = PyArray_New(&PyArray_Type, 2, dims_q, NPY_DOUBLE, strides_q,
+                                     NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    PyObject *z_array = PyArray_New(&PyArray_Type, 2, dims_q, NPY_DOUBLE, strides_q,
+                                     NULL, 0, NPY_ARRAY_FARRAY, NULL);
+
+    if (q_array == NULL || z_array == NULL) {
+        Py_XDECREF(q_array);
+        Py_XDECREF(z_array);
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    f64 *q_data = (f64*)PyArray_DATA((PyArrayObject*)q_array);
+    f64 *z_data = (f64*)PyArray_DATA((PyArrayObject*)z_array);
+
+    npy_intp dims_eig[1] = {n};
+    PyObject *alphar_array = PyArray_New(&PyArray_Type, 1, dims_eig, NPY_DOUBLE, NULL,
+                                          NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    PyObject *alphai_array = PyArray_New(&PyArray_Type, 1, dims_eig, NPY_DOUBLE, NULL,
+                                          NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    PyObject *beta_array = PyArray_New(&PyArray_Type, 1, dims_eig, NPY_DOUBLE, NULL,
+                                        NULL, 0, NPY_ARRAY_FARRAY, NULL);
+
+    if (alphar_array == NULL || alphai_array == NULL || beta_array == NULL) {
+        Py_XDECREF(alphar_array);
+        Py_XDECREF(alphai_array);
+        Py_XDECREF(beta_array);
+        Py_DECREF(q_array);
+        Py_DECREF(z_array);
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    f64 *alphar_data = (f64*)PyArray_DATA((PyArrayObject*)alphar_array);
+    f64 *alphai_data = (f64*)PyArray_DATA((PyArrayObject*)alphai_array);
+    f64 *beta_data = (f64*)PyArray_DATA((PyArrayObject*)beta_array);
+
+    i32 ldq = n;
+    i32 ldz = n;
+
+    i32 ldwork;
+    if (fact[0] == 'F' || fact[0] == 'f') {
+        ldwork = (2 * n > 6 * n - 6) ? 2 * n : (6 * n - 6);
+        ldwork = (ldwork > 1) ? ldwork : 1;
+    } else {
+        ldwork = (4 * n > 6 * n - 6) ? 4 * n : (6 * n - 6);
+        ldwork = (ldwork > 1) ? ldwork : 1;
+        i32 mingg = (ldwork > 8 * n + 16) ? ldwork : (8 * n + 16);
+        ldwork = mingg;
+    }
+
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (dwork == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        Py_DECREF(alphar_array);
+        Py_DECREF(alphai_array);
+        Py_DECREF(beta_array);
+        Py_DECREF(q_array);
+        Py_DECREF(z_array);
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    sg03bd(dico, fact, trans, n, m, a_data, lda, e_data, lde,
+           q_data, ldq, z_data, ldz, b_data, ldb, &scale,
+           alphar_data, alphai_data, beta_data, dwork, ldwork, &info);
+
+    free(dwork);
+
+    PyObject *result = Py_BuildValue("OdOOOi", b_array, scale,
+                                     alphar_array, alphai_array, beta_array, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(e_array);
+    Py_DECREF(b_array);
+    Py_DECREF(q_array);
+    Py_DECREF(z_array);
+    Py_DECREF(alphar_array);
+    Py_DECREF(alphai_array);
+    Py_DECREF(beta_array);
+
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"mb01qd", py_mb01qd, METH_VARARGS,
@@ -739,6 +872,20 @@ static PyMethodDef SlicotMethods[] = {
      "  b (ndarray): Upper triangular matrix B (n x n, F-order)\n\n"
      "Returns:\n"
      "  (u, scale, info): Cholesky factor U, scale factor, exit code\n"},
+
+    {"sg03bd", py_sg03bd, METH_VARARGS,
+     "Solve generalized Lyapunov equation for Cholesky factor.\n\n"
+     "Parameters:\n"
+     "  dico (str): 'C' for continuous-time, 'D' for discrete-time\n"
+     "  fact (str): 'N' to compute factorization, 'F' if factorization supplied\n"
+     "  trans (str): 'N' for op(K)=K, 'T' for op(K)=K^T\n"
+     "  n (int): Order of matrices A and E\n"
+     "  m (int): Number of rows in op(B)\n"
+     "  a (ndarray): Matrix A (n x n, F-order)\n"
+     "  e (ndarray): Matrix E (n x n, F-order)\n"
+     "  b (ndarray): Matrix B (size depends on trans, F-order)\n\n"
+     "Returns:\n"
+     "  (u, scale, alphar, alphai, beta, info): Cholesky factor, scale, eigenvalues, exit code\n"},
 
     {"sg03bx", py_sg03bx, METH_VARARGS,
      "Solve 2x2 generalized Lyapunov equation.\n\n"
