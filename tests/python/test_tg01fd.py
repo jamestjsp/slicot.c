@@ -206,3 +206,59 @@ def test_tg01fd_compq_update():
     # Note: We'd need to modify the wrapper to accept Q as input for COMPQ='U'
     # For now, this test documents the expected behavior
     # The wrapper should handle Q as input/output when COMPQ='U'
+
+
+def test_tg01fd_boundary_pivots():
+    """Test TG01FD with larger matrix to exercise permutation cycles.
+
+    Tests boundary conditions in pivot index conversion to ensure
+    out-of-bounds access prevention works correctly.
+    """
+    l, n, m, p = 5, 5, 2, 2
+    tol = 1e-10
+    compq = 'I'
+    compz = 'I'
+    joba = 'R'
+
+    # Create test matrices with structure that will trigger permutations
+    a = np.array([
+        [1.0, 2.0, 3.0, 4.0, 5.0],
+        [0.0, 1.0, 2.0, 3.0, 4.0],
+        [0.0, 0.0, 1.0, 2.0, 3.0],
+        [0.0, 0.0, 0.0, 1.0, 2.0],
+        [0.0, 0.0, 0.0, 0.0, 1.0]
+    ], dtype=np.float64, order='F')
+
+    e = np.array([
+        [2.0, 1.0, 0.0, 0.0, 0.0],
+        [0.0, 2.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 2.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0]
+    ], dtype=np.float64, order='F')
+
+    b = np.ones((5, 2), dtype=np.float64, order='F')
+    c = np.ones((2, 5), dtype=np.float64, order='F')
+
+    a_out, e_out, b_out, c_out, q, z, ranke, rnka22, info = tg01fd(
+        compq, compz, joba, l, n, m, p, a, e, b, c, tol
+    )
+
+    # Verify successful completion
+    assert info == 0, f"TG01FD failed with info={info}"
+    assert ranke >= 0 and ranke <= min(l, n), f"Invalid RANKE={ranke}"
+    assert rnka22 >= 0, f"Invalid RNKA22={rnka22}"
+
+    # Verify E has proper form (zeros in lower part)
+    for i in range(ranke, l):
+        for j in range(n):
+            assert abs(e_out[i, j]) < 1e-8, \
+                f"Expected E[{i},{j}]=0, got {e_out[i, j]}"
+
+    # Verify Q and Z are orthogonal
+    q_check = q.T @ q
+    z_check = z.T @ z
+    np.testing.assert_allclose(q_check, np.eye(l), rtol=1e-10, atol=1e-10,
+                               err_msg="Q should be orthogonal")
+    np.testing.assert_allclose(z_check, np.eye(n), rtol=1e-10, atol=1e-10,
+                               err_msg="Z should be orthogonal")

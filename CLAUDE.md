@@ -121,7 +121,30 @@ pytest tests/python/ -v  # All tests must pass
 ### Index Conversion (Fortran ↔ C)
 - **SLICOT routines return 1-based indices** (e.g., `mb03oy` pivot arrays)
 - **Always convert to 0-based before C array access:** `k = iwork[j] - 1;`
-- Common bug: using 1-based value directly as C index causes wrong array access
+- **CRITICAL: Validate bounds after conversion to prevent out-of-bounds access**
+- Common bugs:
+  - Using 1-based value directly as C index causes wrong array access
+  - Using converted index without bounds check risks buffer overflow
+
+**Correct pattern:**
+```c
+k = iwork[j] - 1;           // Convert 1-based to 0-based
+if (k < 0 || k >= n) {      // REQUIRED: Validate bounds
+    break;                  // Handle invalid index
+}
+// Safe to use k as array index
+if (iwork[k] < 0) {
+    // ...
+}
+```
+
+**Vulnerable pattern (DO NOT USE):**
+```c
+k = iwork[j] - 1;
+if (iwork[k] < 0) {         // BUG: No bounds check before iwork[k]!
+    // ...
+}
+```
 
 ### Python Wrapper Pattern
 
