@@ -482,7 +482,9 @@ static PyObject* py_sg03bu(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    i32 n = (i32)PyArray_DIM(b_array, 0);
+    npy_intp n_rows = PyArray_DIM(b_array, 0);
+    npy_intp n_cols = PyArray_DIM(b_array, 1);
+    i32 n = (i32)(n_rows < n_cols ? n_rows : n_cols);
     i32 lda = (i32)PyArray_DIM(a_array, 0);
     i32 lde = (i32)PyArray_DIM(e_array, 0);
     i32 ldb = (i32)PyArray_DIM(b_array, 0);
@@ -506,27 +508,11 @@ static PyObject* py_sg03bu(PyObject* self, PyObject* args) {
 
     free(dwork);
 
-    npy_intp dims[2] = {n, n};
-    npy_intp strides[2] = {sizeof(f64), n * sizeof(f64)};
-    PyObject *u_array = PyArray_New(&PyArray_Type, 2, dims, NPY_DOUBLE, strides,
-                                     b_data, 0, NPY_ARRAY_FARRAY, NULL);
-
-    if (u_array == NULL) {
-        Py_DECREF(a_array);
-        Py_DECREF(e_array);
-        Py_DECREF(b_array);
-        return NULL;
-    }
-
-    PyArray_ENABLEFLAGS((PyArrayObject*)u_array, NPY_ARRAY_OWNDATA);
-
-    PyObject *result = Py_BuildValue("Odi", u_array, scale, info);
+    PyObject *result = Py_BuildValue("Odi", b_array, scale, info);
 
     Py_DECREF(a_array);
     Py_DECREF(e_array);
-    PyArray_ResolveWritebackIfCopy(b_array);
     Py_DECREF(b_array);
-    Py_DECREF(u_array);
 
     return result;
 }
@@ -560,7 +546,9 @@ static PyObject* py_sg03bv(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    i32 n = (i32)PyArray_DIM(b_array, 0);
+    npy_intp n_rows = PyArray_DIM(b_array, 0);
+    npy_intp n_cols = PyArray_DIM(b_array, 1);
+    i32 n = (i32)(n_rows < n_cols ? n_rows : n_cols);
     i32 lda = (i32)PyArray_DIM(a_array, 0);
     i32 lde = (i32)PyArray_DIM(e_array, 0);
     i32 ldb = (i32)PyArray_DIM(b_array, 0);
@@ -584,27 +572,11 @@ static PyObject* py_sg03bv(PyObject* self, PyObject* args) {
 
     free(dwork);
 
-    npy_intp dims[2] = {n, n};
-    npy_intp strides[2] = {sizeof(f64), n * sizeof(f64)};
-    PyObject *u_array = PyArray_New(&PyArray_Type, 2, dims, NPY_DOUBLE, strides,
-                                     b_data, 0, NPY_ARRAY_FARRAY, NULL);
-
-    if (u_array == NULL) {
-        Py_DECREF(a_array);
-        Py_DECREF(e_array);
-        Py_DECREF(b_array);
-        return NULL;
-    }
-
-    PyArray_ENABLEFLAGS((PyArrayObject*)u_array, NPY_ARRAY_OWNDATA);
-
-    PyObject *result = Py_BuildValue("Odi", u_array, scale, info);
+    PyObject *result = Py_BuildValue("Odi", b_array, scale, info);
 
     Py_DECREF(a_array);
     Py_DECREF(e_array);
-    PyArray_ResolveWritebackIfCopy(b_array);
     Py_DECREF(b_array);
-    Py_DECREF(u_array);
 
     return result;
 }
