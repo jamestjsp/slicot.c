@@ -1,7 +1,7 @@
 #ifndef SLICOT_H
 #define SLICOT_H
 
-#include <stdint.h>
+#include "slicot_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,9 +45,43 @@ extern "C" {
  * @param[in] lda Leading dimension (lda >= max(1,m))
  * @param[out] info Exit code (always 0, reserved for future use)
  */
-void mb01qd(char type, int32_t m, int32_t n, int32_t kl, int32_t ku,
-            double cfrom, double cto, int32_t nbl, const int32_t* nrows,
-            double* a, int32_t lda, int32_t* info);
+void mb01qd(char type, i32 m, i32 n, i32 kl, i32 ku,
+            f64 cfrom, f64 cto, i32 nbl, const i32* nrows,
+            f64* a, i32 lda, i32* info);
+
+/**
+ * @brief Matrix rank determination by incremental condition estimation during QR factorization.
+ *
+ * Computes a rank-revealing QR factorization of a real general M-by-N matrix A,
+ * which may be rank-deficient, and estimates its effective rank using incremental
+ * condition estimation.
+ *
+ * The routine uses a truncated QR factorization with column pivoting
+ * A * P = Q * R, where R = [R11 R12; 0 R22], with R11 defined as the largest
+ * leading upper triangular submatrix whose estimated condition number is less
+ * than 1/RCOND. The order of R11, RANK, is the effective rank of A.
+ *
+ * @param[in] m Number of rows of matrix A. m >= 0.
+ * @param[in] n Number of columns of matrix A. n >= 0.
+ * @param[in,out] a DOUBLE PRECISION array, dimension (lda, n)
+ *                  On entry: M-by-N matrix A
+ *                  On exit: RANK-by-RANK upper triangular R11 and QR factorization data
+ * @param[in] lda Leading dimension of array A. lda >= max(1,m).
+ * @param[in] rcond Threshold for rank determination (0 <= rcond <= 1)
+ * @param[in] svlmax Estimate of largest singular value of parent matrix (>= 0)
+ * @param[out] rank Effective rank of A
+ * @param[out] sval DOUBLE PRECISION array, dimension (3)
+ *                  Singular value estimates: [largest, rank-th, (rank+1)-th]
+ * @param[out] jpvt INTEGER array, dimension (n)
+ *                  Pivot indices (1-based, Fortran style)
+ * @param[out] tau DOUBLE PRECISION array, dimension (min(m,n))
+ *                 Scalar factors of elementary reflectors
+ * @param[out] dwork DOUBLE PRECISION array, dimension (3*n-1)
+ * @param[out] info Exit code (0 = success, <0 = invalid parameter)
+ */
+void mb03oy(i32 m, i32 n, f64* a, i32 lda, f64 rcond,
+            f64 svlmax, i32* rank, f64* sval, i32* jpvt,
+            f64* tau, f64* dwork, i32* info);
 
 #ifdef __cplusplus
 }
