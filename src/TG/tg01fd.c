@@ -195,7 +195,7 @@ void tg01fd(
                 j = i;
                 iwork[j] = -iwork[j];
                 while (true) {
-                    k = iwork[j];
+                    k = iwork[j] - 1;
                     if (iwork[k] < 0) {
                         SLC_DSWAP(&l, &a[j * lda], &int1, &a[k * lda], &int1);
                         if (withc) {
@@ -277,7 +277,7 @@ void tg01fd(
                         j = i;
                         iwork[j] = -iwork[j];
                         while (true) {
-                            k = iwork[j];
+                            k = iwork[j] - 1;
                             if (iwork[k] < 0) {
                                 SLC_DSWAP(ranke, &a[(*ranke + j) * lda], &int1, &a[(*ranke + k) * lda], &int1);
                                 if (withc) {

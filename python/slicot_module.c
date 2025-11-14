@@ -236,17 +236,19 @@ static PyObject* py_tg01fd(PyObject* self, PyObject* args) {
 
     npy_intp q_dims[2] = {l, l};
     npy_intp z_dims[2] = {n, n};
+    npy_intp q_strides[2] = {sizeof(f64), l * sizeof(f64)};
+    npy_intp z_strides[2] = {sizeof(f64), n * sizeof(f64)};
 
     PyObject *q_array, *z_array;
     if (compq_needed && l > 0) {
-        q_array = PyArray_SimpleNewFromData(2, q_dims, NPY_DOUBLE, q);
+        q_array = PyArray_New(&PyArray_Type, 2, q_dims, NPY_DOUBLE, q_strides, q, 0, NPY_ARRAY_FARRAY, NULL);
         PyArray_ENABLEFLAGS((PyArrayObject*)q_array, NPY_ARRAY_OWNDATA);
     } else {
         q_array = PyArray_EMPTY(2, q_dims, NPY_DOUBLE, 1);
     }
 
     if (compz_needed && n > 0) {
-        z_array = PyArray_SimpleNewFromData(2, z_dims, NPY_DOUBLE, z);
+        z_array = PyArray_New(&PyArray_Type, 2, z_dims, NPY_DOUBLE, z_strides, z, 0, NPY_ARRAY_FARRAY, NULL);
         PyArray_ENABLEFLAGS((PyArrayObject*)z_array, NPY_ARRAY_OWNDATA);
     } else {
         z_array = PyArray_EMPTY(2, z_dims, NPY_DOUBLE, 1);
