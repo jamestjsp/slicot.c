@@ -137,8 +137,9 @@ def test_ma02ad_involution_property():
     - Double transpose returns original matrix
     - Property holds for all JOB types
     - Numerical accuracy preserved through double operation
+
+    Random seed: 42 (for reproducibility)
     """
-    # Test with random matrix
     np.random.seed(42)
     a_orig = np.random.randn(4, 3)
 
@@ -165,8 +166,9 @@ def test_ma02ad_orthogonal_matrix_preservation():
     - Orthogonality preserved after transpose
     - Numerical stability for well-conditioned matrices
     - Cross-validation with NumPy
+
+    Random seed: 123 (for reproducibility)
     """
-    # Create orthogonal matrix via QR decomposition
     np.random.seed(123)
     a = np.random.randn(4, 4)
     q, r = np.linalg.qr(a)
@@ -193,6 +195,8 @@ def test_ma02ad_cross_validate_numpy():
     - Full transpose matches np.transpose()
     - Triangular extractions match manual computation
     - Various matrix sizes and aspect ratios
+
+    Random seed: 456 (for reproducibility)
     """
     np.random.seed(456)
 
@@ -217,6 +221,8 @@ def test_ma02ad_large_matrix():
     - Performance with realistic matrix sizes
     - Numerical accuracy maintained for larger data
     - Memory layout correctness (Fortran order)
+
+    Random seed: 789 (for reproducibility)
     """
     np.random.seed(789)
 
@@ -231,3 +237,29 @@ def test_ma02ad_large_matrix():
 
     # Verify column-major storage
     assert b.flags['F_CONTIGUOUS']
+
+
+def test_ma02ad_symmetric_matrix():
+    """
+    Test transpose of symmetric matrix: A^T = A
+
+    Validates:
+    - Symmetric matrices satisfy A^T = A
+    - Full transpose preserves symmetry
+    - Numerical precision for symmetric structures
+
+    Random seed: 999 (for reproducibility)
+    """
+    np.random.seed(999)
+
+    # Create symmetric matrix
+    a = np.random.randn(4, 4)
+    a = (a + a.T) / 2  # Make symmetric
+    a = a.astype(float, order='F')
+
+    # Full transpose of symmetric matrix should equal original
+    a_copy = a.copy(order='F')
+    at = ma02ad('F', a_copy)
+
+    # A^T = A for symmetric matrices
+    np.testing.assert_allclose(at, a, rtol=1e-14)
