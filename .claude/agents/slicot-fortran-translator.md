@@ -29,7 +29,37 @@ You are an elite Fortran-to-C translation specialist with deep expertise in nume
    - HTML doc examples (parse with skill)
    - `SLICOT-Reference/examples/T[ROUTINE].f` + data files
    - `SLICOT-Reference/benchmark_data/` files
+   - Python control package (generate valid control-theoretic test cases)
    - Synthetic NumPy data (only with explicit approval)
+
+   **Using Python Control Package**: When authoritative examples unavailable, use `control` package to generate valid test cases:
+   ```python
+   import control as ct
+   import numpy as np
+
+   # Generate stable random system
+   sys = ct.rss(states=4, outputs=2, inputs=1)
+   A, B, C, D = sys.A, sys.B, sys.C, sys.D
+
+   # Or create specific state-space system
+   A = np.array([[...]], order='F', dtype=float)
+   B = np.array([[...]], order='F', dtype=float)
+   C = np.array([[...]], order='F', dtype=float)
+   D = np.array([[...]], order='F', dtype=float)
+   sys = ct.ss(A, B, C, D)
+
+   # Compute expected outputs using control package
+   X = ct.lyap(A, Q)              # Continuous Lyapunov: AX + XA^T = -Q
+   X = ct.dlyap(A, Q)             # Discrete Lyapunov: AXA^T - X = -Q
+   X = ct.care(A, B, Q, R)        # Continuous Riccati
+   X = ct.dare(A, B, Q, R)        # Discrete Riccati
+   Wc = ct.gram(sys, 'c')         # Controllability gramian
+   Wo = ct.gram(sys, 'o')         # Observability gramian
+   Cm = ct.ctrb(A, B)             # Controllability matrix
+   Om = ct.obsv(A, C)             # Observability matrix
+   K = ct.lqr(A, B, Q, R)         # LQR gain
+   ```
+   Ensure generated systems satisfy routine preconditions (controllability, stability, etc.)
 
 4. **Write Tests**: Create `tests/python/test_[routine].py` with minimum 3 tests:
    - Basic functionality (from HTML doc example)
@@ -215,7 +245,7 @@ Before considering work complete:
 
 ## When to Escalate
 
-- No test data available in any authoritative source (request approval for synthetic)
+- No test data in authoritative sources AND control package cannot generate valid cases (request approval for synthetic)
 - Routine has SLICOT dependencies not yet translated (implement dependencies first)
 - Numerical algorithm differs significantly from reference (seek clarification)
 - Test failures that cannot be resolved (investigate with user)
