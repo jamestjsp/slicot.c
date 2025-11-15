@@ -172,6 +172,15 @@ int main(void) {
     sg03bd(&dico, &fact, &trans, n, m, a, NMAX, e, NMAX, q, NMAX, z, NMAX,
            b, NMAX, &scale, alphar, alphai, beta, dwork, LDWORK, &info);
 
+    // Print intermediate B matrix for debugging
+    printf("\nDEBUG: B after sg03bv/before transformations:\n");
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            printf(" %23.16E", b[i + j*NMAX]);
+        }
+        printf("\n");
+    }
+
     // Print results
     printf("\nINFO = %d\n", info);
 

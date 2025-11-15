@@ -125,16 +125,16 @@ void sg03bu(const char* trans, const i32 n, const f64* a, const i32 lda,
             if (kh < n - 1) {
                 i32 nkh = n - kh - 1;
 
-                SLC_DGEMM("T", "N", &nkh, &kb, &kb, &mone, &b[kl * ldb + kh + 1],
+                SLC_DGEMM("T", "N", &nkh, &kb, &kb, &mone, &b[kl + (kh + 1) * ldb],
                          &ldb, m2, &int2, &zero, &dwork[uiipt], &ldws);
 
-                SLC_DGEMM("T", "T", &nkh, &kb, &kb, &one, &e[kl * lde + kh + 1],
+                SLC_DGEMM("T", "T", &nkh, &kb, &kb, &one, &e[kl + (kh + 1) * lde],
                          &lde, ui, &int2, &one, &dwork[uiipt], &ldws);
 
                 SLC_DGEMM("T", "N", &kb, &kb, &kb, &one, ui, &int2, m1, &int2,
                          &zero, tm, &int2);
 
-                SLC_DGEMM("T", "N", &nkh, &kb, &kb, &mone, &a[kl * lda + kh + 1],
+                SLC_DGEMM("T", "N", &nkh, &kb, &kb, &mone, &a[kl + (kh + 1) * lda],
                          &lda, tm, &int2, &one, &dwork[uiipt], &ldws);
 
                 SLC_DLASET("A", &kb, &kb, &zero, &mone, tm, &int2);
@@ -170,10 +170,10 @@ void sg03bu(const char* trans, const i32 n, const f64* a, const i32 lda,
                     return;
                 }
 
-                SLC_DGEMM("T", "N", &nkh, &kb, &kb, &one, &b[kl * ldb + kh + 1],
+                SLC_DGEMM("T", "N", &nkh, &kb, &kb, &one, &b[kl + (kh + 1) * ldb],
                          &ldb, m3c, &int4, &zero, &dwork[ypt], &ldws);
 
-                SLC_DGEMM("T", "T", &nkh, &kb, &kb, &one, &a[kl * lda + kh + 1],
+                SLC_DGEMM("T", "T", &nkh, &kb, &kb, &one, &a[kl + (kh + 1) * lda],
                          &lda, ui, &int2, &zero, &dwork[wpt], &ldws);
 
                 for (i = 0; i < nkh; i++) {

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 void mb01uy(
     const char* side, const char* uplo, const char* trans,
@@ -84,9 +85,36 @@ void mb01uy(
         return;
     }
 
+    fprintf(stderr, "MB01UY DEBUG: m=%d, n=%d, ldt=%d, lda=%d\n", m, n, ldt, lda);
+    fprintf(stderr, "  T before (diagonal): [%.6f, %.6f, %.6f]\n",
+            t[0+0*ldt], t[1+1*ldt], t[2+2*ldt]);
+
     SLC_DLACPY("A", &m, &n, a, &lda, dwork, &m);
+    fprintf(stderr, "  DWORK after DLACPY from A:\n");
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            fprintf(stderr, " %8.4f", dwork[i + j*m]);
+        }
+        fprintf(stderr, "\n");
+    }
+
     SLC_DTRMM(side, uplo, trans, "N", &m, &n, &alpha, t, &ldt, dwork, &m);
+    fprintf(stderr, "  DWORK after DTRMM:\n");
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            fprintf(stderr, " %8.4f", dwork[i + j*m]);
+        }
+        fprintf(stderr, "\n");
+    }
+
     SLC_DLACPY("A", &m, &n, dwork, &m, t, &ldt);
+    fprintf(stderr, "  T after DLACPY from DWORK:\n");
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            fprintf(stderr, " %8.4f", t[i + j*ldt]);
+        }
+        fprintf(stderr, "\n");
+    }
 
     dwork[0] = (f64)(m * n);
 }

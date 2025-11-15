@@ -740,8 +740,8 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
     f64 *alphai_data = (f64*)PyArray_DATA((PyArrayObject*)alphai_array);
     f64 *beta_data = (f64*)PyArray_DATA((PyArrayObject*)beta_array);
 
-    i32 ldq = n;
-    i32 ldz = n;
+    i32 ldq = (n > 1) ? n : 1;
+    i32 ldz = (n > 1) ? n : 1;
 
     i32 ldwork;
     if (fact[0] == 'F' || fact[0] == 'f') {
@@ -774,12 +774,36 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
 
     free(dwork);
 
-    PyObject *result = Py_BuildValue("OdOOOi", b_array, scale,
+    npy_intp dims_u[2] = {n, n};
+    npy_intp strides_u[2] = {sizeof(f64), n * sizeof(f64)};
+    PyObject *u_array = PyArray_New(&PyArray_Type, 2, dims_u, NPY_DOUBLE, strides_u,
+                                     NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    if (u_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(b_array);
+        Py_DECREF(q_array);
+        Py_DECREF(z_array);
+        Py_DECREF(alphar_array);
+        Py_DECREF(alphai_array);
+        Py_DECREF(beta_array);
+        return NULL;
+    }
+
+    f64 *u_data = (f64*)PyArray_DATA((PyArrayObject*)u_array);
+    for (i32 j = 0; j < n; j++) {
+        for (i32 i = 0; i < n; i++) {
+            u_data[i + j*n] = b_data[i + j*ldb];
+        }
+    }
+
+    PyObject *result = Py_BuildValue("OdOOOi", u_array, scale,
                                      alphar_array, alphai_array, beta_array, info);
 
     Py_DECREF(a_array);
     Py_DECREF(e_array);
     Py_DECREF(b_array);
+    Py_DECREF(u_array);
     Py_DECREF(q_array);
     Py_DECREF(z_array);
     Py_DECREF(alphar_array);
