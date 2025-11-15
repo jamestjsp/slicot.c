@@ -581,6 +581,35 @@ void tb01vy(const char* apply, i32 n, i32 m, i32 l, const f64* theta,
             i32 ltheta, f64* a, i32 lda, f64* b, i32 ldb, f64* c, i32 ldc,
             f64* d, i32 ldd, f64* x0, f64* dwork, i32 ldwork, i32* info);
 
+/**
+ * @brief Output sequence of linear time-invariant open-loop system.
+ *
+ * Computes output sequence y(1),...,y(NY) of discrete-time state-space model
+ * with system matrix S = [A B; C D] given initial state x(1) and input
+ * sequence u(1),...,u(NY).
+ *
+ * Implements: [x(k+1); y(k)] = S * [x(k); u(k)] for k = 1,...,NY
+ *
+ * @param[in] n Order of matrix A (n >= 0)
+ * @param[in] m Number of system inputs (m >= 0)
+ * @param[in] p Number of system outputs (p >= 0)
+ * @param[in] ny Number of output vectors to compute (ny >= 0)
+ * @param[in] s System matrix, dimension (lds,n+m), column-major
+ * @param[in] lds Leading dimension of S (lds >= max(1,n+p))
+ * @param[in] u Input sequence, dimension (ldu,m), row u(k) contains u(k)'
+ * @param[in] ldu Leading dimension of U (ldu >= max(1,ny))
+ * @param[in,out] x State vector, dimension (n). On entry: x(1). On exit: x(ny+1)
+ * @param[out] y Output sequence, dimension (ldy,p), row y(k) contains y(k)'
+ * @param[in] ldy Leading dimension of Y (ldy >= max(1,ny))
+ * @param[out] dwork Workspace array, dimension (ldwork)
+ * @param[in] ldwork Length of dwork (ldwork >= 2*n+m+p if m>0, n+p if m=0, 0 otherwise)
+ * @param[out] info Exit code (0 = success, <0 = invalid parameter)
+ */
+void tf01mx(const i32 n, const i32 m, const i32 p, const i32 ny,
+            const f64* s, const i32 lds, const f64* u, const i32 ldu,
+            f64* x, f64* y, const i32 ldy, f64* dwork, const i32 ldwork,
+            i32* info);
+
 #ifdef __cplusplus
 }
 #endif

@@ -11,6 +11,7 @@ set(SLICOT_SOURCES
     SG/sg03bx.c
     TB/tb01vy.c
     TB/tb01wd.c
+    TF/tf01mx.c
     TG/tg01fd.c
 )
 

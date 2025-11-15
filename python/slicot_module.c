@@ -1137,6 +1137,109 @@ static PyObject* py_ma02ad(PyObject* self, PyObject* args) {
     return b_array;
 }
 
+static PyObject* py_tf01mx(PyObject* self, PyObject* args) {
+    i32 n, m, p, ny;
+    PyObject *s_obj, *u_obj, *x_obj;
+    PyArrayObject *s_array, *u_array, *x_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "iiiiOOO", &n, &m, &p, &ny, &s_obj, &u_obj, &x_obj)) {
+        return NULL;
+    }
+
+    if (n < 0) {
+        PyErr_SetString(PyExc_ValueError, "N must be >= 0");
+        return NULL;
+    }
+    if (m < 0) {
+        PyErr_SetString(PyExc_ValueError, "M must be >= 0");
+        return NULL;
+    }
+    if (p < 0) {
+        PyErr_SetString(PyExc_ValueError, "P must be >= 0");
+        return NULL;
+    }
+    if (ny < 0) {
+        PyErr_SetString(PyExc_ValueError, "NY must be >= 0");
+        return NULL;
+    }
+
+    s_array = (PyArrayObject*)PyArray_FROM_OTF(s_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (s_array == NULL) return NULL;
+
+    u_array = (PyArrayObject*)PyArray_FROM_OTF(u_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (u_array == NULL) {
+        Py_DECREF(s_array);
+        return NULL;
+    }
+
+    x_array = (PyArrayObject*)PyArray_FROM_OTF(x_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (x_array == NULL) {
+        Py_DECREF(s_array);
+        Py_DECREF(u_array);
+        return NULL;
+    }
+
+    i32 lds = (i32)PyArray_DIM(s_array, 0);
+    i32 ldu = (ny > 1) ? (i32)PyArray_DIM(u_array, 0) : 1;
+    i32 ldy = (ny > 1) ? ny : 1;
+
+    f64 *s_data = (f64*)PyArray_DATA(s_array);
+    f64 *u_data = (f64*)PyArray_DATA(u_array);
+    f64 *x_data = (f64*)PyArray_DATA(x_array);
+
+    npy_intp dims_y[2] = {ny, p};
+    npy_intp strides_y[2] = {sizeof(f64), ldy * sizeof(f64)};
+    PyObject *y_array = PyArray_New(&PyArray_Type, 2, dims_y, NPY_DOUBLE, strides_y,
+                                     NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    if (y_array == NULL) {
+        Py_DECREF(s_array);
+        Py_DECREF(u_array);
+        Py_DECREF(x_array);
+        return NULL;
+    }
+
+    f64 *y_data = (f64*)PyArray_DATA((PyArrayObject*)y_array);
+
+    i32 ldwork;
+    if (n == 0 || p == 0 || ny == 0) {
+        ldwork = 0;
+    } else if (m == 0) {
+        ldwork = n + p;
+    } else {
+        ldwork = 2 * n + m + p;
+    }
+
+    f64 *dwork = NULL;
+    if (ldwork > 0) {
+        dwork = (f64*)malloc(ldwork * sizeof(f64));
+        if (dwork == NULL) {
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+            Py_DECREF(s_array);
+            Py_DECREF(u_array);
+            Py_DECREF(x_array);
+            Py_DECREF(y_array);
+            return NULL;
+        }
+    }
+
+    tf01mx(n, m, p, ny, s_data, lds, u_data, ldu, x_data, y_data, ldy, dwork, ldwork, &info);
+
+    if (dwork != NULL) {
+        free(dwork);
+    }
+
+    PyObject *result = Py_BuildValue("OOi", y_array, x_array, info);
+
+    Py_DECREF(s_array);
+    Py_DECREF(u_array);
+    Py_DECREF(x_array);
+    Py_DECREF(y_array);
+
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"tb01vy", (PyCFunction)py_tb01vy, METH_VARARGS | METH_KEYWORDS,
@@ -1161,6 +1264,19 @@ static PyMethodDef SlicotMethods[] = {
      "  c (ndarray): Output matrix (p x n, F-order)\n\n"
      "Returns:\n"
      "  (a, b, c, u, wr, wi, info): Transformed system, Schur vectors, eigenvalues, exit code\n"},
+
+    {"tf01mx", py_tf01mx, METH_VARARGS,
+     "Output sequence of linear time-invariant open-loop system.\n\n"
+     "Parameters:\n"
+     "  n (int): Order of matrix A\n"
+     "  m (int): Number of system inputs\n"
+     "  p (int): Number of system outputs\n"
+     "  ny (int): Number of output vectors to compute\n"
+     "  s (ndarray): System matrix [A B; C D] (n+p x n+m, F-order)\n"
+     "  u (ndarray): Input sequence (ny x m, F-order)\n"
+     "  x (ndarray): Initial state vector (n, F-order)\n\n"
+     "Returns:\n"
+     "  (y, x, info): Output sequence, final state, exit code\n"},
 
     {"ma02ad", py_ma02ad, METH_VARARGS,
      "Transpose all or part of a matrix.\n\n"
