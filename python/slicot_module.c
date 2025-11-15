@@ -680,21 +680,72 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
-                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    /* B array is modified in place and may need more space than input provides.
+     * Allocate workspace of correct size and copy input B into it. */
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
     if (b_array == NULL) {
         Py_DECREF(a_array);
         Py_DECREF(e_array);
         return NULL;
     }
+    
+    /* Validate B has 2 dimensions */
+    if (PyArray_NDIM(b_array) != 2) {
+        PyErr_SetString(PyExc_ValueError, "B must be a 2D array");
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
 
     i32 lda = (i32)PyArray_DIM(a_array, 0);
     i32 lde = (i32)PyArray_DIM(e_array, 0);
-    i32 ldb = (i32)PyArray_DIM(b_array, 0);
+    
+    /* Determine required LDB and allocate workspace for B */
+    bool istran = (trans[0] == 'T' || trans[0] == 't');
+    i32 ldb_required = istran ? (n > 1 ? n : 1) : ((m > n ? m : n) > 1 ? (m > n ? m : n) : 1);
+    i32 b_cols = n;
+    
+    /* Get input B dimensions */
+    i32 b_in_rows = (i32)PyArray_DIM(b_array, 0);
+    i32 b_in_cols = (i32)PyArray_DIM(b_array, 1);
+    i32 b_in_ld = (i32)PyArray_DIM(b_array, 0);  /* Leading dimension of input */
+    
+    /* Allocate B workspace */
+    npy_intp dims_b[2] = {ldb_required, b_cols};
+    npy_intp strides_b[2] = {sizeof(f64), ldb_required * sizeof(f64)};
+    PyObject *b_work = PyArray_New(&PyArray_Type, 2, dims_b, NPY_DOUBLE, strides_b,
+                                    NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    if (b_work == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+    
+    /* Copy input B into workspace */
+    f64 *b_work_data = (f64*)PyArray_DATA((PyArrayObject*)b_work);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    
+    /* Zero out workspace first */
+    for (i32 j = 0; j < b_cols; j++) {
+        for (i32 i = 0; i < ldb_required; i++) {
+            b_work_data[i + j*ldb_required] = 0.0;
+        }
+    }
+    
+    /* Copy input B (column by column) */
+    for (i32 j = 0; j < b_in_cols && j < b_cols; j++) {
+        for (i32 i = 0; i < b_in_rows && i < ldb_required; i++) {
+            b_work_data[i + j*ldb_required] = b_data[i + j*b_in_ld];
+        }
+    }
+    
+    Py_DECREF(b_array);  /* Done with input B */
+    i32 ldb = ldb_required;
 
     f64 *a_data = (f64*)PyArray_DATA(a_array);
     f64 *e_data = (f64*)PyArray_DATA(e_array);
-    f64 *b_data = (f64*)PyArray_DATA(b_array);
 
     npy_intp dims_q[2] = {n, n};
     npy_intp strides_q[2] = {sizeof(f64), n * sizeof(f64)};
@@ -764,24 +815,42 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
         Py_DECREF(z_array);
         Py_DECREF(a_array);
         Py_DECREF(e_array);
-        Py_DECREF(b_array);
+        Py_DECREF(b_work);
         return NULL;
     }
 
     sg03bd(dico, fact, trans, n, m, a_data, lda, e_data, lde,
-           q_data, ldq, z_data, ldz, b_data, ldb, &scale,
+           q_data, ldq, z_data, ldz, b_work_data, ldb, &scale,
            alphar_data, alphai_data, beta_data, dwork, ldwork, &info);
 
     free(dwork);
 
+    /* sg03bd modifies B in place to produce U (n x n upper triangular).
+     * Create a view of the n x n submatrix from b_work.
+     * See CLAUDE.md: "CRITICAL: In-place modification - return input array directly"
+     */
     npy_intp dims_u[2] = {n, n};
-    npy_intp strides_u[2] = {sizeof(f64), n * sizeof(f64)};
+    npy_intp strides_u[2] = {sizeof(f64), ldb * sizeof(f64)};
     PyObject *u_array = PyArray_New(&PyArray_Type, 2, dims_u, NPY_DOUBLE, strides_u,
-                                     NULL, 0, NPY_ARRAY_FARRAY, NULL);
+                                     b_work_data, 0, NPY_ARRAY_FARRAY, NULL);
     if (u_array == NULL) {
         Py_DECREF(a_array);
         Py_DECREF(e_array);
-        Py_DECREF(b_array);
+        Py_DECREF(b_work);
+        Py_DECREF(q_array);
+        Py_DECREF(z_array);
+        Py_DECREF(alphar_array);
+        Py_DECREF(alphai_array);
+        Py_DECREF(beta_array);
+        return NULL;
+    }
+    
+    /* Set b_work as the base object so the memory stays alive */
+    if (PyArray_SetBaseObject((PyArrayObject*)u_array, (PyObject*)b_work) < 0) {
+        Py_DECREF(u_array);
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(b_work);
         Py_DECREF(q_array);
         Py_DECREF(z_array);
         Py_DECREF(alphar_array);
@@ -790,19 +859,14 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    f64 *u_data = (f64*)PyArray_DATA((PyArrayObject*)u_array);
-    for (i32 j = 0; j < n; j++) {
-        for (i32 i = 0; i < n; i++) {
-            u_data[i + j*n] = b_data[i + j*ldb];
-        }
-    }
-
     PyObject *result = Py_BuildValue("OdOOOi", u_array, scale,
                                      alphar_array, alphai_array, beta_array, info);
 
+    /* Py_BuildValue with "O" increments refcounts, so we need to DECREF all arrays
+     * that were passed to it to avoid leaks */
     Py_DECREF(a_array);
     Py_DECREF(e_array);
-    Py_DECREF(b_array);
+    /* Don't DECREF b_work here - it's now owned by u_array as base object */
     Py_DECREF(u_array);
     Py_DECREF(q_array);
     Py_DECREF(z_array);
