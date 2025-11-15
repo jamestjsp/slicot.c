@@ -29,12 +29,17 @@ You are an elite Fortran-to-C translation specialist with deep expertise in nume
    - HTML doc examples (parse with skill)
    - `SLICOT-Reference/examples/T[ROUTINE].f` + data files
    - `SLICOT-Reference/benchmark_data/` files
-   - Python control package (generate valid control-theoretic test cases)
+   - Python control/scipy packages (generate valid test data, then extract to hardcoded values)
    - Synthetic NumPy data (only with explicit approval)
 
-   **Using Python Control Package**: When authoritative examples unavailable, use `control` package to generate valid test cases:
+   **CRITICAL - Test Dependencies**: Tests must NOT depend on control, scipy, or other external packages (except NumPy).
+
+   **Using Python Control/SciPy for Data Generation**: When authoritative examples unavailable, use temporary Python script to generate test data, then hardcode values in tests:
+
+   **Step 1 - Create temporary generation script** (e.g., `temp_gen_[routine]_data.py`):
    ```python
    import control as ct
+   import scipy.linalg
    import numpy as np
 
    # Generate stable random system
@@ -44,21 +49,47 @@ You are an elite Fortran-to-C translation specialist with deep expertise in nume
    # Or create specific state-space system
    A = np.array([[...]], order='F', dtype=float)
    B = np.array([[...]], order='F', dtype=float)
-   C = np.array([[...]], order='F', dtype=float)
-   D = np.array([[...]], order='F', dtype=float)
-   sys = ct.ss(A, B, C, D)
 
-   # Compute expected outputs using control package
-   X = ct.lyap(A, Q)              # Continuous Lyapunov: AX + XA^T = -Q
-   X = ct.dlyap(A, Q)             # Discrete Lyapunov: AXA^T - X = -Q
+   # Compute expected outputs using control/scipy
+   X = ct.lyap(A, Q)              # Continuous Lyapunov
+   X = ct.dlyap(A, Q)             # Discrete Lyapunov
    X = ct.care(A, B, Q, R)        # Continuous Riccati
-   X = ct.dare(A, B, Q, R)        # Discrete Riccati
-   Wc = ct.gram(sys, 'c')         # Controllability gramian
-   Wo = ct.gram(sys, 'o')         # Observability gramian
-   Cm = ct.ctrb(A, B)             # Controllability matrix
-   Om = ct.obsv(A, C)             # Observability matrix
    K = ct.lqr(A, B, Q, R)         # LQR gain
+   # or scipy.linalg.solve_continuous_lyapunov(A, Q)
+
+   # Print arrays with full precision for hardcoding
+   np.set_printoptions(precision=16, suppress=False)
+   print("A =", repr(A))
+   print("Expected X =", repr(X))
    ```
+
+   **Step 2 - Run script and extract values**:
+   ```bash
+   python temp_gen_[routine]_data.py
+   ```
+
+   **Step 3 - Hardcode extracted values in test** (`tests/python/test_[routine].py`):
+   ```python
+   import numpy as np
+   from slicot import [routine]
+
+   def test_[routine]_basic():
+       # Input data (from generation script)
+       A = np.array([[...]], order='F', dtype=float)
+       Q = np.array([[...]], order='F', dtype=float)
+
+       # Expected output (from generation script)
+       X_expected = np.array([[...]], order='F', dtype=float)
+
+       # Call SLICOT routine
+       X, info = [routine](A, Q)
+
+       # Only NumPy used in test
+       np.testing.assert_allclose(X, X_expected, rtol=1e-14)
+   ```
+
+   **Step 4 - Delete temporary script** after extracting all needed data. Tests must run with only NumPy dependency.
+
    Ensure generated systems satisfy routine preconditions (controllability, stability, etc.)
 
 4. **Write Tests**: Create `tests/python/test_[routine].py` with minimum 3 tests:
@@ -233,6 +264,8 @@ return result;
 
 Before considering work complete:
 - [ ] Tests extracted from authoritative sources
+- [ ] Tests depend ONLY on NumPy (no control, scipy, or other packages)
+- [ ] If control/scipy used for data generation, temporary script deleted
 - [ ] All NumPy arrays use `order='F'`
 - [ ] Python wrapper uses `NPY_ARRAY_FARRAY`
 - [ ] All index conversions have bounds checks
