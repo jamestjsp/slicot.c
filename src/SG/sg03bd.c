@@ -348,34 +348,12 @@ void sg03bd(
         }
     } else {
         if (nunitq) {
-            printf("\nDEBUG: Z matrix before B*Z (first 3 rows, 3 cols):\n");
-            for (i32 i = 0; i < 3; i++) {
-                for (i32 j = 0; j < 3; j++) {
-                    printf(" %23.16E", z[i + j*ldz]);
-                }
-                printf("\n");
-            }
-            printf("\nDEBUG: B before B*Z (first %d rows, %d cols):\n", m, n);
-            for (i32 i = 0; i < m; i++) {
-                for (i32 j = 0; j < n; j++) {
-                    printf(" %23.16E", b[i + j*ldb]);
-                }
-                printf("\n");
-            }
-
             i32 nr = ldwork / n;
             for (i32 i = 0; i < m; i += nr) {
                 i32 bl = (m - i) < nr ? (m - i) : nr;
                 SLC_DGEMM(trans, "N", &bl, &n, &n, &one, &b[i + 0*ldb],
                          &ldb, z, &ldz, &zero, dwork, &bl);
                 SLC_DLACPY("A", &bl, &n, dwork, &bl, &b[i + 0*ldb], &ldb);
-            }
-            printf("\nDEBUG: B after B*Z transformation (first %d rows, %d cols):\n", m, n);
-            for (i32 i = 0; i < m; i++) {
-                for (i32 j = 0; j < n; j++) {
-                    printf(" %23.16E", b[i + j*ldb]);
-                }
-                printf("\n");
             }
         }
     }
@@ -431,23 +409,9 @@ void sg03bd(
         }
     } else {
         SLC_DGEQRF(&m, &n, b, &ldb, dwork, &dwork[n], &lwork_qr, &info1);
-        printf("\nDEBUG: B after DGEQRF (first %d rows, %d cols):\n", m, n);
-        for (i32 i = 0; i < m; i++) {
-            for (i32 j = 0; j < n; j++) {
-                printf(" %23.16E", b[i + j*ldb]);
-            }
-            printf("\n");
-        }
 
         if (lbscl && !scalb) {
             SLC_DLASCL("U", &kl0, &ku0, &mb, &mbto, &m, &n, b, &ldb, &info_tmp);
-            printf("\nDEBUG: B after DLASCL (first %d rows, %d cols):\n", m, n);
-            for (i32 i = 0; i < m; i++) {
-                for (i32 j = 0; j < n; j++) {
-                    printf(" %23.16E", b[i + j*ldb]);
-                }
-                printf("\n");
-            }
         }
 
         if (maxmn > 1) {
@@ -466,29 +430,6 @@ void sg03bd(
                 SLC_DSCAL(&ni1, &mone, &b[i + i*ldb], &ldb);
             }
         }
-    }
-
-    // DEBUG: Print A, E, B before SG03BV/SG03BU
-    printf("\nDEBUG: A matrix before SG03BV/SG03BU (first 3 rows, 3 cols):\n");
-    for (i32 i = 0; i < 3; i++) {
-        for (i32 j = 0; j < 3; j++) {
-            printf(" %23.16E", a[i + j*lda]);
-        }
-        printf("\n");
-    }
-    printf("\nDEBUG: E matrix before SG03BV/SG03BU (first 3 rows, 3 cols):\n");
-    for (i32 i = 0; i < 3; i++) {
-        for (i32 j = 0; j < 3; j++) {
-            printf(" %23.16E", e[i + j*lde]);
-        }
-        printf("\n");
-    }
-    printf("\nDEBUG: B matrix before SG03BV/SG03BU (first %d rows, %d cols):\n", minmn, n);
-    for (i32 i = 0; i < minmn; i++) {
-        for (i32 j = 0; j < n; j++) {
-            printf(" %23.16E", b[i + j*ldb]);
-        }
-        printf("\n");
     }
 
     if (isdisc) {

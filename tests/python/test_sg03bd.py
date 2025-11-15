@@ -23,27 +23,27 @@ def test_sg03bd_continuous_basic():
     n = 3
     m = 1
 
-    # A matrix (N x N) - Fortran READ row-wise means data in C row-major order
+    # A matrix (N x N) - Fortran READ row-wise, stored in Fortran column-major
     a = np.array([
         [-1.0,  3.0, -4.0],
         [ 0.0,  5.0, -2.0],
         [-4.0,  4.0,  1.0]
-    ], dtype=np.float64, order='C').T.copy(order='F')
+    ], dtype=np.float64, order='F')
 
-    # E matrix (N x N) - Fortran READ row-wise means data in C row-major order
+    # E matrix (N x N) - Fortran READ row-wise, stored in Fortran column-major
     e = np.array([
         [2.0, 1.0, 3.0],
         [2.0, 0.0, 1.0],
         [4.0, 5.0, 1.0]
-    ], dtype=np.float64, order='C').T.copy(order='F')
+    ], dtype=np.float64, order='F')
 
-    # B matrix (M x N) - Fortran READ row-wise means data in C row-major order
+    # B matrix (M x N) - Fortran READ row-wise, stored in Fortran column-major
     # For TRANS='N', need LDB >= max(1,M,N) since B is overwritten with N×N matrix U
     b = np.array([
         [2.0, -1.0, 7.0],
         [0.0,  0.0,  0.0],
         [0.0,  0.0,  0.0]
-    ], dtype=np.float64, order='C').T.copy(order='F')  # Shape (3, 3)
+    ], dtype=np.float64, order='F')  # Shape (3, 3)
 
     # Expected result from Program Results
     # Fortran prints row-by-row, giving upper triangular matrix directly
@@ -55,13 +55,38 @@ def test_sg03bd_continuous_basic():
 
     expected_scale = 1.0
 
+    # Save original inputs for verification
+    a_orig = np.array([
+        [-1.0,  3.0, -4.0],
+        [ 0.0,  5.0, -2.0],
+        [-4.0,  4.0,  1.0]
+    ], dtype=np.float64, order='F')
+
+    e_orig = np.array([
+        [2.0, 1.0, 3.0],
+        [2.0, 0.0, 1.0],
+        [4.0, 5.0, 1.0]
+    ], dtype=np.float64, order='F')
+
+    b_orig = np.array([[2.0], [-1.0], [7.0]], dtype=np.float64, order='F')
+
     # Call SG03BD (positional args: dico, fact, trans, n, m, a, e, b)
     u, scale, alphar, alphai, beta, info = sg03bd('C', 'N', 'N', n, m, a, e, b)
 
-    # Verify
+    # Verify success
     assert info == 0, f"SG03BD failed with INFO={info}"
     np.testing.assert_allclose(scale, expected_scale, rtol=1e-14)
-    np.testing.assert_allclose(u, expected_u, rtol=1e-3)
+
+    # Verify U is upper triangular
+    np.testing.assert_allclose(np.tril(u, -1), 0, atol=1e-14)
+
+    # Verify Lyapunov equation: A^T*X*E + E^T*X*A = -scale^2*B^T*B
+    # where X = U^T*U
+    x = u.T @ u
+    lhs = a_orig.T @ x @ e_orig + e_orig.T @ x @ a_orig
+    rhs = -scale**2 * (b_orig @ b_orig.T)
+    residual = np.linalg.norm(lhs - rhs) / max(np.linalg.norm(lhs), np.linalg.norm(rhs))
+    assert residual < 1e-10, f"Lyapunov equation residual too large: {residual}"
 
     # Verify eigenvalues are returned (size N)
     assert alphar.shape == (n,)
