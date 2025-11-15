@@ -3,6 +3,7 @@
 
 #include "slicot_config.h"
 #include "slicot_types.h"
+#include <stdbool.h>
 
 /**
  * @file slicot_blas.h
@@ -222,6 +223,13 @@ void SLC_FC_FUNC(dgges, DGGES)(const char* jobvsl, const char* jobvsr,
                                 const int* ldvsr, f64* work, const int* lwork,
                                 int* bwork, int* info);
 
+void SLC_FC_FUNC(dgees, DGEES)(const char* jobvs, const char* sort,
+                                bool (*select)(const f64*, const f64*),
+                                const int* n, f64* a, const int* lda,
+                                int* sdim, f64* wr, f64* wi,
+                                f64* vs, const int* ldvs, f64* work,
+                                const int* lwork, int* bwork, int* info);
+
 #undef int
 
 /* Convenience macros for calling BLAS/LAPACK */
@@ -267,6 +275,7 @@ void SLC_FC_FUNC(dgges, DGGES)(const char* jobvsl, const char* jobvsr,
 #define SLC_DROT     SLC_FC_FUNC(drot, DROT)
 #define SLC_DSYEVX   SLC_FC_FUNC(dsyevx, DSYEVX)
 #define SLC_DGGES    SLC_FC_FUNC(dgges, DGGES)
+#define SLC_DGEES    SLC_FC_FUNC(dgees, DGEES)
 
 #ifdef __cplusplus
 }

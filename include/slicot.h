@@ -482,6 +482,68 @@ void tg01fd(
     i32* info
 );
 
+/**
+ * @brief Transpose all or part of a matrix.
+ *
+ * Transposes an M-by-N matrix A into N-by-M matrix B.
+ * Supports full, upper triangular, or lower triangular transposition.
+ *
+ * @param[in] job Specifies part to transpose:
+ *                'U' = upper triangular/trapezoidal part only
+ *                'L' = lower triangular/trapezoidal part only
+ *                Otherwise = full matrix
+ * @param[in] m Number of rows of A (m >= 0)
+ * @param[in] n Number of columns of A (n >= 0)
+ * @param[in] a Input matrix, dimension (lda,n), column-major
+ * @param[in] lda Leading dimension of A (lda >= max(1,m))
+ * @param[out] b Output matrix (transpose), dimension (ldb,m), column-major
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,n))
+ */
+void ma02ad(const char* job, const i32 m, const i32 n,
+            const f64* a, const i32 lda,
+            f64* b, const i32 ldb);
+
+/**
+ * @brief Reduce state matrix A to real Schur form via orthogonal transformation
+ *
+ * Reduces system state matrix A to upper real Schur form by orthogonal similarity
+ * transformation A <- U'*A*U, and applies transformation to B <- U'*B and C <- C*U.
+ *
+ * @param[in] n Order of state matrix A (n >= 0)
+ * @param[in] m Number of inputs (columns of B, m >= 0)
+ * @param[in] p Number of outputs (rows of C, p >= 0)
+ * @param[in,out] a State matrix, dimension (lda,n)
+ *                  On entry: original state dynamics matrix
+ *                  On exit: real Schur form U'*A*U
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in,out] b Input matrix, dimension (ldb,m)
+ *                  On entry: original input matrix
+ *                  On exit: transformed matrix U'*B
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,n))
+ * @param[in,out] c Output matrix, dimension (ldc,n)
+ *                  On entry: original output matrix
+ *                  On exit: transformed matrix C*U
+ * @param[in] ldc Leading dimension of C (ldc >= max(1,p))
+ * @param[out] u Orthogonal transformation matrix, dimension (ldu,n)
+ *               Schur vectors of A
+ * @param[in] ldu Leading dimension of U (ldu >= max(1,n))
+ * @param[out] wr Real parts of eigenvalues, dimension (n)
+ * @param[out] wi Imaginary parts of eigenvalues, dimension (n)
+ * @param[out] dwork Workspace array, dimension (ldwork)
+ * @param[in] ldwork Workspace size (ldwork >= 3*n, larger for optimal performance)
+ * @param[out] info Exit code: 0=success, <0=invalid parameter, >0=QR failed
+ */
+void tb01wd(
+    const i32 n, const i32 m, const i32 p,
+    f64* a, const i32 lda,
+    f64* b, const i32 ldb,
+    f64* c, const i32 ldc,
+    f64* u, const i32 ldu,
+    f64* wr, f64* wi,
+    f64* dwork, const i32 ldwork,
+    i32* info
+);
+
 #ifdef __cplusplus
 }
 #endif

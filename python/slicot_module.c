@@ -877,8 +877,63 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for ma02ad */
+static PyObject* py_ma02ad(PyObject* self, PyObject* args) {
+    const char* job;
+    PyObject *a_obj;
+    PyArrayObject *a_array;
+
+    if (!PyArg_ParseTuple(args, "sO", &job, &a_obj)) {
+        return NULL;
+    }
+
+    /* Convert to NumPy array - preserve Fortran-order */
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY);
+    if (a_array == NULL) {
+        return NULL;
+    }
+
+    /* Get dimensions */
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    i32 m = (i32)a_dims[0];
+    i32 n = (i32)a_dims[1];
+    i32 lda = m > 0 ? m : 1;
+    i32 ldb = n > 0 ? n : 1;
+
+    /* Allocate output array B with shape (n, m) */
+    npy_intp b_dims[2] = {n, m};
+    npy_intp b_strides[2] = {sizeof(f64), ldb * sizeof(f64)};
+    f64 *b_data = (f64*)calloc(ldb * m, sizeof(f64));
+    if (b_data == NULL) {
+        Py_DECREF(a_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate output array");
+        return NULL;
+    }
+
+    /* Call C function */
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    ma02ad(job, m, n, a_data, lda, b_data, ldb);
+
+    /* Create output NumPy array */
+    PyObject *b_array = PyArray_New(&PyArray_Type, 2, b_dims, NPY_DOUBLE,
+                                    b_strides, b_data, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)b_array, NPY_ARRAY_OWNDATA);
+
+    Py_DECREF(a_array);
+    return b_array;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
+    {"ma02ad", py_ma02ad, METH_VARARGS,
+     "Transpose all or part of a matrix.\n\n"
+     "Parameters:\n"
+     "  job (str): 'U' for upper triangular, 'L' for lower, else full matrix\n"
+     "  a (ndarray): Input matrix (m x n, F-order)\n\n"
+     "Returns:\n"
+     "  b (ndarray): Transposed matrix (n x m, F-order)\n"},
+
     {"mb01qd", py_mb01qd, METH_VARARGS,
      "Multiply matrix by scalar CTO/CFROM without overflow/underflow.\n\n"
      "Parameters:\n"

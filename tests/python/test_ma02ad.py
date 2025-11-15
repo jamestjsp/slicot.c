@@ -29,10 +29,11 @@ def test_ma02ad_upper_triangular():
 
     b = ma02ad('U', a)
 
-    # Expected: transpose of upper triangle
-    expected = np.array([[1.0, 2.0, 3.0],
-                        [0.0, 5.0, 6.0],
-                        [0.0, 0.0, 9.0]], order='F')
+    # Expected: B(j,i) = A(i,j) for i <= j (upper triangle)
+    # B is transpose, so upper triangle of A becomes upper triangle of B
+    expected = np.array([[1.0, 0.0, 0.0],
+                        [2.0, 5.0, 0.0],
+                        [3.0, 6.0, 9.0]], order='F')
 
     np.testing.assert_allclose(b, expected, rtol=1e-14)
 
@@ -46,10 +47,11 @@ def test_ma02ad_lower_triangular():
 
     b = ma02ad('L', a)
 
-    # Expected: transpose of lower triangle
-    expected = np.array([[1.0, 0.0, 0.0],
-                        [4.0, 5.0, 0.0],
-                        [7.0, 8.0, 9.0]], order='F')
+    # Expected: B(j,i) = A(i,j) for i >= j (lower triangle)
+    # Lower triangle of A becomes lower triangle of B after transpose
+    expected = np.array([[1.0, 4.0, 7.0],
+                        [0.0, 5.0, 8.0],
+                        [0.0, 0.0, 9.0]], order='F')
 
     np.testing.assert_allclose(b, expected, rtol=1e-14)
 
@@ -81,9 +83,10 @@ def test_ma02ad_upper_trapezoid():
 
     b = ma02ad('U', a)
 
-    # Expected: transpose of upper trapezoid
-    expected = np.array([[1.0, 3.0, 0.0, 0.0],
-                        [0.0, 4.0, 0.0, 0.0]], order='F')
+    # Expected: B(j,i) = A(i,j) for i <= min(j,m)
+    # Only elements where row <= col in original
+    expected = np.array([[1.0, 0.0, 0.0, 0.0],
+                        [3.0, 4.0, 0.0, 0.0]], order='F')
 
     np.testing.assert_allclose(b, expected, rtol=1e-14)
 
