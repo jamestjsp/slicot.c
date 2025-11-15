@@ -1,0 +1,143 @@
+Parsing 621 Fortran files from SLICOT-Reference/src...
+Found 609 SLICOT routines
+
+================================================================================
+DEPENDENCY ANALYSIS SUMMARY
+================================================================================
+
+Total routines: 609
+Dependency levels: 8
+
+Level 0: 297 routines
+  (Leaf routines - no SLICOT dependencies, only BLAS/LAPACK)
+Level 1: 126 routines
+Level 2: 84 routines
+Level 3: 37 routines
+Level 4: 31 routines
+Level 5: 22 routines
+Level 6: 11 routines
+Level 7: 1 routines
+
+--------------------------------------------------------------------------------
+LEVEL 0 ROUTINES (Translation Priority - can be done in parallel)
+--------------------------------------------------------------------------------
+  AB04MD   → LAPACK: DGEMM, DGETRF, DGETRI, DGETRS, DLASCL, DSCAL, DTRSM
+  AB05MD   → LAPACK: DGEMM, DLACPY, DLASET
+  AB05ND   → LAPACK: DCOPY, DGEMM, DGEMV, DGETRF, DGETRS, DLACPY, DLASET
+  AB05OD   → LAPACK: DLACPY, DLASET
+  AB05PD   → LAPACK: DAXPY, DLACPY, DLASET
+  AB05QD   → LAPACK: DLACPY, DLASET
+  AB05SD   → LAPACK: DAXPY, DCOPY, DGECON, DGEMM, DGEMV, DGETRF, DGETRS, DLACPY
+  AB07MD   → LAPACK: DCOPY, DSWAP
+  AB07ND   → LAPACK: DCOPY, DGECON, DGEMM, DGEMV, DGETRF, DGETRI, DLACPY
+  AB09DD   → LAPACK: DGECON, DGEMM, DGETRF, DGETRS
+  AB09JX   → No external dependencies (pure Fortran)
+  AB13MD   → LAPACK: DCOPY, DGEMV, DLACPY, DLASET, DSCAL, DSYCON, DSYSV, DSYTRF, DSYTRS
+  AG07BD   → LAPACK: DLACPY, DLASET
+  BB03AD   → LAPACK: DAXPY, DGEMV, DGER, DLASET
+  BB04AD   → LAPACK: DAXPY, DGEMV, DGER, DLASET
+  BD01AD   → LAPACK: DLASET, DSCAL
+  BD02AD   → LAPACK: DLASET
+  DG01MD   → No external dependencies (pure Fortran)
+  DG01NY   → No external dependencies (pure Fortran)
+  DG01OD   → No external dependencies (pure Fortran)
+  DK01MD   → No external dependencies (pure Fortran)
+  FD01AD   → LAPACK: DLARTG
+  IB01OY   → No external dependencies (pure Fortran)
+  MA01AD   → No external dependencies (pure Fortran)
+  MA01BD   → No external dependencies (pure Fortran)
+  MA01BZ   → No external dependencies (pure Fortran)
+  MA01CD   → No external dependencies (pure Fortran)
+  MA01DD   → No external dependencies (pure Fortran)
+  MA01DZ   → No external dependencies (pure Fortran)
+  MA02AD   → No external dependencies (pure Fortran)
+  MA02AZ   → No external dependencies (pure Fortran)
+  MA02BD   → LAPACK: DSWAP
+  MA02BZ   → No external dependencies (pure Fortran)
+  MA02CD   → No external dependencies (pure Fortran)
+  MA02CZ   → No external dependencies (pure Fortran)
+  MA02DD   → LAPACK: DCOPY
+  MA02ED   → LAPACK: DCOPY
+  MA02ES   → No external dependencies (pure Fortran)
+  MA02EZ   → No external dependencies (pure Fortran)
+  MA02FD   → No external dependencies (pure Fortran)
+  MA02GD   → No external dependencies (pure Fortran)
+  MA02GZ   → No external dependencies (pure Fortran)
+  MA02HD   → No external dependencies (pure Fortran)
+  MA02HZ   → No external dependencies (pure Fortran)
+  MA02ID   → LAPACK: DLASSQ
+  MA02IZ   → LAPACK: DLASSQ
+  MA02JD   → LAPACK: DGEMM
+  MA02JZ   → No external dependencies (pure Fortran)
+  MA02MD   → LAPACK: DLASSQ
+  MA02MZ   → No external dependencies (pure Fortran)
+  ... and 247 more
+
+--------------------------------------------------------------------------------
+HIGHER-LEVEL ROUTINES (sample)
+--------------------------------------------------------------------------------
+
+Level 1 (sample):
+  AB05RD   → SLICOT: AB05SD
+            LAPACK: DGEMM
+  AB08MZ   → SLICOT: TB01IZ
+  AB08NX   → SLICOT: MB03OY, MB03PY
+            LAPACK: DLAPMT, DLARFG, DLASET, DLATZM, DORMQR
+  AB08NY   → SLICOT: MB03OY, MB03PY, MB04ID
+            LAPACK: DLAPMT, DLASET, DORMQR, DORMRQ
+  AB08NZ   → SLICOT: TB01IZ
+  AB09IX   → SLICOT: AB09DD, MA02AD, MB03UD
+            LAPACK: DGEMM, DGEMV, DGEQRF, DGETRF, DGETRS
+  AB13CD   → SLICOT: MA02ED, MB01RX
+            LAPACK: DGEES, DGEMM, DGESV, DGESVD, DLACPY
+  AB13DX   → SLICOT: MB02RD, MB02RZ, MB02SD, MB02SZ
+            LAPACK: DGEMM, DGESVD
+  AB13ED   → SLICOT: MA02ED, MB04ZD
+            LAPACK: DCOPY, DGEBAL, DGEMM, DHSEQR, DLACPY
+  AB13FD   → SLICOT: MA02ED, MB04ZD
+            LAPACK: DCOPY, DGEBAL, DGEMM, DHSEQR, DLACPY
+
+Level 2 (sample):
+  AB01MD   → SLICOT: MB01PD
+            LAPACK: DGEHRD, DLARF, DLARFG, DLASET, DORGQR
+  AB01ND   → SLICOT: MB01PD, MB03OY
+            LAPACK: DCOPY, DLACPY, DLAPMT, DLASET, DORGQR
+  AB08MD   → SLICOT: AB08NX, TB01ID
+            LAPACK: DLACPY
+  AB08ND   → SLICOT: AB08NX, TB01ID
+            LAPACK: DCOPY, DLACPY, DLASET, DORMRZ, DTZRZF
+  AB08NW   → SLICOT: AB08NY, MA02BD, TB01ID, TB01XD
+            LAPACK: DLACPY, DLASET, DORMRZ, DTZRZF
+  AB09JV   → SLICOT: AB09JX, SB04PY, TB01WD
+            LAPACK: DGEMM, DGGES, DLACPY, DLASET, DSWAP
+  AB09JW   → SLICOT: AB09JX, SB04PY, TB01WD
+            LAPACK: DGEMM, DGGES, DLACPY, DLASET, DSWAP
+  AB09KX   → SLICOT: SB04PY, TB01WD
+            LAPACK: DGEMM, DLACPY, DTRSYL
+  AB13ID   → SLICOT: MB03OD, TG01AD, TG01JY
+            LAPACK: DLACPY, DLASET, DORMQR, DORMRZ, DSWAP
+  AG08BD   → SLICOT: AG08BY, MA02BD, MA02CD, TB01XD, TG01AD
+            (+ 1 more)
+            LAPACK: DLACPY, DLASET, DORMRZ, DTZRZF
+
+Level 3 (sample):
+  AB01OD   → SLICOT: AB01ND
+            LAPACK: DGERQF, DLACPY, DLASET, DORGRQ, DORMRQ
+  IB01CD   → SLICOT: IB01QD, IB01RD, TB01WD
+            LAPACK: DCOPY, DGEMM, DGEMV, DLACPY
+  IB01MD   → SLICOT: IB01MY, MB04OD
+            LAPACK: DAXPY, DCOPY, DGEMM, DGEQRF, DGER
+  IB01PD   → SLICOT: IB01PX, IB01PY, MA02AD, MA02ED, MB02QY
+            (+ 2 more)
+            LAPACK: DCOPY, DGEMM, DGEQRF, DLACPY, DLASET
+  MB03KD   → SLICOT: MB03KA
+  MB03LZ   → SLICOT: MB03JZ, MB04FD
+            LAPACK: DCOPY, DLACPY, DSCAL
+  MB03XD   → SLICOT: MA01AD, MB03XP, MB04DD, MB04QB, MB04TB
+            LAPACK: DCOPY, DGEMM, DLABAD, DLACPY, DLASCL
+  MB03XS   → SLICOT: MB01LD, MB04DI, MB04DS, MB04QS, MB04RB
+            LAPACK: DCOPY, DHSEQR, DLABAD, DLACPY, DLASCL
+  MB03ZD   → SLICOT: MB01UX, MB03TD, MB03ZA
+            LAPACK: DAXPY, DGEMM, DGEQRF, DLACPY, DLASCL
+  MB04AD   → SLICOT: MA02AD, MB03BD
+            LAPACK: DCOPY, DGEMM, DGEQRF, DGERQF, DLACPY

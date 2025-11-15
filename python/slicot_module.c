@@ -877,8 +877,415 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for tb01vy */
+static PyObject* py_tb01vy(PyObject* self, PyObject* args, PyObject* kwargs) {
+    i32 n, m, l, ltheta;
+    const char *apply = "N";
+    PyObject *theta_obj;
+    PyArrayObject *theta_array;
+
+    static char *kwlist[] = {"n", "m", "l", "theta", "apply", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iiiO|s", kwlist,
+                                     &n, &m, &l, &theta_obj, &apply)) {
+        return NULL;
+    }
+
+    if (n < 0 || m < 0 || l < 0) {
+        PyErr_Format(PyExc_ValueError, "Dimensions must be non-negative (n=%d, m=%d, l=%d)", n, m, l);
+        return NULL;
+    }
+
+    theta_array = (PyArrayObject*)PyArray_FROM_OTF(theta_obj, NPY_DOUBLE,
+                                                   NPY_ARRAY_IN_FARRAY);
+    if (theta_array == NULL) return NULL;
+
+    ltheta = (i32)PyArray_SIZE(theta_array);
+    i32 required_ltheta = n * (l + m + 1) + l * m;
+
+    if (ltheta < required_ltheta) {
+        Py_DECREF(theta_array);
+        PyErr_Format(PyExc_ValueError, "ltheta=%d is too small (need >= %d)", ltheta, required_ltheta);
+        return NULL;
+    }
+
+    if (!(apply[0] == 'A' || apply[0] == 'a' || apply[0] == 'N' || apply[0] == 'n')) {
+        Py_DECREF(theta_array);
+        PyErr_Format(PyExc_ValueError, "apply must be 'A' or 'N', got '%s'", apply);
+        return NULL;
+    }
+
+    i32 lda = n > 0 ? n : 1;
+    i32 ldb = n > 0 ? n : 1;
+    i32 ldc = l > 0 ? l : 1;
+    i32 ldd = l > 0 ? l : 1;
+    i32 ldwork = n * (n + l + 1);
+
+    npy_intp a_dims[2] = {n, n};
+    npy_intp a_strides[2] = {sizeof(f64), lda * sizeof(f64)};
+    f64 *a_data = (f64*)calloc(lda * n, sizeof(f64));
+
+    npy_intp b_dims[2] = {n, m};
+    npy_intp b_strides[2] = {sizeof(f64), ldb * sizeof(f64)};
+    f64 *b_data = (f64*)calloc(ldb * m, sizeof(f64));
+
+    npy_intp c_dims[2] = {l, n};
+    npy_intp c_strides[2] = {sizeof(f64), ldc * sizeof(f64)};
+    f64 *c_data = (f64*)calloc(ldc * n, sizeof(f64));
+
+    npy_intp d_dims[2] = {l, m};
+    npy_intp d_strides[2] = {sizeof(f64), ldd * sizeof(f64)};
+    f64 *d_data = (f64*)calloc(ldd * m, sizeof(f64));
+
+    f64 *x0 = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+    f64 *dwork = (f64*)malloc(ldwork > 0 ? ldwork * sizeof(f64) : sizeof(f64));
+
+    if (a_data == NULL || b_data == NULL || c_data == NULL ||
+        d_data == NULL || x0 == NULL || dwork == NULL) {
+        free(a_data); free(b_data); free(c_data); free(d_data); free(x0); free(dwork);
+        Py_DECREF(theta_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate memory");
+        return NULL;
+    }
+
+    i32 info;
+    f64 *theta_data = (f64*)PyArray_DATA(theta_array);
+
+    tb01vy(apply, n, m, l, theta_data, ltheta, a_data, lda, b_data, ldb,
+           c_data, ldc, d_data, ldd, x0, dwork, ldwork, &info);
+
+    free(dwork);
+
+    PyObject *a_array = PyArray_New(&PyArray_Type, 2, a_dims, NPY_DOUBLE,
+                                    a_strides, a_data, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)a_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *b_array = PyArray_New(&PyArray_Type, 2, b_dims, NPY_DOUBLE,
+                                    b_strides, b_data, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)b_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *c_array = PyArray_New(&PyArray_Type, 2, c_dims, NPY_DOUBLE,
+                                    c_strides, c_data, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)c_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *d_array = PyArray_New(&PyArray_Type, 2, d_dims, NPY_DOUBLE,
+                                    d_strides, d_data, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)d_array, NPY_ARRAY_OWNDATA);
+
+    npy_intp x0_dims[1] = {n};
+    PyObject *x0_array = PyArray_SimpleNewFromData(1, x0_dims, NPY_DOUBLE, x0);
+    PyArray_ENABLEFLAGS((PyArrayObject*)x0_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *result = Py_BuildValue("OOOOOi", a_array, b_array, c_array, d_array, x0_array, info);
+
+    Py_DECREF(theta_array);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(d_array);
+    Py_DECREF(x0_array);
+
+    return result;
+}
+
+/* Python wrapper for ma02ad */
+static PyObject* py_tb01wd(PyObject* self, PyObject* args) {
+    i32 n, m, p;
+    PyObject *a_obj, *b_obj, *c_obj;
+    PyArrayObject *a_array, *b_array, *c_array;
+
+    if (!PyArg_ParseTuple(args, "iiiOOO", &n, &m, &p, &a_obj, &b_obj, &c_obj)) {
+        return NULL;
+    }
+
+    /* Validate dimensions */
+    if (n < 0 || m < 0 || p < 0) {
+        PyErr_Format(PyExc_ValueError, "Dimensions must be non-negative (n=%d, m=%d, p=%d)", n, m, p);
+        return NULL;
+    }
+
+    /* Convert inputs to NumPy arrays - preserve Fortran-order */
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) return NULL;
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (c_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    /* Get leading dimensions */
+    i32 lda = n > 0 ? n : 1;
+    i32 ldb = n > 0 ? n : 1;
+    i32 ldc = p > 0 ? p : 1;
+    i32 ldu = n > 0 ? n : 1;
+
+    /* Allocate output arrays */
+    npy_intp u_dims[2] = {n, n};
+    npy_intp u_strides[2] = {sizeof(f64), ldu * sizeof(f64)};
+    f64 *u_data = (f64*)calloc(ldu * n, sizeof(f64));
+
+    f64 *wr = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+    f64 *wi = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+
+    i32 ldwork = n > 0 ? 3 * n : 1;
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+
+    if (u_data == NULL || wr == NULL || wi == NULL || dwork == NULL) {
+        free(u_data);
+        free(wr);
+        free(wi);
+        free(dwork);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        return NULL;
+    }
+
+    /* Call C function */
+    i32 info;
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+
+    tb01wd(n, m, p, a_data, lda, b_data, ldb, c_data, ldc,
+           u_data, ldu, wr, wi, dwork, ldwork, &info);
+
+    free(dwork);
+
+    /* Create output arrays */
+    PyObject *u_array = PyArray_New(&PyArray_Type, 2, u_dims, NPY_DOUBLE,
+                                    u_strides, u_data, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)u_array, NPY_ARRAY_OWNDATA);
+
+    npy_intp wr_dims[1] = {n};
+    PyObject *wr_array = PyArray_SimpleNewFromData(1, wr_dims, NPY_DOUBLE, wr);
+    PyArray_ENABLEFLAGS((PyArrayObject*)wr_array, NPY_ARRAY_OWNDATA);
+
+    npy_intp wi_dims[1] = {n};
+    PyObject *wi_array = PyArray_SimpleNewFromData(1, wi_dims, NPY_DOUBLE, wi);
+    PyArray_ENABLEFLAGS((PyArrayObject*)wi_array, NPY_ARRAY_OWNDATA);
+
+    /* Build result tuple */
+    PyObject *result = Py_BuildValue("OOOOOOi", a_array, b_array, c_array,
+                                     u_array, wr_array, wi_array, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(u_array);
+    Py_DECREF(wr_array);
+    Py_DECREF(wi_array);
+
+    return result;
+}
+
+static PyObject* py_ma02ad(PyObject* self, PyObject* args) {
+    const char* job;
+    PyObject *a_obj;
+    PyArrayObject *a_array;
+
+    if (!PyArg_ParseTuple(args, "sO", &job, &a_obj)) {
+        return NULL;
+    }
+
+    /* Convert to NumPy array - preserve Fortran-order */
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY);
+    if (a_array == NULL) {
+        return NULL;
+    }
+
+    /* Get dimensions */
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    i32 m = (i32)a_dims[0];
+    i32 n = (i32)a_dims[1];
+    i32 lda = m > 0 ? m : 1;
+    i32 ldb = n > 0 ? n : 1;
+
+    /* Allocate output array B with shape (n, m) */
+    npy_intp b_dims[2] = {n, m};
+    npy_intp b_strides[2] = {sizeof(f64), ldb * sizeof(f64)};
+    f64 *b_data = (f64*)calloc(ldb * m, sizeof(f64));
+    if (b_data == NULL) {
+        Py_DECREF(a_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate output array");
+        return NULL;
+    }
+
+    /* Call C function */
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    ma02ad(job, m, n, a_data, lda, b_data, ldb);
+
+    /* Create output NumPy array */
+    PyObject *b_array = PyArray_New(&PyArray_Type, 2, b_dims, NPY_DOUBLE,
+                                    b_strides, b_data, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)b_array, NPY_ARRAY_OWNDATA);
+
+    Py_DECREF(a_array);
+    return b_array;
+}
+
+static PyObject* py_tf01mx(PyObject* self, PyObject* args) {
+    i32 n, m, p, ny;
+    PyObject *s_obj, *u_obj, *x_obj;
+    PyArrayObject *s_array, *u_array, *x_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "iiiiOOO", &n, &m, &p, &ny, &s_obj, &u_obj, &x_obj)) {
+        return NULL;
+    }
+
+    if (n < 0) {
+        PyErr_SetString(PyExc_ValueError, "N must be >= 0");
+        return NULL;
+    }
+    if (m < 0) {
+        PyErr_SetString(PyExc_ValueError, "M must be >= 0");
+        return NULL;
+    }
+    if (p < 0) {
+        PyErr_SetString(PyExc_ValueError, "P must be >= 0");
+        return NULL;
+    }
+    if (ny < 0) {
+        PyErr_SetString(PyExc_ValueError, "NY must be >= 0");
+        return NULL;
+    }
+
+    s_array = (PyArrayObject*)PyArray_FROM_OTF(s_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (s_array == NULL) return NULL;
+
+    u_array = (PyArrayObject*)PyArray_FROM_OTF(u_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (u_array == NULL) {
+        Py_DECREF(s_array);
+        return NULL;
+    }
+
+    x_array = (PyArrayObject*)PyArray_FROM_OTF(x_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (x_array == NULL) {
+        Py_DECREF(s_array);
+        Py_DECREF(u_array);
+        return NULL;
+    }
+
+    i32 lds = (i32)PyArray_DIM(s_array, 0);
+    i32 ldu = (ny > 1) ? (i32)PyArray_DIM(u_array, 0) : 1;
+    i32 ldy = (ny > 1) ? ny : 1;
+
+    f64 *s_data = (f64*)PyArray_DATA(s_array);
+    f64 *u_data = (f64*)PyArray_DATA(u_array);
+    f64 *x_data = (f64*)PyArray_DATA(x_array);
+
+    npy_intp dims_y[2] = {ny, p};
+    npy_intp strides_y[2] = {sizeof(f64), ldy * sizeof(f64)};
+    PyObject *y_array = PyArray_New(&PyArray_Type, 2, dims_y, NPY_DOUBLE, strides_y,
+                                     NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    if (y_array == NULL) {
+        Py_DECREF(s_array);
+        Py_DECREF(u_array);
+        Py_DECREF(x_array);
+        return NULL;
+    }
+
+    f64 *y_data = (f64*)PyArray_DATA((PyArrayObject*)y_array);
+
+    i32 ldwork;
+    if (n == 0 || p == 0 || ny == 0) {
+        ldwork = 0;
+    } else if (m == 0) {
+        ldwork = n + p;
+    } else {
+        ldwork = 2 * n + m + p;
+    }
+
+    f64 *dwork = NULL;
+    if (ldwork > 0) {
+        dwork = (f64*)malloc(ldwork * sizeof(f64));
+        if (dwork == NULL) {
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+            Py_DECREF(s_array);
+            Py_DECREF(u_array);
+            Py_DECREF(x_array);
+            Py_DECREF(y_array);
+            return NULL;
+        }
+    }
+
+    tf01mx(n, m, p, ny, s_data, lds, u_data, ldu, x_data, y_data, ldy, dwork, ldwork, &info);
+
+    if (dwork != NULL) {
+        free(dwork);
+    }
+
+    PyObject *result = Py_BuildValue("OOi", y_array, x_array, info);
+
+    Py_DECREF(s_array);
+    Py_DECREF(u_array);
+    Py_DECREF(x_array);
+    Py_DECREF(y_array);
+
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
+    {"tb01vy", (PyCFunction)py_tb01vy, METH_VARARGS | METH_KEYWORDS,
+     "Convert output normal form to state-space representation.\n\n"
+     "Parameters:\n"
+     "  n (int): System order\n"
+     "  m (int): Number of inputs\n"
+     "  l (int): Number of outputs\n"
+     "  theta (ndarray): Parameter vector (N*(L+M+1)+L*M, F-order)\n"
+     "  apply (str, optional): 'A' = apply bijective mapping, 'N' = no mapping (default)\n\n"
+     "Returns:\n"
+     "  (a, b, c, d, x0, info): State-space matrices, initial state, exit code\n"},
+
+    {"tb01wd", py_tb01wd, METH_VARARGS,
+     "Reduce state matrix to real Schur form via orthogonal transformation.\n\n"
+     "Parameters:\n"
+     "  n (int): Order of state matrix A\n"
+     "  m (int): Number of inputs (columns of B)\n"
+     "  p (int): Number of outputs (rows of C)\n"
+     "  a (ndarray): State dynamics matrix (n x n, F-order)\n"
+     "  b (ndarray): Input matrix (n x m, F-order)\n"
+     "  c (ndarray): Output matrix (p x n, F-order)\n\n"
+     "Returns:\n"
+     "  (a, b, c, u, wr, wi, info): Transformed system, Schur vectors, eigenvalues, exit code\n"},
+
+    {"tf01mx", py_tf01mx, METH_VARARGS,
+     "Output sequence of linear time-invariant open-loop system.\n\n"
+     "Parameters:\n"
+     "  n (int): Order of matrix A\n"
+     "  m (int): Number of system inputs\n"
+     "  p (int): Number of system outputs\n"
+     "  ny (int): Number of output vectors to compute\n"
+     "  s (ndarray): System matrix [A B; C D] (n+p x n+m, F-order)\n"
+     "  u (ndarray): Input sequence (ny x m, F-order)\n"
+     "  x (ndarray): Initial state vector (n, F-order)\n\n"
+     "Returns:\n"
+     "  (y, x, info): Output sequence, final state, exit code\n"},
+
+    {"ma02ad", py_ma02ad, METH_VARARGS,
+     "Transpose all or part of a matrix.\n\n"
+     "Parameters:\n"
+     "  job (str): 'U' for upper triangular, 'L' for lower, else full matrix\n"
+     "  a (ndarray): Input matrix (m x n, F-order)\n\n"
+     "Returns:\n"
+     "  b (ndarray): Transposed matrix (n x m, F-order)\n"},
+
     {"mb01qd", py_mb01qd, METH_VARARGS,
      "Multiply matrix by scalar CTO/CFROM without overflow/underflow.\n\n"
      "Parameters:\n"

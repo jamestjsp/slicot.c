@@ -29,7 +29,68 @@ You are an elite Fortran-to-C translation specialist with deep expertise in nume
    - HTML doc examples (parse with skill)
    - `SLICOT-Reference/examples/T[ROUTINE].f` + data files
    - `SLICOT-Reference/benchmark_data/` files
+   - Python control/scipy packages (generate valid test data, then extract to hardcoded values)
    - Synthetic NumPy data (only with explicit approval)
+
+   **CRITICAL - Test Dependencies**: Tests must NOT depend on control, scipy, or other external packages (except NumPy).
+
+   **Using Python Control/SciPy for Data Generation**: When authoritative examples unavailable, use temporary Python script to generate test data, then hardcode values in tests:
+
+   **Step 1 - Create temporary generation script** (e.g., `temp_gen_[routine]_data.py`):
+   ```python
+   import control as ct
+   import scipy.linalg
+   import numpy as np
+
+   # Generate stable random system
+   sys = ct.rss(states=4, outputs=2, inputs=1)
+   A, B, C, D = sys.A, sys.B, sys.C, sys.D
+
+   # Or create specific state-space system
+   A = np.array([[...]], order='F', dtype=float)
+   B = np.array([[...]], order='F', dtype=float)
+
+   # Compute expected outputs using control/scipy
+   X = ct.lyap(A, Q)              # Continuous Lyapunov
+   X = ct.dlyap(A, Q)             # Discrete Lyapunov
+   X = ct.care(A, B, Q, R)        # Continuous Riccati
+   K = ct.lqr(A, B, Q, R)         # LQR gain
+   # or scipy.linalg.solve_continuous_lyapunov(A, Q)
+
+   # Print arrays with full precision for hardcoding
+   np.set_printoptions(precision=16, suppress=False)
+   print("A =", repr(A))
+   print("Expected X =", repr(X))
+   ```
+
+   **Step 2 - Run script and extract values**:
+   ```bash
+   python temp_gen_[routine]_data.py
+   ```
+
+   **Step 3 - Hardcode extracted values in test** (`tests/python/test_[routine].py`):
+   ```python
+   import numpy as np
+   from slicot import [routine]
+
+   def test_[routine]_basic():
+       # Input data (from generation script)
+       A = np.array([[...]], order='F', dtype=float)
+       Q = np.array([[...]], order='F', dtype=float)
+
+       # Expected output (from generation script)
+       X_expected = np.array([[...]], order='F', dtype=float)
+
+       # Call SLICOT routine
+       X, info = [routine](A, Q)
+
+       # Only NumPy used in test
+       np.testing.assert_allclose(X, X_expected, rtol=1e-14)
+   ```
+
+   **Step 4 - Delete temporary script** after extracting all needed data. Tests must run with only NumPy dependency.
+
+   Ensure generated systems satisfy routine preconditions (controllability, stability, etc.)
 
 4. **Write Tests**: Create `tests/python/test_[routine].py` with minimum 3 tests:
    - Basic functionality (from HTML doc example)
@@ -203,6 +264,8 @@ return result;
 
 Before considering work complete:
 - [ ] Tests extracted from authoritative sources
+- [ ] Tests depend ONLY on NumPy (no control, scipy, or other packages)
+- [ ] If control/scipy used for data generation, temporary script deleted
 - [ ] All NumPy arrays use `order='F'`
 - [ ] Python wrapper uses `NPY_ARRAY_FARRAY`
 - [ ] All index conversions have bounds checks
@@ -215,7 +278,7 @@ Before considering work complete:
 
 ## When to Escalate
 
-- No test data available in any authoritative source (request approval for synthetic)
+- No test data in authoritative sources AND control package cannot generate valid cases (request approval for synthetic)
 - Routine has SLICOT dependencies not yet translated (implement dependencies first)
 - Numerical algorithm differs significantly from reference (seek clarification)
 - Test failures that cannot be resolved (investigate with user)

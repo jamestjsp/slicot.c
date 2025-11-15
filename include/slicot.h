@@ -482,6 +482,134 @@ void tg01fd(
     i32* info
 );
 
+/**
+ * @brief Transpose all or part of a matrix.
+ *
+ * Transposes an M-by-N matrix A into N-by-M matrix B.
+ * Supports full, upper triangular, or lower triangular transposition.
+ *
+ * @param[in] job Specifies part to transpose:
+ *                'U' = upper triangular/trapezoidal part only
+ *                'L' = lower triangular/trapezoidal part only
+ *                Otherwise = full matrix
+ * @param[in] m Number of rows of A (m >= 0)
+ * @param[in] n Number of columns of A (n >= 0)
+ * @param[in] a Input matrix, dimension (lda,n), column-major
+ * @param[in] lda Leading dimension of A (lda >= max(1,m))
+ * @param[out] b Output matrix (transpose), dimension (ldb,m), column-major
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,n))
+ */
+void ma02ad(const char* job, const i32 m, const i32 n,
+            const f64* a, const i32 lda,
+            f64* b, const i32 ldb);
+
+/**
+ * @brief Reduce state matrix A to real Schur form via orthogonal transformation
+ *
+ * Reduces system state matrix A to upper real Schur form by orthogonal similarity
+ * transformation A <- U'*A*U, and applies transformation to B <- U'*B and C <- C*U.
+ *
+ * @param[in] n Order of state matrix A (n >= 0)
+ * @param[in] m Number of inputs (columns of B, m >= 0)
+ * @param[in] p Number of outputs (rows of C, p >= 0)
+ * @param[in,out] a State matrix, dimension (lda,n)
+ *                  On entry: original state dynamics matrix
+ *                  On exit: real Schur form U'*A*U
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in,out] b Input matrix, dimension (ldb,m)
+ *                  On entry: original input matrix
+ *                  On exit: transformed matrix U'*B
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,n))
+ * @param[in,out] c Output matrix, dimension (ldc,n)
+ *                  On entry: original output matrix
+ *                  On exit: transformed matrix C*U
+ * @param[in] ldc Leading dimension of C (ldc >= max(1,p))
+ * @param[out] u Orthogonal transformation matrix, dimension (ldu,n)
+ *               Schur vectors of A
+ * @param[in] ldu Leading dimension of U (ldu >= max(1,n))
+ * @param[out] wr Real parts of eigenvalues, dimension (n)
+ * @param[out] wi Imaginary parts of eigenvalues, dimension (n)
+ * @param[out] dwork Workspace array, dimension (ldwork)
+ * @param[in] ldwork Workspace size (ldwork >= 3*n, larger for optimal performance)
+ * @param[out] info Exit code: 0=success, <0=invalid parameter, >0=QR failed
+ */
+void tb01wd(
+    const i32 n, const i32 m, const i32 p,
+    f64* a, const i32 lda,
+    f64* b, const i32 ldb,
+    f64* c, const i32 ldc,
+    f64* u, const i32 ldu,
+    f64* wr, f64* wi,
+    f64* dwork, const i32 ldwork,
+    i32* info
+);
+
+/**
+ * @brief Convert output normal form to state-space representation.
+ *
+ * Converts a discrete-time system from output normal form (parameter vector THETA)
+ * to standard state-space representation (A, B, C, D) with initial state x0.
+ *
+ * The parameter vector THETA contains:
+ * - THETA[0:N*L-1]: parameters for A and C matrices
+ * - THETA[N*L:N*(L+M)-1]: parameters for B matrix
+ * - THETA[N*(L+M):N*(L+M)+L*M-1]: parameters for D matrix
+ * - THETA[N*(L+M)+L*M:N*(L+M+1)+L*M-1]: initial state x0
+ *
+ * @param[in] apply Bijective mapping mode:
+ *                  'A' = apply bijective mapping to remove norm(THETA_i) < 1 constraint
+ *                  'N' = no bijective mapping
+ * @param[in] n System order (N >= 0)
+ * @param[in] m Number of inputs (M >= 0)
+ * @param[in] l Number of outputs (L >= 0)
+ * @param[in] theta Parameter vector, dimension (LTHETA)
+ * @param[in] ltheta Length of THETA array (>= N*(L+M+1)+L*M)
+ * @param[out] a State matrix, dimension (LDA,N), column-major
+ * @param[in] lda Leading dimension of A (>= max(1,N))
+ * @param[out] b Input matrix, dimension (LDB,M), column-major
+ * @param[in] ldb Leading dimension of B (>= max(1,N))
+ * @param[out] c Output matrix, dimension (LDC,N), column-major
+ * @param[in] ldc Leading dimension of C (>= max(1,L))
+ * @param[out] d Feedthrough matrix, dimension (LDD,M), column-major
+ * @param[in] ldd Leading dimension of D (>= max(1,L))
+ * @param[out] x0 Initial state vector, dimension (N)
+ * @param[out] dwork Workspace array, dimension (LDWORK)
+ * @param[in] ldwork Length of DWORK (>= N*(N+L+1))
+ * @param[out] info Exit code: 0 = success, <0 = invalid parameter
+ */
+void tb01vy(const char* apply, i32 n, i32 m, i32 l, const f64* theta,
+            i32 ltheta, f64* a, i32 lda, f64* b, i32 ldb, f64* c, i32 ldc,
+            f64* d, i32 ldd, f64* x0, f64* dwork, i32 ldwork, i32* info);
+
+/**
+ * @brief Output sequence of linear time-invariant open-loop system.
+ *
+ * Computes output sequence y(1),...,y(NY) of discrete-time state-space model
+ * with system matrix S = [A B; C D] given initial state x(1) and input
+ * sequence u(1),...,u(NY).
+ *
+ * Implements: [x(k+1); y(k)] = S * [x(k); u(k)] for k = 1,...,NY
+ *
+ * @param[in] n Order of matrix A (n >= 0)
+ * @param[in] m Number of system inputs (m >= 0)
+ * @param[in] p Number of system outputs (p >= 0)
+ * @param[in] ny Number of output vectors to compute (ny >= 0)
+ * @param[in] s System matrix, dimension (lds,n+m), column-major
+ * @param[in] lds Leading dimension of S (lds >= max(1,n+p))
+ * @param[in] u Input sequence, dimension (ldu,m), row u(k) contains u(k)'
+ * @param[in] ldu Leading dimension of U (ldu >= max(1,ny))
+ * @param[in,out] x State vector, dimension (n). On entry: x(1). On exit: x(ny+1)
+ * @param[out] y Output sequence, dimension (ldy,p), row y(k) contains y(k)'
+ * @param[in] ldy Leading dimension of Y (ldy >= max(1,ny))
+ * @param[out] dwork Workspace array, dimension (ldwork)
+ * @param[in] ldwork Length of dwork (ldwork >= 2*n+m+p if m>0, n+p if m=0, 0 otherwise)
+ * @param[out] info Exit code (0 = success, <0 = invalid parameter)
+ */
+void tf01mx(const i32 n, const i32 m, const i32 p, const i32 ny,
+            const f64* s, const i32 lds, const f64* u, const i32 ldu,
+            f64* x, f64* y, const i32 ldy, f64* dwork, const i32 ldwork,
+            i32* info);
+
 #ifdef __cplusplus
 }
 #endif
