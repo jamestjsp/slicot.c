@@ -1,0 +1,77 @@
+IB03BD Complete Dependency Tree
+================================
+
+Level 6: IB03BD
+  → IB01AD, IB01BD, IB01CD, MD03BD, TB01VD, TB01VY, TF01MX
+
+=== IB01AD ===
+SLICOT Dependencies (3):
+  ✓ IB01MD   (Level 3)
+  ✓ IB01ND   (Level 2)
+  ✓ IB01OD   (Level 1)
+
+Used By (2 routines):
+  IB03AD
+  IB03BD
+
+=== IB01BD ===
+SLICOT Dependencies (5):
+  ✓ IB01PD   (Level 3)
+  ✓ MA02AD   (Level 0)
+  ✓ SB02MT   (Level 2)
+  ✓ SB02ND   (Level 2)
+  ✓ SB02RD   (Level 4)
+
+LAPACK/BLAS Dependencies (2):
+  DLACPY
+  DLASET
+
+Used By (2 routines):
+  IB03AD
+  IB03BD
+
+=== IB01CD ===
+SLICOT Dependencies (3):
+  ✓ IB01QD   (Level 2)
+  ✓ IB01RD   (Level 2)
+  ✓ TB01WD   (Level 0)
+
+LAPACK/BLAS Dependencies (4):
+  DCOPY
+  DGEMM
+  DGEMV
+  DLACPY
+
+Used By (2 routines):
+  IB03AD
+  IB03BD
+
+=== MD03BD ===
+
+=== TB01VD ===
+SLICOT Dependencies (2):
+  ✓ MA02AD   (Level 0)
+  ✓ SB03OD   (Level 3)
+
+LAPACK/BLAS Dependencies (13):
+  DAXPY
+  DCOPY
+  DGEMM
+  DGEMV
+  DGEQRF
+  DGER
+  DLACPY
+  DLASET
+  DORMQR
+  DSCAL
+  DTRMM
+  DTRMV
+  DTRSM
+
+Used By (2 routines):
+  IB03AD
+
+=== TB01VY ===
+
+=== TF01MX ===
+
