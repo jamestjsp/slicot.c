@@ -878,6 +878,108 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
 }
 
 /* Python wrapper for ma02ad */
+static PyObject* py_tb01wd(PyObject* self, PyObject* args) {
+    i32 n, m, p;
+    PyObject *a_obj, *b_obj, *c_obj;
+    PyArrayObject *a_array, *b_array, *c_array;
+
+    if (!PyArg_ParseTuple(args, "iiiOOO", &n, &m, &p, &a_obj, &b_obj, &c_obj)) {
+        return NULL;
+    }
+
+    /* Validate dimensions */
+    if (n < 0 || m < 0 || p < 0) {
+        PyErr_Format(PyExc_ValueError, "Dimensions must be non-negative (n=%d, m=%d, p=%d)", n, m, p);
+        return NULL;
+    }
+
+    /* Convert inputs to NumPy arrays - preserve Fortran-order */
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) return NULL;
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (c_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    /* Get leading dimensions */
+    i32 lda = n > 0 ? n : 1;
+    i32 ldb = n > 0 ? n : 1;
+    i32 ldc = p > 0 ? p : 1;
+    i32 ldu = n > 0 ? n : 1;
+
+    /* Allocate output arrays */
+    npy_intp u_dims[2] = {n, n};
+    npy_intp u_strides[2] = {sizeof(f64), ldu * sizeof(f64)};
+    f64 *u_data = (f64*)calloc(ldu * n, sizeof(f64));
+
+    f64 *wr = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+    f64 *wi = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+
+    i32 ldwork = n > 0 ? 3 * n : 1;
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+
+    if (u_data == NULL || wr == NULL || wi == NULL || dwork == NULL) {
+        free(u_data);
+        free(wr);
+        free(wi);
+        free(dwork);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        return NULL;
+    }
+
+    /* Call C function */
+    i32 info;
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+
+    tb01wd(n, m, p, a_data, lda, b_data, ldb, c_data, ldc,
+           u_data, ldu, wr, wi, dwork, ldwork, &info);
+
+    free(dwork);
+
+    /* Create output arrays */
+    PyObject *u_array = PyArray_New(&PyArray_Type, 2, u_dims, NPY_DOUBLE,
+                                    u_strides, u_data, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)u_array, NPY_ARRAY_OWNDATA);
+
+    npy_intp wr_dims[1] = {n};
+    PyObject *wr_array = PyArray_SimpleNewFromData(1, wr_dims, NPY_DOUBLE, wr);
+    PyArray_ENABLEFLAGS((PyArrayObject*)wr_array, NPY_ARRAY_OWNDATA);
+
+    npy_intp wi_dims[1] = {n};
+    PyObject *wi_array = PyArray_SimpleNewFromData(1, wi_dims, NPY_DOUBLE, wi);
+    PyArray_ENABLEFLAGS((PyArrayObject*)wi_array, NPY_ARRAY_OWNDATA);
+
+    /* Build result tuple */
+    PyObject *result = Py_BuildValue("OOOOOOi", a_array, b_array, c_array,
+                                     u_array, wr_array, wi_array, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(u_array);
+    Py_DECREF(wr_array);
+    Py_DECREF(wi_array);
+
+    return result;
+}
+
 static PyObject* py_ma02ad(PyObject* self, PyObject* args) {
     const char* job;
     PyObject *a_obj;
@@ -926,6 +1028,18 @@ static PyObject* py_ma02ad(PyObject* self, PyObject* args) {
 
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
+    {"tb01wd", py_tb01wd, METH_VARARGS,
+     "Reduce state matrix to real Schur form via orthogonal transformation.\n\n"
+     "Parameters:\n"
+     "  n (int): Order of state matrix A\n"
+     "  m (int): Number of inputs (columns of B)\n"
+     "  p (int): Number of outputs (rows of C)\n"
+     "  a (ndarray): State dynamics matrix (n x n, F-order)\n"
+     "  b (ndarray): Input matrix (n x m, F-order)\n"
+     "  c (ndarray): Output matrix (p x n, F-order)\n\n"
+     "Returns:\n"
+     "  (a, b, c, u, wr, wi, info): Transformed system, Schur vectors, eigenvalues, exit code\n"},
+
     {"ma02ad", py_ma02ad, METH_VARARGS,
      "Transpose all or part of a matrix.\n\n"
      "Parameters:\n"

@@ -7,7 +7,6 @@
  */
 
 #include "slicot.h"
-#include <string.h>
 
 void ma02ad(const char* job, const i32 m, const i32 n,
             const f64* a, const i32 lda,
