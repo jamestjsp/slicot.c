@@ -40,7 +40,7 @@ void tb01wd(
     const f64 one = 1.0;
     const i32 int1 = 1;
     i32 sdim;
-    bool bwork[1];
+    i32 bwork[1];
     f64 wrkopt;
     i32 i;
     i32 ldwp;

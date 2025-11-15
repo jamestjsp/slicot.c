@@ -9,6 +9,7 @@ set(SLICOT_SOURCES
     SG/sg03bv.c
     SG/sg03bw.c
     SG/sg03bx.c
+    TB/tb01vy.c
     TB/tb01wd.c
     TG/tg01fd.c
 )

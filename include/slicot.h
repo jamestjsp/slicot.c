@@ -544,6 +544,43 @@ void tb01wd(
     i32* info
 );
 
+/**
+ * @brief Convert output normal form to state-space representation.
+ *
+ * Converts a discrete-time system from output normal form (parameter vector THETA)
+ * to standard state-space representation (A, B, C, D) with initial state x0.
+ *
+ * The parameter vector THETA contains:
+ * - THETA[0:N*L-1]: parameters for A and C matrices
+ * - THETA[N*L:N*(L+M)-1]: parameters for B matrix
+ * - THETA[N*(L+M):N*(L+M)+L*M-1]: parameters for D matrix
+ * - THETA[N*(L+M)+L*M:N*(L+M+1)+L*M-1]: initial state x0
+ *
+ * @param[in] apply Bijective mapping mode:
+ *                  'A' = apply bijective mapping to remove norm(THETA_i) < 1 constraint
+ *                  'N' = no bijective mapping
+ * @param[in] n System order (N >= 0)
+ * @param[in] m Number of inputs (M >= 0)
+ * @param[in] l Number of outputs (L >= 0)
+ * @param[in] theta Parameter vector, dimension (LTHETA)
+ * @param[in] ltheta Length of THETA array (>= N*(L+M+1)+L*M)
+ * @param[out] a State matrix, dimension (LDA,N), column-major
+ * @param[in] lda Leading dimension of A (>= max(1,N))
+ * @param[out] b Input matrix, dimension (LDB,M), column-major
+ * @param[in] ldb Leading dimension of B (>= max(1,N))
+ * @param[out] c Output matrix, dimension (LDC,N), column-major
+ * @param[in] ldc Leading dimension of C (>= max(1,L))
+ * @param[out] d Feedthrough matrix, dimension (LDD,M), column-major
+ * @param[in] ldd Leading dimension of D (>= max(1,L))
+ * @param[out] x0 Initial state vector, dimension (N)
+ * @param[out] dwork Workspace array, dimension (LDWORK)
+ * @param[in] ldwork Length of DWORK (>= N*(N+L+1))
+ * @param[out] info Exit code: 0 = success, <0 = invalid parameter
+ */
+void tb01vy(const char* apply, i32 n, i32 m, i32 l, const f64* theta,
+            i32 ltheta, f64* a, i32 lda, f64* b, i32 ldb, f64* c, i32 ldc,
+            f64* d, i32 ldd, f64* x0, f64* dwork, i32 ldwork, i32* info);
+
 #ifdef __cplusplus
 }
 #endif

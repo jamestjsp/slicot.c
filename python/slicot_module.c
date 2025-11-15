@@ -877,6 +877,117 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for tb01vy */
+static PyObject* py_tb01vy(PyObject* self, PyObject* args, PyObject* kwargs) {
+    i32 n, m, l, ltheta;
+    const char *apply = "N";
+    PyObject *theta_obj;
+    PyArrayObject *theta_array;
+
+    static char *kwlist[] = {"n", "m", "l", "theta", "apply", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iiiO|s", kwlist,
+                                     &n, &m, &l, &theta_obj, &apply)) {
+        return NULL;
+    }
+
+    if (n < 0 || m < 0 || l < 0) {
+        PyErr_Format(PyExc_ValueError, "Dimensions must be non-negative (n=%d, m=%d, l=%d)", n, m, l);
+        return NULL;
+    }
+
+    theta_array = (PyArrayObject*)PyArray_FROM_OTF(theta_obj, NPY_DOUBLE,
+                                                   NPY_ARRAY_IN_FARRAY);
+    if (theta_array == NULL) return NULL;
+
+    ltheta = (i32)PyArray_SIZE(theta_array);
+    i32 required_ltheta = n * (l + m + 1) + l * m;
+
+    if (ltheta < required_ltheta) {
+        Py_DECREF(theta_array);
+        PyErr_Format(PyExc_ValueError, "ltheta=%d is too small (need >= %d)", ltheta, required_ltheta);
+        return NULL;
+    }
+
+    if (!(apply[0] == 'A' || apply[0] == 'a' || apply[0] == 'N' || apply[0] == 'n')) {
+        Py_DECREF(theta_array);
+        PyErr_Format(PyExc_ValueError, "apply must be 'A' or 'N', got '%s'", apply);
+        return NULL;
+    }
+
+    i32 lda = n > 0 ? n : 1;
+    i32 ldb = n > 0 ? n : 1;
+    i32 ldc = l > 0 ? l : 1;
+    i32 ldd = l > 0 ? l : 1;
+    i32 ldwork = n * (n + l + 1);
+
+    npy_intp a_dims[2] = {n, n};
+    npy_intp a_strides[2] = {sizeof(f64), lda * sizeof(f64)};
+    f64 *a_data = (f64*)calloc(lda * n, sizeof(f64));
+
+    npy_intp b_dims[2] = {n, m};
+    npy_intp b_strides[2] = {sizeof(f64), ldb * sizeof(f64)};
+    f64 *b_data = (f64*)calloc(ldb * m, sizeof(f64));
+
+    npy_intp c_dims[2] = {l, n};
+    npy_intp c_strides[2] = {sizeof(f64), ldc * sizeof(f64)};
+    f64 *c_data = (f64*)calloc(ldc * n, sizeof(f64));
+
+    npy_intp d_dims[2] = {l, m};
+    npy_intp d_strides[2] = {sizeof(f64), ldd * sizeof(f64)};
+    f64 *d_data = (f64*)calloc(ldd * m, sizeof(f64));
+
+    f64 *x0 = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+    f64 *dwork = (f64*)malloc(ldwork > 0 ? ldwork * sizeof(f64) : sizeof(f64));
+
+    if (a_data == NULL || b_data == NULL || c_data == NULL ||
+        d_data == NULL || x0 == NULL || dwork == NULL) {
+        free(a_data); free(b_data); free(c_data); free(d_data); free(x0); free(dwork);
+        Py_DECREF(theta_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate memory");
+        return NULL;
+    }
+
+    i32 info;
+    f64 *theta_data = (f64*)PyArray_DATA(theta_array);
+
+    tb01vy(apply, n, m, l, theta_data, ltheta, a_data, lda, b_data, ldb,
+           c_data, ldc, d_data, ldd, x0, dwork, ldwork, &info);
+
+    free(dwork);
+
+    PyObject *a_array = PyArray_New(&PyArray_Type, 2, a_dims, NPY_DOUBLE,
+                                    a_strides, a_data, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)a_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *b_array = PyArray_New(&PyArray_Type, 2, b_dims, NPY_DOUBLE,
+                                    b_strides, b_data, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)b_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *c_array = PyArray_New(&PyArray_Type, 2, c_dims, NPY_DOUBLE,
+                                    c_strides, c_data, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)c_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *d_array = PyArray_New(&PyArray_Type, 2, d_dims, NPY_DOUBLE,
+                                    d_strides, d_data, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)d_array, NPY_ARRAY_OWNDATA);
+
+    npy_intp x0_dims[1] = {n};
+    PyObject *x0_array = PyArray_SimpleNewFromData(1, x0_dims, NPY_DOUBLE, x0);
+    PyArray_ENABLEFLAGS((PyArrayObject*)x0_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *result = Py_BuildValue("OOOOOi", a_array, b_array, c_array, d_array, x0_array, info);
+
+    Py_DECREF(theta_array);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(d_array);
+    Py_DECREF(x0_array);
+
+    return result;
+}
+
 /* Python wrapper for ma02ad */
 static PyObject* py_tb01wd(PyObject* self, PyObject* args) {
     i32 n, m, p;
@@ -1028,6 +1139,17 @@ static PyObject* py_ma02ad(PyObject* self, PyObject* args) {
 
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
+    {"tb01vy", (PyCFunction)py_tb01vy, METH_VARARGS | METH_KEYWORDS,
+     "Convert output normal form to state-space representation.\n\n"
+     "Parameters:\n"
+     "  n (int): System order\n"
+     "  m (int): Number of inputs\n"
+     "  l (int): Number of outputs\n"
+     "  theta (ndarray): Parameter vector (N*(L+M+1)+L*M, F-order)\n"
+     "  apply (str, optional): 'A' = apply bijective mapping, 'N' = no mapping (default)\n\n"
+     "Returns:\n"
+     "  (a, b, c, d, x0, info): State-space matrices, initial state, exit code\n"},
+
     {"tb01wd", py_tb01wd, METH_VARARGS,
      "Reduce state matrix to real Schur form via orthogonal transformation.\n\n"
      "Parameters:\n"
