@@ -37,88 +37,67 @@ cmake --build --preset macos-arm64-debug-build --target <target>
 
 ## Adding a New Routine
 
-To debug a different routine (e.g., `AB01MD`):
-
-### 1. Create Fortran Diagnostic
-
-Copy and modify `fortran/sg03bd_diag.f`:
+**NEW (Automated):** Use the generator script
 
 ```bash
-cd fortran_diag/fortran
-cp sg03bd_diag.f ab01md_diag.f
+# Generate skeleton files and update CMake
+./tools/generate_diagnostic.sh AB01MD
 ```
 
-Edit `ab01md_diag.f`:
-- Change routine call: `CALL SG03BD(...)` → `CALL AB01MD(...)`
-- Update parameters to match AB01MD signature
-- Adjust matrix dimensions and I/O
+This creates:
+- `fortran_diag/fortran/ab01md_diag.f` (from template)
+- `fortran_diag/c/ab01md_diag.c` (from template)
+- Updates `fortran_diag/CMakeLists.txt` automatically
 
-### 2. Create C Diagnostic
+### Fill in the Parsing Logic
 
-Copy and modify `c/sg03bd_diag.c`:
+The generated skeletons have `TODO` comments marking what needs to be filled in:
+
+**Reference:** Check `SLICOT-Reference/examples/TAB01MD.f` for READ statements
+
+**Fortran (`fortran_diag/fortran/ab01md_diag.f`):**
+1. Update parameter list (N, M, etc.)
+2. Add READ statements matching data file format
+3. Add matrix/vector declarations
+4. Update CALL statement with routine signature
+5. Print output matrices
+
+**C (`fortran_diag/c/ab01md_diag.c`):**
+1. Update variable declarations
+2. Add scanf() for parameters
+3. Add matrix reading loops (remember column-major storage!)
+4. Update function call with routine signature
+5. Print output matrices
+
+**Validation helpers included:**
+- `frobenius_norm()` - Frobenius norm (confirms matrix magnitude)
+- `checksum()` - Sum of all elements (quick sanity check)
+- `max_abs()` - Maximum absolute value
+
+### Build and Run
 
 ```bash
-cd fortran_diag/c
-cp sg03bd_diag.c ab01md_diag.c
-```
-
-Edit `ab01md_diag.c`:
-- Change function call: `sg03bd(...)` → `ab01md(...)`
-- Update parameters to match AB01MD signature
-- Adjust matrix dimensions and I/O
-
-### 3. Update CMakeLists.txt
-
-Add targets in `fortran_diag/CMakeLists.txt`:
-
-```cmake
-# Test data paths
-set(AB01MD_TEST_DATA "${SLICOT_FORTRAN_DIR}/examples/data/AB01MD.dat")
-
-# C diagnostic
-add_executable(ab01md_diag_c c/ab01md_diag.c)
-target_link_libraries(ab01md_diag_c PRIVATE slicot ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} m)
-target_include_directories(ab01md_diag_c PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/include)
-
-# Fortran diagnostic
-add_executable(ab01md_diag_fortran fortran/ab01md_diag.f)
-target_link_libraries(ab01md_diag_fortran PRIVATE slicot_fortran ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
-
-# Run targets
-add_custom_target(run_ab01md_fortran
-    COMMAND ab01md_diag_fortran < ${AB01MD_TEST_DATA} > ab01md_fortran.txt 2>&1 || true
-    DEPENDS ab01md_diag_fortran
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
-
-add_custom_target(run_ab01md_c
-    COMMAND ab01md_diag_c < ${AB01MD_TEST_DATA} > ab01md_c.txt 2>&1 || true
-    DEPENDS ab01md_diag_c
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
-
-add_custom_target(compare_ab01md
-    COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/compare.py ab01md_fortran.txt ab01md_c.txt || true
-    DEPENDS run_ab01md_fortran run_ab01md_c
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-)
-
-add_custom_target(ab01md_diag_all DEPENDS compare_ab01md)
-```
-
-### 4. Build and Run
-
-```bash
-# Reconfigure
+# Reconfigure (if needed)
 cmake --preset macos-arm64-debug -DBUILD_FORTRAN_DIAG=ON
 
-# Run new diagnostic
+# Run diagnostic
 cmake --build --preset macos-arm64-debug-build --target ab01md_diag_all
 
-# View traces
+# View results
 cat build/macos-arm64-debug/fortran_diag/ab01md_fortran.txt
 cat build/macos-arm64-debug/fortran_diag/ab01md_c.txt
+cat build/macos-arm64-debug/fortran_diag/output/ab01md_diff.txt
 ```
+
+### Manual Approach (Old)
+
+<details>
+<summary>Click to expand manual steps (not recommended)</summary>
+
+Copy and modify existing files manually, update CMakeLists.txt by hand.
+See git history for original instructions. The automated approach above is faster and less error-prone.
+
+</details>
 
 ## Test Data Sources
 
@@ -136,13 +115,24 @@ High precision (16 digits, E23.16 format):
 - Scalars (INFO, SCALE, etc.)
 - Eigenvalues/vectors
 
-## SG03BD Bug Confirmed
+## SG03BD Bug Confirmed (Fixed)
 
-Fortran (correct): `U = [1.600, 0.680, 0.204]` (diagonal)
-C (wrong): `U = [0.437, 0.581, 0.080]` (diagonal)
-Error: 60-73% off
+**Historical bug (now fixed):**
+- Fortran (correct): `U = [1.600, 0.680, 0.204]` (diagonal)
+- C (wrong): `U = [0.437, 0.581, 0.080]` (diagonal)
+- Error: 60-73% off
 
-Bug isolated to Lyapunov solver (SG03BV) - all other outputs match.
+Bug was isolated to Lyapunov solver (SG03BV) using this diagnostic framework.
+
+**New validation features:**
+- Input/output validation with Frobenius norms, checksums, max abs values
+- Helps confirm parsing correctness before comparing results
+- Example output:
+  ```
+  === INPUT VALIDATION ===
+  A Frobenius norm: 1.2345678901234567E+01
+  A checksum:       3.4567890123456789E+00
+  ```
 
 ## References
 

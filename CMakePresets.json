@@ -128,6 +128,81 @@
         "lhs": "${hostSystemName}",
         "rhs": "Darwin"
       }
+    },
+    {
+      "name": "macos-arm64-debug-asan",
+      "displayName": "macOS ARM64 Debug (AddressSanitizer)",
+      "description": "Configure for macOS ARM64 with AddressSanitizer enabled",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/macos-arm64-debug-asan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/macos-arm64-debug-asan",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_C_FLAGS": "-fsanitize=address -g -O1 -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_SHARED_LIBS": "ON",
+        "BUILD_TESTING": "ON",
+        "BUILD_EXAMPLES": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "macos-arm64-debug-ubsan",
+      "displayName": "macOS ARM64 Debug (UndefinedBehaviorSanitizer)",
+      "description": "Configure for macOS ARM64 with UndefinedBehaviorSanitizer enabled",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/macos-arm64-debug-ubsan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/macos-arm64-debug-ubsan",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_C_FLAGS": "-fsanitize=undefined -g -O1 -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=undefined",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=undefined",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_SHARED_LIBS": "ON",
+        "BUILD_TESTING": "ON",
+        "BUILD_EXAMPLES": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "macos-arm64-debug-sanitizers",
+      "displayName": "macOS ARM64 Debug (All Sanitizers)",
+      "description": "Configure for macOS ARM64 with AddressSanitizer and UndefinedBehaviorSanitizer enabled",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/macos-arm64-debug-sanitizers",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/macos-arm64-debug-sanitizers",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_C_FLAGS": "-fsanitize=address,undefined -g -O1 -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address,undefined",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_SHARED_LIBS": "ON",
+        "BUILD_TESTING": "ON",
+        "BUILD_EXAMPLES": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
     }
   ],
   "buildPresets": [
@@ -166,6 +241,24 @@
       "displayName": "Build macOS ARM64 Release",
       "configurePreset": "macos-arm64-release",
       "description": "Build Release configuration for macOS ARM64"
+    },
+    {
+      "name": "macos-arm64-debug-asan-build",
+      "displayName": "Build macOS ARM64 Debug (AddressSanitizer)",
+      "configurePreset": "macos-arm64-debug-asan",
+      "description": "Build Debug configuration for macOS ARM64 with AddressSanitizer"
+    },
+    {
+      "name": "macos-arm64-debug-ubsan-build",
+      "displayName": "Build macOS ARM64 Debug (UndefinedBehaviorSanitizer)",
+      "configurePreset": "macos-arm64-debug-ubsan",
+      "description": "Build Debug configuration for macOS ARM64 with UndefinedBehaviorSanitizer"
+    },
+    {
+      "name": "macos-arm64-debug-sanitizers-build",
+      "displayName": "Build macOS ARM64 Debug (All Sanitizers)",
+      "configurePreset": "macos-arm64-debug-sanitizers",
+      "description": "Build Debug configuration for macOS ARM64 with all sanitizers"
     }
   ],
   "testPresets": [
@@ -228,6 +321,39 @@
       "name": "macos-arm64-release-test",
       "displayName": "Test macOS ARM64 Release",
       "configurePreset": "macos-arm64-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "macos-arm64-debug-asan-test",
+      "displayName": "Test macOS ARM64 Debug (AddressSanitizer)",
+      "configurePreset": "macos-arm64-debug-asan",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "macos-arm64-debug-ubsan-test",
+      "displayName": "Test macOS ARM64 Debug (UndefinedBehaviorSanitizer)",
+      "configurePreset": "macos-arm64-debug-ubsan",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "macos-arm64-debug-sanitizers-test",
+      "displayName": "Test macOS ARM64 Debug (All Sanitizers)",
+      "configurePreset": "macos-arm64-debug-sanitizers",
       "output": {
         "outputOnFailure": true
       },

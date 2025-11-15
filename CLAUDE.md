@@ -19,9 +19,18 @@ pytest tests/python/ -v
 
 # Clean rebuild
 rm -rf build/macos-arm64-debug && cmake --preset macos-arm64-debug && cmake --build --preset macos-arm64-debug-build && pip install -e .
+
+# Memory/pointer bug detection (sanitizers - recommended before PR)
+source venv/bin/activate
+cmake --preset macos-arm64-debug-sanitizers
+cmake --build --preset macos-arm64-debug-sanitizers-build
+pip install -e .
+pytest tests/python/ -v
 ```
 
-**Presets:** `macos-{x64,arm64}-{debug,release}`
+**Presets:**
+- Standard: `macos-{x64,arm64}-{debug,release}`
+- Sanitizers: `macos-arm64-debug-{asan,ubsan,sanitizers}`
 
 ## Directory Structure
 
@@ -88,7 +97,15 @@ def test_ab01md_basic():
 
 ```bash
 pytest tests/python/ -v  # All tests must pass
+
+# RECOMMENDED: Run with sanitizers to catch memory/pointer bugs
+cmake --preset macos-arm64-debug-sanitizers
+cmake --build --preset macos-arm64-debug-sanitizers-build
+pip install -e .
+pytest tests/python/ -v
 ```
+
+**Sanitizer benefits**: Catches index conversion bugs (out-of-bounds), use-after-free, double-free, integer overflow automatically
 
 ## Key Patterns
 

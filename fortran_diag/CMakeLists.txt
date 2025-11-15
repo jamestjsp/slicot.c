@@ -35,74 +35,37 @@ add_dependencies(slicot_fortran slicot_fortran_external)
 
 message(STATUS "SLICOT Fortran reference via ExternalProject (${SLICOT_FORTRAN_LIB})")
 
-# C diagnostic program
-add_executable(sg03bd_diag_c c/sg03bd_diag.c)
-target_link_libraries(sg03bd_diag_c PRIVATE slicot ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} m)
-target_include_directories(sg03bd_diag_c PRIVATE
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_BINARY_DIR}/include
-)
+# Include diagnostic target functions
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/DiagnosticTargets.cmake)
 
-# Fortran diagnostic program
-add_executable(sg03bd_diag_fortran fortran/sg03bd_diag.f)
-target_link_libraries(sg03bd_diag_fortran PRIVATE
-    slicot_fortran
-    ${BLAS_LIBRARIES}
-    ${LAPACK_LIBRARIES}
-)
+message(STATUS "")
+message(STATUS "Adding diagnostic targets:")
 
-# Test data paths
-set(SG03BD_TEST_DATA "${SLICOT_FORTRAN_DIR}/examples/data/SG03BD.dat")
-set(SG03BD_EXPECTED "${SLICOT_FORTRAN_DIR}/examples/results/SG03BD.res")
+# Add diagnostics for implemented routines
+add_slicot_diagnostic(SG03BD)
 
-# Custom target: Run Fortran diagnostic
-add_custom_target(run_fortran_diag
-    COMMAND ${CMAKE_COMMAND} -E echo "Running Fortran diagnostic..."
-    COMMAND sg03bd_diag_fortran < ${SG03BD_TEST_DATA} > fortran_trace.txt 2>&1 || true
-    DEPENDS sg03bd_diag_fortran
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Running Fortran diagnostic with SG03BD.dat"
-)
-
-# Custom target: Run C diagnostic
-add_custom_target(run_c_diag
-    COMMAND ${CMAKE_COMMAND} -E echo "Running C diagnostic..."
-    COMMAND sg03bd_diag_c < ${SG03BD_TEST_DATA} > c_trace.txt 2>&1 || true
-    DEPENDS sg03bd_diag_c
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Running C diagnostic with SG03BD.dat"
-)
-
-# Custom target: Compare outputs
-add_custom_target(compare_diag
-    COMMAND ${CMAKE_COMMAND} -E make_directory output
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different fortran_trace.txt output/
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different c_trace.txt output/
-    COMMAND ${CMAKE_COMMAND} -E echo "Comparing outputs..."
-    COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/compare.py
-            fortran_trace.txt c_trace.txt > output/diff.txt 2>&1 || true
-    COMMAND ${CMAKE_COMMAND} -E echo "Comparison saved to: ${CMAKE_CURRENT_BINARY_DIR}/output/diff.txt"
-    DEPENDS run_fortran_diag run_c_diag
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Comparing Fortran vs C diagnostic outputs"
-)
-
-# Custom target: Run full diagnostic workflow
-add_custom_target(diag_all
-    DEPENDS compare_diag
-    COMMENT "Complete diagnostic workflow"
-)
+# Convenience targets (backward compatibility with old naming)
+add_custom_target(run_fortran_diag DEPENDS run_sg03bd_fortran)
+add_custom_target(run_c_diag DEPENDS run_sg03bd_c)
+add_custom_target(compare_diag DEPENDS compare_sg03bd)
+add_custom_target(diag_all DEPENDS sg03bd_diag_all)
 
 # Print usage instructions
 message(STATUS "")
 message(STATUS "Fortran Diagnostic Tools - Usage:")
+message(STATUS "  cmake --build . --target diag_all             # Run full workflow (recommended)")
+message(STATUS "")
+message(STATUS "Per-routine targets (example for SG03BD):")
 message(STATUS "  cmake --build . --target sg03bd_diag_c        # Build C diagnostic")
 message(STATUS "  cmake --build . --target sg03bd_diag_fortran  # Build Fortran diagnostic")
-message(STATUS "  cmake --build . --target run_fortran_diag     # Run Fortran")
-message(STATUS "  cmake --build . --target run_c_diag           # Run C")
-message(STATUS "  cmake --build . --target compare_diag         # Compare results")
-message(STATUS "  cmake --build . --target diag_all             # Run full workflow")
+message(STATUS "  cmake --build . --target run_sg03bd_c         # Run C")
+message(STATUS "  cmake --build . --target run_sg03bd_fortran   # Run Fortran")
+message(STATUS "  cmake --build . --target compare_sg03bd       # Compare results")
+message(STATUS "  cmake --build . --target sg03bd_diag_all      # Full workflow for SG03BD")
 message(STATUS "")
-message(STATUS "Output location: ${CMAKE_CURRENT_BINARY_DIR}/output/diff.txt")
+message(STATUS "Backward compatibility aliases:")
+message(STATUS "  run_fortran_diag, run_c_diag, compare_diag")
+message(STATUS "")
+message(STATUS "Output location: ${CMAKE_CURRENT_BINARY_DIR}/output/<routine>_diff.txt")
 message(STATUS "=================================")
 message(STATUS "")
