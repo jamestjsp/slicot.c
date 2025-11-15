@@ -153,6 +153,81 @@ void sg03br(
 );
 
 /**
+ * @brief Solve generalized Lyapunov equation for Cholesky factor.
+ *
+ * Computes Cholesky factor U (X = op(U)^T * op(U)) solving the generalized
+ * c-stable continuous-time Lyapunov equation:
+ *
+ *   op(A)^T * X * op(E) + op(E)^T * X * op(A) = -SCALE^2 * op(B)^T * op(B),
+ *
+ * or the generalized d-stable discrete-time Lyapunov equation:
+ *
+ *   op(A)^T * X * op(A) - op(E)^T * X * op(E) = -SCALE^2 * op(B)^T * op(B),
+ *
+ * where op(K) is either K or K^T. A, E are N-by-N, op(B) is M-by-N.
+ * Result U is N-by-N upper triangular with non-negative diagonal entries.
+ * SCALE is set to avoid overflow in U.
+ *
+ * If FACT='N', pencil A-lambda*E is reduced to generalized Schur form.
+ * If FACT='F', generalized Schur factors must be supplied on entry.
+ *
+ * @param[in] dico 'C' for continuous-time, 'D' for discrete-time
+ * @param[in] fact 'N' to compute factorization, 'F' if factorization supplied
+ * @param[in] trans 'N' for op(K)=K, 'T' for op(K)=K^T
+ * @param[in] n Order of matrices A and E (n >= 0)
+ * @param[in] m Number of rows in op(B) (m >= 0)
+ * @param[in,out] a DOUBLE PRECISION array, dimension (lda,n)
+ *                  In: Matrix A (if FACT='F': generalized Schur factor)
+ *                  Out: Generalized Schur factor (if FACT='N')
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in,out] e DOUBLE PRECISION array, dimension (lde,n)
+ *                  In: Matrix E (if FACT='F': generalized Schur factor)
+ *                  Out: Generalized Schur factor (if FACT='N')
+ * @param[in] lde Leading dimension of E (lde >= max(1,n))
+ * @param[in,out] q DOUBLE PRECISION array, dimension (ldq,n)
+ *                  In: Orthogonal matrix Q (if FACT='F')
+ *                  Out: Orthogonal matrix Q from factorization (if FACT='N')
+ * @param[in] ldq Leading dimension of Q (ldq >= max(1,n))
+ * @param[in,out] z DOUBLE PRECISION array, dimension (ldz,n)
+ *                  In: Orthogonal matrix Z (if FACT='F')
+ *                  Out: Orthogonal matrix Z from factorization (if FACT='N')
+ * @param[in] ldz Leading dimension of Z (ldz >= max(1,n))
+ * @param[in,out] b DOUBLE PRECISION array, dimension (ldb,n1)
+ *                  In: Matrix B (size depends on TRANS)
+ *                  Out: Cholesky factor U
+ * @param[in] ldb Leading dimension of B
+ * @param[out] scale Scaling factor (0 < scale <= 1)
+ * @param[out] alphar DOUBLE PRECISION array, dimension (n)
+ *                    Real parts of eigenvalues of pencil A-lambda*E
+ * @param[out] alphai DOUBLE PRECISION array, dimension (n)
+ *                    Imaginary parts of eigenvalues of pencil A-lambda*E
+ * @param[out] beta DOUBLE PRECISION array, dimension (n)
+ *                  Scaling factors for eigenvalues
+ * @param[out] dwork DOUBLE PRECISION array, dimension (ldwork)
+ *                   Workspace, dwork[0] returns optimal ldwork
+ * @param[in] ldwork Workspace size (ldwork >= max(1,4*n,6*n-6) if FACT='N',
+ *                   ldwork >= max(1,2*n,6*n-6) if FACT='F')
+ *                   If ldwork=-1, workspace query
+ * @param[out] info Exit code (0=success, <0=invalid parameter, 1=singular,
+ *                  2=not quasitriangular, 3=eigenvalues not conjugate,
+ *                  4=factorization failed, 5=not c-stable, 6=not d-stable,
+ *                  7=DSYEVX failed)
+ */
+void sg03bd(
+    const char* dico, const char* fact, const char* trans,
+    const i32 n, const i32 m,
+    f64* a, const i32 lda,
+    f64* e, const i32 lde,
+    f64* q, const i32 ldq,
+    f64* z, const i32 ldz,
+    f64* b, const i32 ldb,
+    f64* scale,
+    f64* alphar, f64* alphai, f64* beta,
+    f64* dwork, const i32 ldwork,
+    i32* info
+);
+
+/**
  * @brief Solve generalized Sylvester equation for small systems.
  *
  * Solves for X the generalized Sylvester equation:

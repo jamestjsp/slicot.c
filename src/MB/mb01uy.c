@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 void mb01uy(
     const char* side, const char* uplo, const char* trans,
@@ -85,7 +86,9 @@ void mb01uy(
     }
 
     SLC_DLACPY("A", &m, &n, a, &lda, dwork, &m);
+
     SLC_DTRMM(side, uplo, trans, "N", &m, &n, &alpha, t, &ldt, dwork, &m);
+
     SLC_DLACPY("A", &m, &n, dwork, &m, t, &ldt);
 
     dwork[0] = (f64)(m * n);

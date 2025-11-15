@@ -9,6 +9,7 @@ option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(BUILD_TESTING "Build tests" ON)
 option(BUILD_EXAMPLES "Build examples" ON)
 option(BUILD_PYTHON_BINDINGS "Build Python bindings" ON)
+option(BUILD_FORTRAN_DIAG "Build Fortran diagnostic tools" OFF)
 option(SLICOT_ILP64 "Use 64-bit integers for BLAS/LAPACK" OFF)
 
 # Find BLAS/LAPACK
@@ -97,4 +98,9 @@ if(BUILD_PYTHON_BINDINGS)
     else()
         message(WARNING "Python3 or NumPy not found. Python bindings disabled.")
     endif()
+endif()
+
+# Fortran diagnostic tools
+if(BUILD_FORTRAN_DIAG)
+    add_subdirectory(fortran_diag)
 endif()

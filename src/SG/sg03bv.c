@@ -2,6 +2,7 @@
 #include "slicot_blas.h"
 #include <math.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 void sg03bv(const char* trans, const i32 n, const f64* a, const i32 lda,
@@ -114,16 +115,16 @@ void sg03bv(const char* trans, const i32 n, const f64* a, const i32 lda,
             if (kh < n - 1) {
                 i32 nkh = n - kh - 1;
 
-                SLC_DGEMM("T", "N", &nkh, &kb, &kb, &mone, &b[kl * ldb + kh + 1],
+                SLC_DGEMM("T", "N", &nkh, &kb, &kb, &mone, &b[kl + (kh + 1) * ldb],
                          &ldb, m2, &int2, &zero, &dwork[uiipt], &ldws);
 
-                SLC_DGEMM("T", "T", &nkh, &kb, &kb, &mone, &a[kl * lda + kh + 1],
+                SLC_DGEMM("T", "T", &nkh, &kb, &kb, &mone, &a[kl + (kh + 1) * lda],
                          &lda, ui, &int2, &one, &dwork[uiipt], &ldws);
 
                 SLC_DGEMM("T", "N", &kb, &kb, &kb, &one, ui, &int2, m1, &int2,
                          &zero, tm, &int2);
 
-                SLC_DGEMM("T", "N", &nkh, &kb, &kb, &mone, &e[kl * lde + kh + 1],
+                SLC_DGEMM("T", "N", &nkh, &kb, &kb, &mone, &e[kl + (kh + 1) * lde],
                          &lde, tm, &int2, &one, &dwork[uiipt], &ldws);
 
                 SLC_DLASET("A", &kb, &kb, &zero, &one, tm, &int2);
@@ -146,7 +147,7 @@ void sg03bv(const char* trans, const i32 n, const f64* a, const i32 lda,
                 SLC_DTRMM("L", "U", "T", "N", &nkh, &kb, &one,
                          &e[(kh + 1) * lde + kh + 1], &lde, &dwork[wpt], &ldws);
 
-                SLC_DGEMM("T", "T", &nkh, &kb, &kb, &one, &e[kl * lde + kh + 1],
+                SLC_DGEMM("T", "T", &nkh, &kb, &kb, &one, &e[kl + (kh + 1) * lde],
                          &lde, ui, &int2, &one, &dwork[wpt], &ldws);
 
                 SLC_DCOPY(&nkh, &b[(kh + 1) * ldb + kl], &ldb, &dwork[ypt], &int1);
@@ -161,10 +162,10 @@ void sg03bv(const char* trans, const i32 n, const f64* a, const i32 lda,
                 l = ypt;
                 for (j = 0; j < kb; j++) {
                     for (i = 0; i < nkh; i++) {
-                        x = b[(kh + i + 1) * ldb + kh + i + 1];
+                        x = b[(kh + i + 1) + (kh + i + 1) * ldb];
                         t = dwork[l + i];
                         SLC_DLARTG(&x, &t, &c, &s, &r);
-                        b[(kh + i + 1) * ldb + kh + i + 1] = r;
+                        b[(kh + i + 1) + (kh + i + 1) * ldb] = r;
                         if (i < nkh - 1) {
                             i32 nmihm1 = nkh - i - 1;
                             SLC_DROT(&nmihm1, &b[(kh + i + 2) * ldb + kh + i + 1],
@@ -175,9 +176,9 @@ void sg03bv(const char* trans, const i32 n, const f64* a, const i32 lda,
                 }
 
                 for (i = kh + 1; i < n; i++) {
-                    if (b[i * ldb + i] < zero) {
+                    if (b[i + i * ldb] < zero) {
                         i32 nmi = n - i;
-                        SLC_DSCAL(&nmi, &mone, &b[i * ldb + i], &ldb);
+                        SLC_DSCAL(&nmi, &mone, &b[i + i * ldb], &ldb);
                     }
                 }
 
@@ -190,6 +191,7 @@ void sg03bv(const char* trans, const i32 n, const f64* a, const i32 lda,
             }
 
             SLC_DLACPY("U", &kb, &kb, ui, &int2, &b[kl * ldb + kl], &ldb);
+
             kh++;
         }
 
@@ -290,10 +292,10 @@ void sg03bv(const char* trans, const i32 n, const f64* a, const i32 lda,
                 l = ypt;
                 for (j = 0; j < kb; j++) {
                     for (i = kl - 1; i >= 0; i--) {
-                        x = b[i * ldb + i];
+                        x = b[i + i * ldb];
                         t = dwork[l + i];
                         SLC_DLARTG(&x, &t, &c, &s, &r);
-                        b[i * ldb + i] = r;
+                        b[i + i * ldb] = r;
                         if (i > 0) {
                             SLC_DROT(&i, b, &int1, &dwork[l], &int1, &c, &s);
                         }
@@ -302,9 +304,9 @@ void sg03bv(const char* trans, const i32 n, const f64* a, const i32 lda,
                 }
 
                 for (i = 0; i < kl; i++) {
-                    if (b[i * ldb + i] < zero) {
+                    if (b[i + i * ldb] < zero) {
                         i32 ip1 = i + 1;
-                        SLC_DSCAL(&ip1, &mone, b, &int1);
+                        SLC_DSCAL(&ip1, &mone, &b[i * ldb], &int1);
                     }
                 }
 
