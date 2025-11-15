@@ -48,3 +48,4 @@ python/slicot/_slicot*.so
 # Coverage
 .coverage
 htmlcov/
+/trees/
