@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Skill(slicot-knowledge)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(source:*)",
+      "Bash(pytest:*)",
+      "Bash(cmake --build:*)",
+      "Bash(pip install:*)",
+      "Bash(cat:*)",
+      "Bash(for routine in MB01UY SG03BU SG03BV)",
+      "Bash(do echo \"=== $routine ===\")",
+      "Bash(done)",
+      "Bash(find:*)",
+      "Bash(gh pr list:*)",
+      "Bash(./sg03bd_diag_c)",
+      "Bash(gcc:*)",
+      "Bash(env DYLD_LIBRARY_PATH=build/macos-arm64-debug/src ./test_mb01uy_bug:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr checkout:*)",
+      "WebSearch",
+      "Bash(cmake:*)",
+      "WebFetch(domain:)",
+      "Bash(python -c:*)",
+      "Bash(gh issue view:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

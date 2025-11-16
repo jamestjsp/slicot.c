@@ -4,7 +4,9 @@ Setup script for slicot.c Python bindings.
 """
 from setuptools import setup, Extension
 import os
+import sys
 import glob
+import platform
 
 def get_numpy_include():
     """Defer numpy import until build time."""
@@ -15,16 +17,37 @@ def get_numpy_include():
         # Return dummy path, will be populated during install
         return ''
 
-# Find slicot library in build directory
-build_dirs = [
-    'build/macos-arm64-debug/src',
-    'build/macos-arm64-release/src',
-    'build/macos-x64-debug/src',
-    'build/macos-x64-release/src',
-    'build/linux-x64-debug/src',
-    'build/linux-x64-release/src',
-    'build/src',
-]
+# Find slicot library in build directory (platform-specific order)
+if sys.platform == 'darwin':
+    build_dirs = [
+        'build/macos-arm64-debug/src',
+        'build/macos-arm64-release/src',
+        'build/macos-x64-debug/src',
+        'build/macos-x64-release/src',
+        'build/linux-x64-debug/src',
+        'build/linux-x64-release/src',
+        'build/src',
+    ]
+elif sys.platform == 'linux':
+    build_dirs = [
+        'build/linux-x64-debug/src',
+        'build/linux-x64-release/src',
+        'build/macos-arm64-debug/src',
+        'build/macos-arm64-release/src',
+        'build/macos-x64-debug/src',
+        'build/macos-x64-release/src',
+        'build/src',
+    ]
+else:
+    build_dirs = [
+        'build/src',
+        'build/linux-x64-debug/src',
+        'build/linux-x64-release/src',
+        'build/macos-arm64-debug/src',
+        'build/macos-arm64-release/src',
+        'build/macos-x64-debug/src',
+        'build/macos-x64-release/src',
+    ]
 
 library_dir = None
 for bd in build_dirs:

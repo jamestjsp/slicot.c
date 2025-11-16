@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main, copilot/**]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and test in devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          runCmd: |
+            source venv/bin/activate
+            pytest tests/python/ -v
+            cmake --build --preset linux-x64-debug-build --target unit_tests
+
+  sanitizers:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove blocked Ubuntu ESM sources
+        run: |
+          sudo sed -i '/esm\.ubuntu\.com/d' /etc/apt/sources.list || true
+          if ls /etc/apt/sources.list.d/*.list > /dev/null 2>&1; then
+            sudo sed -i '/esm\.ubuntu\.com/d' /etc/apt/sources.list.d/*.list || true
+          fi
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopenblas-dev liblapack-dev gfortran ninja-build
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build with sanitizers
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+          cmake --preset linux-x64-debug -DCMAKE_C_FLAGS="-fsanitize=address,undefined -g -O1 -fno-omit-frame-pointer"
+          cmake --build --preset linux-x64-debug-build
+          pip install -e .
+
+      - name: Run tests with sanitizers
+        run: |
+          source venv/bin/activate
+          pytest tests/python/ -v
