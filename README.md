@@ -7,20 +7,23 @@ C11 translation of SLICOT (Subroutine Library In Control Theory) from Fortran77.
 ```bash
 # Setup & build
 ./scripts/setup_venv.sh && source venv/bin/activate
-cmake --preset macos-arm64-debug
-cmake --build --preset macos-arm64-debug-build
+cmake --preset linux-x64-debug
+cmake --build --preset linux-x64-debug-build
 pip install -e .
 
 # Test
 pytest tests/python/ -v
 ```
 
-**Presets:** `macos-{x64,arm64}-{debug,release}`, `linux-x64-{debug,release}`
+**Presets:** `linux-x64-{debug,release}`, `macos-arm64-{debug,release}`, `linux-x64-debug-{asan,ubsan,sanitizers}`
 
-### Copilot / CI helpers
+### CI/CD
 
-- `.github/workflows/copilot-setup-steps.yml` pre-installs Ninja, BLAS/LAPACK, and primes the Linux debug preset so Copilot agents and CI jobs start with a ready-to-build environment.
-- Custom CMake target `unit_tests` wraps `ctest --output-on-failure` for consistent local, CI, and Copilot runs.
+- `.github/workflows/ci.yml` - Runs builds (debug, release, sanitizers) + tests on every PR/push
+- **Matrix builds:** Debug, Release, ASAN/UBSAN sanitizers
+- **Valgrind:** Separate job checks for definite memory leaks
+- Uses devcontainer image for consistency
+- Custom CMake target `unit_tests` wraps `ctest --output-on-failure`
 
 ## Translation Status
 

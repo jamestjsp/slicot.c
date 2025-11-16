@@ -49,3 +49,8 @@ python/slicot/_slicot*.so
 .coverage
 htmlcov/
 /trees/
+
+# Valgrind
+valgrind-*.log
+vgcore.*
+*.memcheck

@@ -2,27 +2,6 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "macos-x64-debug",
-      "displayName": "macOS x64 Debug",
-      "description": "Configure for macOS with clang toolchain (Debug)",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/macos-x64-debug",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/macos-x64-debug",
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "BUILD_SHARED_LIBS": "ON",
-        "BUILD_TESTING": "ON",
-        "BUILD_EXAMPLES": "ON"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Darwin"
-      }
-    },
-    {
       "name": "linux-x64-debug",
       "displayName": "Linux x64 Debug",
       "description": "Configure for Linux with gcc toolchain (Debug)",
@@ -65,27 +44,6 @@
       }
     },
     {
-      "name": "macos-x64-release",
-      "displayName": "macOS x64 Release",
-      "description": "Configure for macOS with clang toolchain (Release)",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/macos-x64-release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/macos-x64-release",
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "BUILD_SHARED_LIBS": "ON",
-        "BUILD_TESTING": "ON",
-        "BUILD_EXAMPLES": "ON"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Darwin"
-      }
-    },
-    {
       "name": "macos-arm64-debug",
       "displayName": "macOS ARM64 Debug",
       "description": "Configure for macOS ARM64 with clang toolchain (Debug)",
@@ -118,81 +76,6 @@
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/macos-arm64-release",
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_OSX_ARCHITECTURES": "arm64",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "BUILD_SHARED_LIBS": "ON",
-        "BUILD_TESTING": "ON",
-        "BUILD_EXAMPLES": "ON"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Darwin"
-      }
-    },
-    {
-      "name": "macos-arm64-debug-asan",
-      "displayName": "macOS ARM64 Debug (AddressSanitizer)",
-      "description": "Configure for macOS ARM64 with AddressSanitizer enabled",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/macos-arm64-debug-asan",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/macos-arm64-debug-asan",
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_OSX_ARCHITECTURES": "arm64",
-        "CMAKE_C_FLAGS": "-fsanitize=address -g -O1 -fno-omit-frame-pointer",
-        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address",
-        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "BUILD_SHARED_LIBS": "ON",
-        "BUILD_TESTING": "ON",
-        "BUILD_EXAMPLES": "ON"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Darwin"
-      }
-    },
-    {
-      "name": "macos-arm64-debug-ubsan",
-      "displayName": "macOS ARM64 Debug (UndefinedBehaviorSanitizer)",
-      "description": "Configure for macOS ARM64 with UndefinedBehaviorSanitizer enabled",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/macos-arm64-debug-ubsan",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/macos-arm64-debug-ubsan",
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_OSX_ARCHITECTURES": "arm64",
-        "CMAKE_C_FLAGS": "-fsanitize=undefined -g -O1 -fno-omit-frame-pointer",
-        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=undefined",
-        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=undefined",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "BUILD_SHARED_LIBS": "ON",
-        "BUILD_TESTING": "ON",
-        "BUILD_EXAMPLES": "ON"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Darwin"
-      }
-    },
-    {
-      "name": "macos-arm64-debug-sanitizers",
-      "displayName": "macOS ARM64 Debug (All Sanitizers)",
-      "description": "Configure for macOS ARM64 with AddressSanitizer and UndefinedBehaviorSanitizer enabled",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/macos-arm64-debug-sanitizers",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/macos-arm64-debug-sanitizers",
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_OSX_ARCHITECTURES": "arm64",
-        "CMAKE_C_FLAGS": "-fsanitize=address,undefined -g -O1 -fno-omit-frame-pointer",
-        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
-        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address,undefined",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_SHARED_LIBS": "ON",
         "BUILD_TESTING": "ON",
@@ -279,22 +162,10 @@
   ],
   "buildPresets": [
     {
-      "name": "macos-x64-debug-build",
-      "displayName": "Build macOS x64 Debug",
-      "configurePreset": "macos-x64-debug",
-      "description": "Build Debug configuration for macOS x64"
-    },
-    {
       "name": "linux-x64-debug-build",
       "displayName": "Build Linux x64 Debug",
       "configurePreset": "linux-x64-debug",
       "description": "Build Debug configuration for Linux x64"
-    },
-    {
-      "name": "macos-x64-release-build",
-      "displayName": "Build macOS x64 Release",
-      "configurePreset": "macos-x64-release",
-      "description": "Build Release configuration for macOS x64"
     },
     {
       "name": "linux-x64-release-build",
@@ -313,24 +184,6 @@
       "displayName": "Build macOS ARM64 Release",
       "configurePreset": "macos-arm64-release",
       "description": "Build Release configuration for macOS ARM64"
-    },
-    {
-      "name": "macos-arm64-debug-asan-build",
-      "displayName": "Build macOS ARM64 Debug (AddressSanitizer)",
-      "configurePreset": "macos-arm64-debug-asan",
-      "description": "Build Debug configuration for macOS ARM64 with AddressSanitizer"
-    },
-    {
-      "name": "macos-arm64-debug-ubsan-build",
-      "displayName": "Build macOS ARM64 Debug (UndefinedBehaviorSanitizer)",
-      "configurePreset": "macos-arm64-debug-ubsan",
-      "description": "Build Debug configuration for macOS ARM64 with UndefinedBehaviorSanitizer"
-    },
-    {
-      "name": "macos-arm64-debug-sanitizers-build",
-      "displayName": "Build macOS ARM64 Debug (All Sanitizers)",
-      "configurePreset": "macos-arm64-debug-sanitizers",
-      "description": "Build Debug configuration for macOS ARM64 with all sanitizers"
     },
     {
       "name": "linux-x64-debug-asan-build",
@@ -353,31 +206,9 @@
   ],
   "testPresets": [
     {
-      "name": "macos-x64-debug-test",
-      "displayName": "Test macOS x64 Debug",
-      "configurePreset": "macos-x64-debug",
-      "output": {
-        "outputOnFailure": true
-      },
-      "execution": {
-        "noTestsAction": "error"
-      }
-    },
-    {
       "name": "linux-x64-debug-test",
       "displayName": "Test Linux x64 Debug",
       "configurePreset": "linux-x64-debug",
-      "output": {
-        "outputOnFailure": true
-      },
-      "execution": {
-        "noTestsAction": "error"
-      }
-    },
-    {
-      "name": "macos-x64-release-test",
-      "displayName": "Test macOS x64 Release",
-      "configurePreset": "macos-x64-release",
       "output": {
         "outputOnFailure": true
       },
@@ -419,9 +250,9 @@
       }
     },
     {
-      "name": "macos-arm64-debug-asan-test",
-      "displayName": "Test macOS ARM64 Debug (AddressSanitizer)",
-      "configurePreset": "macos-arm64-debug-asan",
+      "name": "linux-x64-debug-asan-test",
+      "displayName": "Test Linux x64 Debug (AddressSanitizer)",
+      "configurePreset": "linux-x64-debug-asan",
       "output": {
         "outputOnFailure": true
       },
@@ -430,9 +261,9 @@
       }
     },
     {
-      "name": "macos-arm64-debug-ubsan-test",
-      "displayName": "Test macOS ARM64 Debug (UndefinedBehaviorSanitizer)",
-      "configurePreset": "macos-arm64-debug-ubsan",
+      "name": "linux-x64-debug-ubsan-test",
+      "displayName": "Test Linux x64 Debug (UndefinedBehaviorSanitizer)",
+      "configurePreset": "linux-x64-debug-ubsan",
       "output": {
         "outputOnFailure": true
       },
@@ -441,9 +272,9 @@
       }
     },
     {
-      "name": "macos-arm64-debug-sanitizers-test",
-      "displayName": "Test macOS ARM64 Debug (All Sanitizers)",
-      "configurePreset": "macos-arm64-debug-sanitizers",
+      "name": "linux-x64-debug-sanitizers-test",
+      "displayName": "Test Linux x64 Debug (All Sanitizers)",
+      "configurePreset": "linux-x64-debug-sanitizers",
       "output": {
         "outputOnFailure": true
       },

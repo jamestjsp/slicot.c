@@ -12,26 +12,46 @@ C11 translation of SLICOT (Subroutine Library In Control Theory) from Fortran77.
 
 # Build & test
 source venv/bin/activate
-cmake --preset macos-arm64-debug
-cmake --build --preset macos-arm64-debug-build
+cmake --preset linux-x64-debug
+cmake --build --preset linux-x64-debug-build
 pip install -e .
 pytest tests/python/ -v
 
 # Clean rebuild
-rm -rf build/macos-arm64-debug && cmake --preset macos-arm64-debug && cmake --build --preset macos-arm64-debug-build && pip install -e .
+rm -rf build/linux-x64-debug && cmake --preset linux-x64-debug && cmake --build --preset linux-x64-debug-build && pip install -e .
 
 # Sanitizers (run before PR to catch memory bugs)
-cmake --preset macos-arm64-debug-sanitizers
-cmake --build --preset macos-arm64-debug-sanitizers-build
+cmake --preset linux-x64-debug-sanitizers
+cmake --build --preset linux-x64-debug-sanitizers-build
 pip install -e . && pytest tests/python/ -v
 
+# Valgrind (alternative memory checker)
+cmake --preset linux-x64-debug
+cmake --build --preset linux-x64-debug-build
+pip install -e .
+valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --suppressions=python.supp python -m pytest tests/python/test_specific.py -v
+
 # Debug C vs Fortran
-cmake --preset macos-arm64-debug -DBUILD_FORTRAN_DIAG=ON
-cmake --build --preset macos-arm64-debug-build --target diag_all
-grep -A3 "OUTPUT" build/macos-arm64-debug/fortran_diag/*_trace.txt
+cmake --preset linux-x64-debug -DBUILD_FORTRAN_DIAG=ON
+cmake --build --preset linux-x64-debug-build --target diag_all
+grep -A3 "OUTPUT" build/linux-x64-debug/fortran_diag/*_trace.txt
 ```
 
-**Presets:** `macos-{x64,arm64}-{debug,release}`, `macos-arm64-debug-{asan,ubsan,sanitizers}`
+**Presets:** `linux-x64-{debug,release}`, `macos-arm64-{debug,release}`, `linux-x64-debug-{asan,ubsan,sanitizers}`
+
+## Memory Debugging Tools
+
+**Sanitizers (ASAN/UBSAN):** Fast, catches errors at runtime
+- Use for CI/CD and regular development
+- Best for: buffer overflows, use-after-free, undefined behavior
+- Overhead: ~2x slowdown
+
+**Valgrind:** Comprehensive, slower but more thorough
+- Use for deep investigation and before major releases
+- Best for: memory leaks, uninitialized reads, invalid frees
+- Overhead: ~20-50x slowdown
+- Suppressions file: `python.supp` filters Python false positives
+- **Focus on:** "definitely lost" bytes (should be 0)
 
 ## Directory Structure
 

@@ -1,0 +1,69 @@
+# Valgrind suppressions for Python false positives
+# Usage: valgrind --suppressions=python.supp ...
+
+{
+   Python_pymalloc_arena
+   Memcheck:Addr4
+   fun:PyObject_Free
+}
+
+{
+   Python_pymalloc_arena2
+   Memcheck:Addr8
+   fun:PyObject_Free
+}
+
+{
+   Python_pymalloc_realloc
+   Memcheck:Addr4
+   fun:PyObject_Realloc
+}
+
+{
+   Python_pymalloc_realloc2
+   Memcheck:Addr8
+   fun:PyObject_Realloc
+}
+
+{
+   Python_conditional_jump
+   Memcheck:Cond
+   obj:*/libpython*
+}
+
+{
+   Python_value8
+   Memcheck:Value8
+   obj:*/libpython*
+}
+
+{
+   Python_dlopen
+   Memcheck:Leak
+   ...
+   fun:dlopen*
+   ...
+}
+
+{
+   NumPy_import
+   Memcheck:Leak
+   ...
+   fun:_PyImport_LoadDynamicModuleWithSpec
+}
+
+{
+   Python_possible_leak
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   obj:*/libpython*
+}
+
+{
+   Python_still_reachable
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   ...
+   obj:*/libpython*
+}

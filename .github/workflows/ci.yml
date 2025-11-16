@@ -1,0 +1,143 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/devcontainers/cpp:ubuntu
+    strategy:
+      fail-fast: false
+      matrix:
+        preset:
+          - name: debug
+            configure: linux-x64-debug
+            build: linux-x64-debug-build
+          - name: release
+            configure: linux-x64-release
+            build: linux-x64-release-build
+          - name: sanitizers
+            configure: linux-x64-debug-sanitizers
+            build: linux-x64-debug-sanitizers-build
+
+    name: Build & Test (${{ matrix.preset.name }})
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y \
+            libblas-dev \
+            liblapack-dev \
+            gfortran \
+            ninja-build \
+            python3-venv \
+            python3-dev \
+            valgrind
+
+      - name: Setup Python venv
+        run: |
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+
+      - name: Configure CMake
+        run: |
+          . venv/bin/activate
+          cmake --preset ${{ matrix.preset.configure }}
+
+      - name: Build
+        run: |
+          . venv/bin/activate
+          cmake --build --preset ${{ matrix.preset.build }}
+
+      - name: Install Python extension
+        run: |
+          . venv/bin/activate
+          pip install -e .
+
+      - name: Run Python tests
+        run: |
+          . venv/bin/activate
+          pytest tests/python/ -v
+        env:
+          ASAN_OPTIONS: detect_leaks=1:symbolize=1:abort_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+
+      - name: Run C unit tests
+        run: |
+          . venv/bin/activate
+          cmake --build --preset ${{ matrix.preset.build }} --target unit_tests
+        env:
+          ASAN_OPTIONS: detect_leaks=1:symbolize=1:abort_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+
+  valgrind:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/devcontainers/cpp:ubuntu
+    name: Valgrind Memory Check
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y \
+            libblas-dev \
+            liblapack-dev \
+            gfortran \
+            ninja-build \
+            python3-venv \
+            python3-dev \
+            valgrind
+
+      - name: Setup Python venv
+        run: |
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+
+      - name: Configure CMake (Debug)
+        run: |
+          . venv/bin/activate
+          cmake --preset linux-x64-debug
+
+      - name: Build
+        run: |
+          . venv/bin/activate
+          cmake --build --preset linux-x64-debug-build
+
+      - name: Install Python extension
+        run: |
+          . venv/bin/activate
+          pip install -e .
+
+      - name: Run Valgrind
+        run: |
+          . venv/bin/activate
+          valgrind \
+            --leak-check=full \
+            --show-leak-kinds=definite \
+            --track-origins=yes \
+            --suppressions=python.supp \
+            --error-exitcode=1 \
+            --errors-for-leak-kinds=definite \
+            python -m pytest tests/python/ -v
