@@ -31,7 +31,7 @@ def test_mb03od_basic_example():
     assert info == 0, f"mb03od failed with info={info}"
     assert rank == expected_rank, f"Expected rank {expected_rank}, got {rank}"
     np.testing.assert_array_equal(jpvt, expected_jpvt)
-    np.testing.assert_allclose(sval, expected_sval, rtol=1e-3)
+    np.testing.assert_allclose(sval, expected_sval, rtol=1e-3, atol=1e-14)
 
 
 def test_mb03od_full_rank():

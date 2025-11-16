@@ -139,6 +139,82 @@ static PyObject* py_mb03oy(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for mb03od */
+static PyObject* py_mb03od(PyObject* self, PyObject* args, PyObject* kwargs) {
+    const char *jobqr = "Q";
+    i32 m, n, lda;
+    f64 rcond, svlmax;
+    PyObject *a_obj;
+    PyArrayObject *a_array;
+    i32 rank, info;
+
+    static char *kwlist[] = {"m", "n", "a", "rcond", "svlmax", "jobqr", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iiOdd|s", kwlist,
+                                     &m, &n, &a_obj, &rcond, &svlmax, &jobqr)) {
+        return NULL;
+    }
+
+    if (m < 0 || n < 0) {
+        PyErr_Format(PyExc_ValueError, "Dimensions must be non-negative (m=%d, n=%d)", m, n);
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) {
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    lda = (i32)a_dims[0];
+    if (lda < 1) lda = 1;
+
+    i32 mn = (m < n) ? m : n;
+    i32 *jpvt = (n > 0) ? (i32*)calloc(n, sizeof(i32)) : NULL;
+    f64 *tau = (mn > 0) ? (f64*)malloc(mn * sizeof(f64)) : NULL;
+    f64 *sval = (f64*)malloc(3 * sizeof(f64));
+
+    bool ljobqr = (*jobqr == 'Q' || *jobqr == 'q');
+    i32 ldwork = ljobqr ? (3*n + 1) : ((2*mn > 1) ? 2*mn : 1);
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+
+    if (sval == NULL || dwork == NULL || (n > 0 && jpvt == NULL) || (mn > 0 && tau == NULL)) {
+        free(sval); free(jpvt); free(tau); free(dwork);
+        Py_DECREF(a_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate work arrays");
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    mb03od(jobqr, m, n, a_data, lda, jpvt, rcond, svlmax, tau, &rank, sval, dwork, ldwork, &info);
+
+    npy_intp sval_dims[1] = {3};
+    npy_intp jpvt_dims[1] = {n > 0 ? n : 0};
+    npy_intp tau_dims[1] = {mn > 0 ? mn : 0};
+
+    PyObject *sval_array = PyArray_SimpleNewFromData(1, sval_dims, NPY_DOUBLE, sval);
+    PyObject *jpvt_array = (n > 0) ? PyArray_SimpleNewFromData(1, jpvt_dims, NPY_INT32, jpvt) : PyArray_EMPTY(1, jpvt_dims, NPY_INT32, 0);
+    PyObject *tau_array = (mn > 0) ? PyArray_SimpleNewFromData(1, tau_dims, NPY_DOUBLE, tau) : PyArray_EMPTY(1, tau_dims, NPY_DOUBLE, 0);
+
+    PyArray_ENABLEFLAGS((PyArrayObject*)sval_array, NPY_ARRAY_OWNDATA);
+    if (n > 0) PyArray_ENABLEFLAGS((PyArrayObject*)jpvt_array, NPY_ARRAY_OWNDATA);
+    if (mn > 0) PyArray_ENABLEFLAGS((PyArrayObject*)tau_array, NPY_ARRAY_OWNDATA);
+
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+
+    PyObject *result = Py_BuildValue("OiOi", jpvt_array, rank, sval_array, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(sval_array);
+    Py_DECREF(jpvt_array);
+    Py_DECREF(tau_array);
+
+    return result;
+}
+
 static PyObject* py_tg01fd(PyObject* self, PyObject* args) {
     const char *compq, *compz, *joba;
     i32 l, n, m, p;
@@ -1300,6 +1376,18 @@ static PyMethodDef SlicotMethods[] = {
      "  nrows (ndarray, optional): Block sizes\n\n"
      "Returns:\n"
      "  (a, info): Modified matrix and exit code\n"},
+
+    {"mb03od", (PyCFunction)py_mb03od, METH_VARARGS | METH_KEYWORDS,
+     "Incremental rank estimation for QR factorization.\n\n"
+     "Parameters:\n"
+     "  m (int): Number of rows\n"
+     "  n (int): Number of columns\n"
+     "  a (ndarray): Matrix array (column-major, shape (m,n))\n"
+     "  rcond (float): Rank threshold\n"
+     "  svlmax (float): Parent matrix singular value estimate\n"
+     "  jobqr (str, optional): 'Q' = perform QR (default), 'N' = use existing\n\n"
+     "Returns:\n"
+     "  (jpvt, rank, sval, info): Pivot indices, rank, singular values, exit code\n"},
 
     {"mb03oy", py_mb03oy, METH_VARARGS,
      "Matrix rank determination by incremental condition estimation.\n\n"
