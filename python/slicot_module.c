@@ -1100,25 +1100,21 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
     f64 *a_data = (f64*)PyArray_DATA(a_array);
     f64 *e_data = (f64*)PyArray_DATA(e_array);
 
-    npy_intp dims_q[2] = {n, n};
-    npy_intp strides_q[2] = {sizeof(f64), n * sizeof(f64)};
+    /* Allocate workspace for Q and Z matrices (not returned) */
+    i32 ldq = (n > 1) ? n : 1;
+    i32 ldz = (n > 1) ? n : 1;
+    f64 *q_data = (f64*)malloc(ldq * n * sizeof(f64));
+    f64 *z_data = (f64*)malloc(ldz * n * sizeof(f64));
 
-    PyObject *q_array = PyArray_New(&PyArray_Type, 2, dims_q, NPY_DOUBLE, strides_q,
-                                     NULL, 0, NPY_ARRAY_FARRAY, NULL);
-    PyObject *z_array = PyArray_New(&PyArray_Type, 2, dims_q, NPY_DOUBLE, strides_q,
-                                     NULL, 0, NPY_ARRAY_FARRAY, NULL);
-
-    if (q_array == NULL || z_array == NULL) {
-        Py_XDECREF(q_array);
-        Py_XDECREF(z_array);
+    if (q_data == NULL || z_data == NULL) {
+        free(q_data);
+        free(z_data);
         Py_DECREF(a_array);
         Py_DECREF(e_array);
-        Py_DECREF(b_array);
+        Py_DECREF(b_work);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate Q/Z workspace");
         return NULL;
     }
-
-    f64 *q_data = (f64*)PyArray_DATA((PyArrayObject*)q_array);
-    f64 *z_data = (f64*)PyArray_DATA((PyArrayObject*)z_array);
 
     npy_intp dims_eig[1] = {n};
     PyObject *alphar_array = PyArray_New(&PyArray_Type, 1, dims_eig, NPY_DOUBLE, NULL,
@@ -1132,20 +1128,17 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
         Py_XDECREF(alphar_array);
         Py_XDECREF(alphai_array);
         Py_XDECREF(beta_array);
-        Py_DECREF(q_array);
-        Py_DECREF(z_array);
+        free(q_data);
+        free(z_data);
         Py_DECREF(a_array);
         Py_DECREF(e_array);
-        Py_DECREF(b_array);
+        Py_DECREF(b_work);
         return NULL;
     }
 
     f64 *alphar_data = (f64*)PyArray_DATA((PyArrayObject*)alphar_array);
     f64 *alphai_data = (f64*)PyArray_DATA((PyArrayObject*)alphai_array);
     f64 *beta_data = (f64*)PyArray_DATA((PyArrayObject*)beta_array);
-
-    i32 ldq = (n > 1) ? n : 1;
-    i32 ldz = (n > 1) ? n : 1;
 
     i32 ldwork;
     if (fact[0] == 'F' || fact[0] == 'f') {
@@ -1164,8 +1157,8 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
         Py_DECREF(alphar_array);
         Py_DECREF(alphai_array);
         Py_DECREF(beta_array);
-        Py_DECREF(q_array);
-        Py_DECREF(z_array);
+        free(q_data);
+        free(z_data);
         Py_DECREF(a_array);
         Py_DECREF(e_array);
         Py_DECREF(b_work);
@@ -1177,6 +1170,8 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
            alphar_data, alphai_data, beta_data, dwork, ldwork, &info);
 
     free(dwork);
+    free(q_data);
+    free(z_data);
 
     /* Resolve writebackifcopy before decref */
     PyArray_ResolveWritebackIfCopy(a_array);
@@ -1194,8 +1189,6 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
         Py_DECREF(a_array);
         Py_DECREF(e_array);
         Py_DECREF(b_work);
-        Py_DECREF(q_array);
-        Py_DECREF(z_array);
         Py_DECREF(alphar_array);
         Py_DECREF(alphai_array);
         Py_DECREF(beta_array);
@@ -1208,8 +1201,6 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
         Py_DECREF(a_array);
         Py_DECREF(e_array);
         Py_DECREF(b_work);
-        Py_DECREF(q_array);
-        Py_DECREF(z_array);
         Py_DECREF(alphar_array);
         Py_DECREF(alphai_array);
         Py_DECREF(beta_array);
@@ -1225,8 +1216,6 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
     Py_DECREF(e_array);
     /* Don't DECREF b_work here - it's now owned by u_array as base object */
     Py_DECREF(u_array);
-    Py_DECREF(q_array);
-    Py_DECREF(z_array);
     Py_DECREF(alphar_array);
     Py_DECREF(alphai_array);
     Py_DECREF(beta_array);
