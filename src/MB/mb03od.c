@@ -26,7 +26,7 @@ void mb03od(
     const f64 ONE = 1.0;
 
     bool ljobqr, lquery;
-    i32 i, ismax, ismin, maxwrk, minwrk, mn;
+    i32 ismax, ismin, maxwrk, minwrk, mn;
     f64 c1, c2, s1, s2, smax, smaxpr, smin, sminpr;
 
     ljobqr = (*jobqr == 'Q' || *jobqr == 'q');
@@ -105,11 +105,10 @@ void mb03od(
 
         while (*rank < mn) {
             i32 i_cur = *rank;
-            i32 rank_local = *rank;
 
-            SLC_DLAIC1(&IMIN, &rank_local, &dwork[ismin], &smin, &a[i_cur * lda],
+            SLC_DLAIC1(&IMIN, rank, &dwork[ismin], &smin, &a[i_cur * lda],
                        &a[i_cur + i_cur * lda], &sminpr, &s1, &c1);
-            SLC_DLAIC1(&IMAX, &rank_local, &dwork[ismax], &smax, &a[i_cur * lda],
+            SLC_DLAIC1(&IMAX, rank, &dwork[ismax], &smax, &a[i_cur * lda],
                        &a[i_cur + i_cur * lda], &smaxpr, &s2, &c2);
 
             if (svlmax * rcond <= smaxpr) {

@@ -191,16 +191,14 @@ static PyObject* py_mb03od(PyObject* self, PyObject* args, PyObject* kwargs) {
 
     npy_intp sval_dims[1] = {3};
     npy_intp jpvt_dims[1] = {n > 0 ? n : 0};
-    npy_intp tau_dims[1] = {mn > 0 ? mn : 0};
 
     PyObject *sval_array = PyArray_SimpleNewFromData(1, sval_dims, NPY_DOUBLE, sval);
     PyObject *jpvt_array = (n > 0) ? PyArray_SimpleNewFromData(1, jpvt_dims, NPY_INT32, jpvt) : PyArray_EMPTY(1, jpvt_dims, NPY_INT32, 0);
-    PyObject *tau_array = (mn > 0) ? PyArray_SimpleNewFromData(1, tau_dims, NPY_DOUBLE, tau) : PyArray_EMPTY(1, tau_dims, NPY_DOUBLE, 0);
 
     PyArray_ENABLEFLAGS((PyArrayObject*)sval_array, NPY_ARRAY_OWNDATA);
     if (n > 0) PyArray_ENABLEFLAGS((PyArrayObject*)jpvt_array, NPY_ARRAY_OWNDATA);
-    if (mn > 0) PyArray_ENABLEFLAGS((PyArrayObject*)tau_array, NPY_ARRAY_OWNDATA);
 
+    free(tau);
     free(dwork);
 
     PyArray_ResolveWritebackIfCopy(a_array);
@@ -210,7 +208,6 @@ static PyObject* py_mb03od(PyObject* self, PyObject* args, PyObject* kwargs) {
     Py_DECREF(a_array);
     Py_DECREF(sval_array);
     Py_DECREF(jpvt_array);
-    Py_DECREF(tau_array);
 
     return result;
 }
