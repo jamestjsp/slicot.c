@@ -1178,6 +1178,10 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
 
     free(dwork);
 
+    /* Resolve writebackifcopy before decref */
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(e_array);
+
     /* sg03bd modifies B in place to produce U (n x n upper triangular).
      * Create a view of the n x n submatrix from b_work.
      * See CLAUDE.md: "CRITICAL: In-place modification - return input array directly"
