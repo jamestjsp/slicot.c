@@ -15,15 +15,15 @@ def get_numpy_include():
         # Return dummy path, will be populated during install
         return ''
 
-# Find slicot library in build directory
+# Find slicot library in build directory (sanitizer builds first for CI)
 build_dirs = [
+    'build/linux-x64-debug-sanitizers/src',
+    'build/linux-x64-debug-asan/src',
+    'build/linux-x64-debug-ubsan/src',
     'build/macos-arm64-debug/src',
     'build/macos-arm64-release/src',
     'build/linux-x64-debug/src',
     'build/linux-x64-release/src',
-    'build/linux-x64-debug-asan/src',
-    'build/linux-x64-debug-ubsan/src',
-    'build/linux-x64-debug-sanitizers/src',
     'build/src',
 ]
 

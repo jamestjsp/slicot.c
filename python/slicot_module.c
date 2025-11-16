@@ -218,7 +218,7 @@ static PyObject* py_tg01fd(PyObject* self, PyObject* args) {
     PyObject *a_obj, *e_obj, *b_obj, *c_obj;
     f64 tol;
     PyArrayObject *a_array, *e_array, *b_array, *c_array;
-    i32 ranke, rnka22, info;
+    i32 ranke = 0, rnka22 = 0, info = 0;
     i32 lda, lde, ldb, ldc, ldq, ldz;
 
     if (!PyArg_ParseTuple(args, "sssiiiiOOOOd", &compq, &compz, &joba,
