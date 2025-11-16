@@ -66,10 +66,10 @@ void sg03bu(const char* trans, const i32 n, const f64* a, const i32 lda,
     ldws = n - 1;
 
     if (notrns) {
-        kh = 0;
+        kh = -1;
 
-        while (kh < n) {
-            kl = kh;
+        while (kh < n - 1) {
+            kl = kh + 1;
             if (kl == n - 1) {
                 kh = n - 1;
                 kb = 1;
@@ -218,7 +218,6 @@ void sg03bu(const char* trans, const i32 n, const f64* a, const i32 lda,
             }
 
             SLC_DLACPY("U", &kb, &kb, ui, &int2, &b[kl * ldb + kl], &ldb);
-            kh++;
         }
 
     } else {
