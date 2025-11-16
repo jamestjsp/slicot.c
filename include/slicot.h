@@ -661,6 +661,70 @@ void md03bx(
 );
 
 /**
+ * @brief Compute Levenberg-Marquardt parameter for trust region subproblem.
+ *
+ * Determines parameter PAR such that if x solves the system
+ *   A*x = b, sqrt(PAR)*D*x = 0
+ * in the least squares sense, then ||D*x|| satisfies the trust region constraint:
+ *   either PAR=0 and (||D*x|| - DELTA) <= 0.1*DELTA,
+ *   or PAR>0 and abs(||D*x|| - DELTA) <= 0.1*DELTA.
+ *
+ * Assumes QR factorization A*P = Q*R is available (R, IPVT, Q'*b).
+ * Provides upper triangular S such that P'*(A'*A + PAR*D*D)*P = S'*S.
+ *
+ * @param[in] cond Condition estimation mode:
+ *                 'E' = estimate condition of R and S
+ *                 'N' = check diagonal entries for zeros only
+ *                 'U' = use rank already in RANK parameter
+ * @param[in] n Order of matrix R (n >= 0)
+ * @param[in,out] r Upper triangular matrix, dimension (ldr,n)
+ *                  In: QR factor from A*P=Q*R
+ *                  Out: strict lower triangle contains S' (transposed)
+ * @param[in] ldr Leading dimension of R (ldr >= max(1,n))
+ * @param[in] ipvt Permutation from QR, dimension (n)
+ *                 Column j of P is column IPVT(j) of identity
+ * @param[in] diag Diagonal scaling matrix D, dimension (n)
+ *                 All elements must be nonzero
+ * @param[in] qtb First n elements of Q'*b, dimension (n)
+ * @param[in] delta Trust region radius (delta > 0)
+ * @param[in,out] par Levenberg-Marquardt parameter
+ *                    In: initial estimate (par >= 0)
+ *                    Out: final estimate
+ * @param[in,out] rank Numerical rank
+ *                     In: rank of R if COND='U'
+ *                     Out: rank of S
+ * @param[out] x Least squares solution, dimension (n)
+ * @param[out] rx Residual -R*P'*x, dimension (n)
+ * @param[in] tol Tolerance for rank estimation if COND='E'
+ *                If tol <= 0, use n*eps (machine precision)
+ *                Not used if COND='N' or 'U'
+ * @param[out] dwork Workspace, dimension (ldwork)
+ *                   First n elements contain diagonal of S on exit
+ * @param[in] ldwork Workspace size
+ *                   ldwork >= 4*n if COND='E'
+ *                   ldwork >= 2*n if COND='N' or 'U'
+ * @param[out] info Exit code: 0=success, <0=invalid parameter
+ */
+void md03by(
+    const char* cond,
+    const i32 n,
+    f64* r,
+    const i32 ldr,
+    const i32* ipvt,
+    const f64* diag,
+    const f64* qtb,
+    const f64 delta,
+    f64* par,
+    i32* rank,
+    f64* x,
+    f64* rx,
+    const f64 tol,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info
+);
+
+/**
  * @brief Reduce state matrix A to real Schur form via orthogonal transformation
  *
  * Reduces system state matrix A to upper real Schur form by orthogonal similarity

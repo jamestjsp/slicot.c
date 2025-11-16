@@ -556,6 +556,165 @@ static PyObject* py_mb02yd(PyObject* self, PyObject* args) {
     return result;
 }
 
+static PyObject* py_md03by(PyObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"cond", "n", "r", "ipvt", "diag", "qtb", "delta", "par", "rank", "tol", NULL};
+
+    char* cond;
+    i32 n, rank_in;
+    f64 delta, par, tol;
+    PyObject *r_obj, *ipvt_obj, *diag_obj, *qtb_obj;
+    PyArrayObject *r_array, *ipvt_array, *diag_array, *qtb_array;
+    i32 info;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "siOOOOddid", kwlist,
+                                     &cond, &n, &r_obj, &ipvt_obj, &diag_obj, &qtb_obj,
+                                     &delta, &par, &rank_in, &tol)) {
+        return NULL;
+    }
+
+    if (n < 0) {
+        PyErr_SetString(PyExc_ValueError, "n must be non-negative");
+        return NULL;
+    }
+
+    if (delta <= 0.0) {
+        PyErr_SetString(PyExc_ValueError, "delta must be positive");
+        return NULL;
+    }
+
+    if (par < 0.0) {
+        PyErr_SetString(PyExc_ValueError, "par must be non-negative");
+        return NULL;
+    }
+
+    r_array = (PyArrayObject*)PyArray_FROM_OTF(r_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (r_array == NULL) return NULL;
+
+    ipvt_array = (PyArrayObject*)PyArray_FROM_OTF(ipvt_obj, NPY_INT32, NPY_ARRAY_IN_FARRAY);
+    if (ipvt_array == NULL) {
+        Py_DECREF(r_array);
+        return NULL;
+    }
+
+    diag_array = (PyArrayObject*)PyArray_FROM_OTF(diag_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (diag_array == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        return NULL;
+    }
+
+    qtb_array = (PyArrayObject*)PyArray_FROM_OTF(qtb_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (qtb_array == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        return NULL;
+    }
+
+    i32 ldr = (i32)PyArray_DIM(r_array, 0);
+    f64* r_data = (f64*)PyArray_DATA(r_array);
+    i32* ipvt_data = (i32*)PyArray_DATA(ipvt_array);
+    f64* diag_data = (f64*)PyArray_DATA(diag_array);
+    f64* qtb_data = (f64*)PyArray_DATA(qtb_array);
+
+    bool econd = (*cond == 'E' || *cond == 'e');
+    i32 ldwork = econd ? 4*n : 2*n;
+    if (ldwork < 1) ldwork = 1;
+    f64* dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (dwork == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        Py_DECREF(qtb_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        return NULL;
+    }
+
+    f64* x_data = (n > 0) ? (f64*)calloc(n, sizeof(f64)) : NULL;
+    if (n > 0 && x_data == NULL) {
+        free(dwork);
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        Py_DECREF(qtb_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate x array");
+        return NULL;
+    }
+
+    f64* rx_data = (n > 0) ? (f64*)calloc(n, sizeof(f64)) : NULL;
+    if (n > 0 && rx_data == NULL) {
+        free(x_data);
+        free(dwork);
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        Py_DECREF(qtb_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate rx array");
+        return NULL;
+    }
+
+    i32 rank = rank_in;
+
+    md03by(cond, n, r_data, ldr, ipvt_data, diag_data, qtb_data, delta,
+           &par, &rank, x_data, rx_data, tol, dwork, ldwork, &info);
+
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(r_array);
+
+    npy_intp x_dims[1] = {n > 0 ? n : 0};
+    PyObject* x_array = (n > 0) ? PyArray_SimpleNewFromData(1, x_dims, NPY_DOUBLE, x_data)
+                                 : PyArray_EMPTY(1, x_dims, NPY_DOUBLE, 0);
+    if (x_array == NULL) {
+        free(x_data);
+        free(rx_data);
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        Py_DECREF(qtb_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to create x array");
+        return NULL;
+    }
+    if (n > 0) PyArray_ENABLEFLAGS((PyArrayObject*)x_array, NPY_ARRAY_OWNDATA);
+
+    PyObject* rx_array = (n > 0) ? PyArray_SimpleNewFromData(1, x_dims, NPY_DOUBLE, rx_data)
+                                  : PyArray_EMPTY(1, x_dims, NPY_DOUBLE, 0);
+    if (rx_array == NULL) {
+        free(rx_data);
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        Py_DECREF(qtb_array);
+        Py_DECREF(x_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to create rx array");
+        return NULL;
+    }
+    if (n > 0) PyArray_ENABLEFLAGS((PyArrayObject*)rx_array, NPY_ARRAY_OWNDATA);
+
+    if (info < 0) {
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        Py_DECREF(qtb_array);
+        Py_DECREF(x_array);
+        Py_DECREF(rx_array);
+        PyErr_Format(PyExc_ValueError, "md03by: parameter %d is invalid", -info);
+        return NULL;
+    }
+
+    PyObject* result = Py_BuildValue("OdiOOi", r_array, par, rank, x_array, rx_array, info);
+
+    Py_DECREF(r_array);
+    Py_DECREF(ipvt_array);
+    Py_DECREF(diag_array);
+    Py_DECREF(qtb_array);
+    Py_DECREF(x_array);
+    Py_DECREF(rx_array);
+
+    return result;
+}
+
 /* Python wrapper for sg03br */
 static PyObject* py_sg03br(PyObject* self, PyObject* args) {
     f64 xr, xi, yr, yi;
@@ -1545,6 +1704,22 @@ static PyMethodDef SlicotMethods[] = {
      "  tol (float): Tolerance for rank determination (COND='E')\n\n"
      "Returns:\n"
      "  (x, rank, info): Solution vector, estimated rank, exit code\n"},
+
+    {"md03by", (PyCFunction)py_md03by, METH_VARARGS | METH_KEYWORDS,
+     "Compute Levenberg-Marquardt parameter for trust region subproblem.\n\n"
+     "Parameters:\n"
+     "  cond (str): 'E' = estimate condition, 'N' = check zeros, 'U' = use rank\n"
+     "  n (int): Order of matrix R\n"
+     "  r (ndarray): Upper triangular matrix R (n x n, F-order)\n"
+     "  ipvt (ndarray): Permutation vector (1-based indices)\n"
+     "  diag (ndarray): Diagonal scaling D (all nonzero)\n"
+     "  qtb (ndarray): First n elements of Q'*b\n"
+     "  delta (float): Trust region radius (> 0)\n"
+     "  par (float): Initial LM parameter estimate (>= 0)\n"
+     "  rank (int): Input rank (COND='U') or 0 otherwise\n"
+     "  tol (float): Tolerance for rank determination (COND='E')\n\n"
+     "Returns:\n"
+     "  (r, par, rank, x, rx, info): Modified R, LM parameter, rank, solution, residual, exit code\n"},
 
     {"sg03br", py_sg03br, METH_VARARGS,
      "Compute complex Givens rotation in real arithmetic.\n\n"

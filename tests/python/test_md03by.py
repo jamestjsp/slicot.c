@@ -14,6 +14,7 @@ def test_md03by_basic_gauss_newton():
         [ 0.0,  8.0,  0.5],
         [ 0.0,  0.0,  5.0]
     ], dtype=float, order='F')
+    r_orig = r.copy()
 
     ipvt = np.array([1, 2, 3], dtype=np.int32)
     diag = np.array([1.0, 1.0, 1.0], dtype=float)
@@ -24,27 +25,26 @@ def test_md03by_basic_gauss_newton():
 
     r_out, par_out, rank, x, rx, info = md03by(
         cond='N', n=n, r=r, ipvt=ipvt, diag=diag,
-        qtb=qtb, delta=delta, par=par, tol=tol
+        qtb=qtb, delta=delta, par=par, rank=0, tol=tol
     )
 
     assert info == 0
     assert rank == 3
 
     # For large delta, should get Gauss-Newton solution (PAR=0)
-    # R*x = qtb => x = R^{-1}*qtb
-    expected_x = np.linalg.solve(r, qtb)
-    np.testing.assert_allclose(x, expected_x, rtol=1e-12)
-
-    # For PAR=0, we expect par_out=0
     assert par_out == 0.0
 
-    # rx should be -R*x
-    expected_rx = -r @ x
+    # x should satisfy R*x = qtb (use original R, not modified)
+    r_x = r_orig @ x
+    np.testing.assert_allclose(r_x, qtb, rtol=1e-12)
+
+    # rx should be -R*P'*x = -R*x (identity permutation)
+    expected_rx = -r_orig @ x
     np.testing.assert_allclose(rx, expected_rx, rtol=1e-12)
 
     # Check ||D*x|| <= delta
     dxnorm = np.linalg.norm(diag * x)
-    assert dxnorm <= delta * 1.1  # Within tolerance
+    assert dxnorm <= delta * 1.1
 
 
 def test_md03by_small_trust_region():
@@ -66,7 +66,7 @@ def test_md03by_small_trust_region():
 
     r_out, par_out, rank, x, rx, info = md03by(
         cond='N', n=n, r=r, ipvt=ipvt, diag=diag,
-        qtb=qtb, delta=delta, par=par, tol=tol
+        qtb=qtb, delta=delta, par=par, rank=0, tol=tol
     )
 
     assert info == 0
@@ -99,7 +99,7 @@ def test_md03by_with_permutation():
 
     r_out, par_out, rank, x, rx, info = md03by(
         cond='N', n=n, r=r, ipvt=ipvt, diag=diag,
-        qtb=qtb, delta=delta, par=par, tol=tol
+        qtb=qtb, delta=delta, par=par, rank=0, tol=tol
     )
 
     assert info == 0
@@ -136,7 +136,7 @@ def test_md03by_condition_estimation():
 
     r_out, par_out, rank, x, rx, info = md03by(
         cond='E', n=n, r=r, ipvt=ipvt, diag=diag,
-        qtb=qtb, delta=delta, par=par, tol=tol
+        qtb=qtb, delta=delta, par=par, rank=0, tol=tol
     )
 
     assert info == 0
@@ -169,7 +169,7 @@ def test_md03by_rank_deficient():
 
     r_out, par_out, rank, x, rx, info = md03by(
         cond='E', n=n, r=r, ipvt=ipvt, diag=diag,
-        qtb=qtb, delta=delta, par=par, tol=tol
+        qtb=qtb, delta=delta, par=par, rank=0, tol=tol
     )
 
     assert info == 0
@@ -221,7 +221,7 @@ def test_md03by_zero_dimension():
 
     r_out, par_out, rank, x, rx, info = md03by(
         cond='N', n=n, r=r, ipvt=ipvt, diag=diag,
-        qtb=qtb, delta=delta, par=par, tol=tol
+        qtb=qtb, delta=delta, par=par, rank=0, tol=tol
     )
 
     assert info == 0
@@ -245,7 +245,7 @@ def test_md03by_error_invalid_delta():
 
     with pytest.raises(ValueError, match="delta"):
         md03by(cond='N', n=n, r=r, ipvt=ipvt, diag=diag,
-               qtb=qtb, delta=delta, par=par, tol=tol)
+               qtb=qtb, delta=delta, par=par, rank=0, tol=tol)
 
 
 def test_md03by_error_invalid_par():
@@ -262,7 +262,7 @@ def test_md03by_error_invalid_par():
 
     with pytest.raises(ValueError, match="par"):
         md03by(cond='N', n=n, r=r, ipvt=ipvt, diag=diag,
-               qtb=qtb, delta=delta, par=par, tol=tol)
+               qtb=qtb, delta=delta, par=par, rank=0, tol=tol)
 
 
 def test_md03by_error_zero_diag():
@@ -277,6 +277,6 @@ def test_md03by_error_zero_diag():
     par = 0.0
     tol = 0.0
 
-    with pytest.raises(ValueError, match="diag"):
+    with pytest.raises(ValueError, match="parameter 6"):
         md03by(cond='N', n=n, r=r, ipvt=ipvt, diag=diag,
-               qtb=qtb, delta=delta, par=par, tol=tol)
+               qtb=qtb, delta=delta, par=par, rank=0, tol=tol)
