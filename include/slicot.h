@@ -146,6 +146,68 @@ void mb03od(
 );
 
 /**
+ * @brief Solve augmented system A*x = b, D*x = 0 in least squares sense.
+ *
+ * Determines vector x which solves the system of linear equations
+ * A*x = b, D*x = 0 in the least squares sense, where A is m-by-n,
+ * D is n-by-n diagonal, and b is m-vector. Assumes QR factorization
+ * with column pivoting of A is available: A*P = Q*R.
+ *
+ * Uses Givens rotations to annihilate diagonal matrix D, updating
+ * upper triangular matrix R and first n elements of Q'*b.
+ *
+ * @param[in] cond Condition estimation mode:
+ *                 'E': use incremental condition estimation
+ *                 'N': check diagonal entries for zero
+ *                 'U': use rank already stored in RANK
+ * @param[in] n Order of matrix R (n >= 0)
+ * @param[in,out] r DOUBLE PRECISION array, dimension (ldr,n)
+ *                  In: upper triangular matrix R
+ *                  Out: full upper triangle unaltered,
+ *                       strict lower triangle contains strict upper triangle
+ *                       (transposed) of upper triangular matrix S
+ * @param[in] ldr Leading dimension of r (ldr >= max(1,n))
+ * @param[in] ipvt INTEGER array, dimension (n)
+ *                 Permutation matrix P: column j of P is column ipvt[j]
+ *                 of identity matrix (1-based indices)
+ * @param[in] diag DOUBLE PRECISION array, dimension (n)
+ *                 Diagonal elements of matrix D
+ * @param[in] qtb DOUBLE PRECISION array, dimension (n)
+ *                First n elements of Q'*b
+ * @param[in,out] rank INTEGER
+ *                     In (COND='U'): numerical rank of S
+ *                     Out (COND='E' or 'N'): estimated numerical rank of S
+ * @param[out] x DOUBLE PRECISION array, dimension (n)
+ *               Least squares solution of A*x = b, D*x = 0
+ * @param[in] tol DOUBLE PRECISION
+ *                Tolerance for rank determination (COND='E' only)
+ *                tol > 0: lower bound for reciprocal condition number
+ *                tol <= 0: use default n*eps
+ * @param[out] dwork DOUBLE PRECISION array, dimension (ldwork)
+ *                   On exit: first n elements contain diagonal of S,
+ *                           next n elements contain solution z
+ * @param[in] ldwork Length of dwork
+ *                   COND='E': ldwork >= 4*n
+ *                   COND!='E': ldwork >= 2*n
+ * @param[out] info Exit code (0=success, <0=invalid parameter -info)
+ */
+void mb02yd(
+    const char* cond,
+    const i32 n,
+    f64* r,
+    const i32 ldr,
+    const i32* ipvt,
+    const f64* diag,
+    const f64* qtb,
+    i32* rank,
+    f64* x,
+    const f64 tol,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info
+);
+
+/**
  * @brief Matrix rank determination by incremental condition estimation during QR factorization.
  *
  * Computes a rank-revealing QR factorization of a real general M-by-N matrix A,

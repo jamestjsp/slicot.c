@@ -435,6 +435,127 @@ static PyObject* py_mb01uy(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for mb02yd */
+static PyObject* py_mb02yd(PyObject* self, PyObject* args) {
+    char* cond;
+    i32 n, rank_in;
+    f64 tol;
+    PyObject *r_obj, *ipvt_obj, *diag_obj, *qtb_obj;
+    PyArrayObject *r_array, *ipvt_array, *diag_array, *qtb_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "siOOOOid", &cond, &n, &r_obj, &ipvt_obj, &diag_obj, &qtb_obj, &rank_in, &tol)) {
+        return NULL;
+    }
+
+    if (n < 0) {
+        PyErr_SetString(PyExc_ValueError, "n must be non-negative");
+        return NULL;
+    }
+
+    r_array = (PyArrayObject*)PyArray_FROM_OTF(r_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (r_array == NULL) return NULL;
+
+    ipvt_array = (PyArrayObject*)PyArray_FROM_OTF(ipvt_obj, NPY_INT32, NPY_ARRAY_IN_FARRAY);
+    if (ipvt_array == NULL) {
+        Py_DECREF(r_array);
+        return NULL;
+    }
+
+    diag_array = (PyArrayObject*)PyArray_FROM_OTF(diag_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (diag_array == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        return NULL;
+    }
+
+    qtb_array = (PyArrayObject*)PyArray_FROM_OTF(qtb_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (qtb_array == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        return NULL;
+    }
+
+    i32 ldr = (i32)PyArray_DIM(r_array, 0);
+    f64* r_data = (f64*)PyArray_DATA(r_array);
+    i32* ipvt_data = (i32*)PyArray_DATA(ipvt_array);
+    f64* diag_data = (f64*)PyArray_DATA(diag_array);
+    f64* qtb_data = (f64*)PyArray_DATA(qtb_array);
+
+    bool econd = (*cond == 'E' || *cond == 'e');
+    i32 ldwork = econd ? 4*n : 2*n;
+    if (ldwork < 1) ldwork = 1;  /* Ensure at least 1 element for malloc */
+    f64* dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (dwork == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        Py_DECREF(qtb_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        return NULL;
+    }
+
+    /* Allocate output array x */
+    f64* x_data = (n > 0) ? (f64*)calloc(n, sizeof(f64)) : NULL;
+    if (n > 0 && x_data == NULL) {
+        free(dwork);
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        Py_DECREF(qtb_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate output array");
+        return NULL;
+    }
+
+    i32 rank = rank_in;
+
+    mb02yd(cond, n, r_data, ldr, ipvt_data, diag_data, qtb_data, &rank, x_data, tol, dwork, ldwork, &info);
+
+    free(dwork);
+
+    /* Resolve writebackifcopy before decref */
+    PyArray_ResolveWritebackIfCopy(r_array);
+
+    /* Create NumPy array from x_data */
+    npy_intp x_dims[1] = {n > 0 ? n : 0};
+    PyObject* x_array = (n > 0) ? PyArray_SimpleNewFromData(1, x_dims, NPY_DOUBLE, x_data) 
+                                 : PyArray_EMPTY(1, x_dims, NPY_DOUBLE, 0);
+    if (x_array == NULL) {
+        free(x_data);
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        Py_DECREF(qtb_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to create output array");
+        return NULL;
+    }
+
+    /* Transfer ownership to NumPy */
+    if (n > 0) PyArray_ENABLEFLAGS((PyArrayObject*)x_array, NPY_ARRAY_OWNDATA);
+
+    if (info < 0) {
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        Py_DECREF(qtb_array);
+        Py_DECREF(x_array);
+        PyErr_Format(PyExc_ValueError, "mb02yd: parameter %d is invalid", -info);
+        return NULL;
+    }
+
+    PyObject* result = Py_BuildValue("Oii", x_array, rank, info);
+
+    Py_DECREF(r_array);
+    Py_DECREF(ipvt_array);
+    Py_DECREF(diag_array);
+    Py_DECREF(qtb_array);
+    Py_DECREF(x_array);
+
+    return result;
+}
+
 /* Python wrapper for sg03br */
 static PyObject* py_sg03br(PyObject* self, PyObject* args) {
     f64 xr, xi, yr, yi;
@@ -1410,6 +1531,20 @@ static PyMethodDef SlicotMethods[] = {
      "  a (ndarray): Matrix A (F-order)\n\n"
      "Returns:\n"
      "  (t, info): Result matrix and exit code\n"},
+
+    {"mb02yd", py_mb02yd, METH_VARARGS,
+     "Solve augmented system A*x = b, D*x = 0 in least squares sense.\n\n"
+     "Parameters:\n"
+     "  cond (str): 'E' = estimate condition, 'N' = check zeros, 'U' = use rank\n"
+     "  n (int): Order of matrix R\n"
+     "  r (ndarray): Upper triangular matrix R (n x n, F-order)\n"
+     "  ipvt (ndarray): Permutation vector (1-based indices)\n"
+     "  diag (ndarray): Diagonal elements of D\n"
+     "  qtb (ndarray): First n elements of Q'*b\n"
+     "  rank (int): Input rank (COND='U') or 0 otherwise\n"
+     "  tol (float): Tolerance for rank determination (COND='E')\n\n"
+     "Returns:\n"
+     "  (x, rank, info): Solution vector, estimated rank, exit code\n"},
 
     {"sg03br", py_sg03br, METH_VARARGS,
      "Compute complex Givens rotation in real arithmetic.\n\n"
