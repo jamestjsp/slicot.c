@@ -375,7 +375,8 @@ void sg03bd(
             if (n > m) {
                 for (i32 i = m - 1; i >= 0; i--) {
                     i32 inm = i + n - m;
-                    SLC_DCOPY(&inm + 1, &b[0 + i*ldb], &int1, &b[0 + inm*ldb], &int1);
+                    i32 inm1 = inm + 1;
+                    SLC_DCOPY(&inm1, &b[0 + i*ldb], &int1, &b[0 + inm*ldb], &int1);
                 }
                 i32 nm = n - m;
                 SLC_DLASET("A", &n, &nm, &zero, &zero, b, &ldb);
@@ -392,7 +393,8 @@ void sg03bd(
             }
 
             for (i32 i = 0; i < n; i++) {
-                SLC_DCOPY(&i + 1, &b[0 + (m-n+i)*ldb], &int1, &b[0 + i*ldb], &int1);
+                i32 i1 = i + 1;
+                SLC_DCOPY(&i1, &b[0 + (m-n+i)*ldb], &int1, &b[0 + i*ldb], &int1);
             }
 
             if (n > 1) {
