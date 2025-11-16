@@ -203,6 +203,78 @@
         "lhs": "${hostSystemName}",
         "rhs": "Darwin"
       }
+    },
+    {
+      "name": "linux-x64-debug-asan",
+      "displayName": "Linux x64 Debug (AddressSanitizer)",
+      "description": "Configure for Linux x64 with AddressSanitizer enabled",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-x64-debug-asan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/linux-x64-debug-asan",
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_C_FLAGS": "-fsanitize=address -g -O1 -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_SHARED_LIBS": "ON",
+        "BUILD_TESTING": "ON",
+        "BUILD_EXAMPLES": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-x64-debug-ubsan",
+      "displayName": "Linux x64 Debug (UndefinedBehaviorSanitizer)",
+      "description": "Configure for Linux x64 with UndefinedBehaviorSanitizer enabled",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-x64-debug-ubsan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/linux-x64-debug-ubsan",
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_C_FLAGS": "-fsanitize=undefined -g -O1 -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=undefined",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=undefined",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_SHARED_LIBS": "ON",
+        "BUILD_TESTING": "ON",
+        "BUILD_EXAMPLES": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-x64-debug-sanitizers",
+      "displayName": "Linux x64 Debug (All Sanitizers)",
+      "description": "Configure for Linux x64 with AddressSanitizer and UndefinedBehaviorSanitizer enabled",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-x64-debug-sanitizers",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/install/linux-x64-debug-sanitizers",
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_C_FLAGS": "-fsanitize=address,undefined -g -O1 -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address,undefined",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_SHARED_LIBS": "ON",
+        "BUILD_TESTING": "ON",
+        "BUILD_EXAMPLES": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
     }
   ],
   "buildPresets": [
@@ -259,6 +331,24 @@
       "displayName": "Build macOS ARM64 Debug (All Sanitizers)",
       "configurePreset": "macos-arm64-debug-sanitizers",
       "description": "Build Debug configuration for macOS ARM64 with all sanitizers"
+    },
+    {
+      "name": "linux-x64-debug-asan-build",
+      "displayName": "Build Linux x64 Debug (AddressSanitizer)",
+      "configurePreset": "linux-x64-debug-asan",
+      "description": "Build Debug configuration for Linux x64 with AddressSanitizer"
+    },
+    {
+      "name": "linux-x64-debug-ubsan-build",
+      "displayName": "Build Linux x64 Debug (UndefinedBehaviorSanitizer)",
+      "configurePreset": "linux-x64-debug-ubsan",
+      "description": "Build Debug configuration for Linux x64 with UndefinedBehaviorSanitizer"
+    },
+    {
+      "name": "linux-x64-debug-sanitizers-build",
+      "displayName": "Build Linux x64 Debug (All Sanitizers)",
+      "configurePreset": "linux-x64-debug-sanitizers",
+      "description": "Build Debug configuration for Linux x64 with all sanitizers"
     }
   ],
   "testPresets": [
