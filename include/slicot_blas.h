@@ -83,6 +83,10 @@ void SLC_FC_FUNC(dtrmv, DTRMV)(const char* uplo, const char* trans, const char* 
                                 const int* n, const f64* a, const int* lda,
                                 f64* x, const int* incx);
 
+void SLC_FC_FUNC(dtrsv, DTRSV)(const char* uplo, const char* trans, const char* diag,
+                                const int* n, const f64* a, const int* lda,
+                                f64* x, const int* incx);
+
 void SLC_FC_FUNC(dger, DGER)(const int* m, const int* n, const f64* alpha,
                               const f64* x, const int* incx, const f64* y,
                               const int* incy, f64* a, const int* lda);
@@ -128,6 +132,10 @@ void SLC_FC_FUNC(dgetrf, DGETRF)(const int* m, const int* n, f64* a,
 void SLC_FC_FUNC(dgeqrf, DGEQRF)(const int* m, const int* n, f64* a,
                                   const int* lda, f64* tau, f64* work,
                                   const int* lwork, int* info);
+
+void SLC_FC_FUNC(dgeqp3, DGEQP3)(const int* m, const int* n, f64* a,
+                                  const int* lda, int* jpvt, f64* tau,
+                                  f64* work, const int* lwork, int* info);
 
 void SLC_FC_FUNC(dgerqf, DGERQF)(const int* m, const int* n, f64* a,
                                   const int* lda, f64* tau, f64* work,
@@ -246,6 +254,7 @@ void SLC_FC_FUNC(dgees, DGEES)(const char* jobvs, const char* sort,
 #define SLC_IDAMAX   SLC_FC_FUNC(idamax, IDAMAX)
 #define SLC_DGEMV    SLC_FC_FUNC(dgemv, DGEMV)
 #define SLC_DTRMV    SLC_FC_FUNC(dtrmv, DTRMV)
+#define SLC_DTRSV    SLC_FC_FUNC(dtrsv, DTRSV)
 #define SLC_DGER     SLC_FC_FUNC(dger, DGER)
 #define SLC_DTRMM    SLC_FC_FUNC(dtrmm, DTRMM)
 #define SLC_DGEMM    SLC_FC_FUNC(dgemm, DGEMM)
@@ -256,6 +265,7 @@ void SLC_FC_FUNC(dgees, DGEES)(const char* jobvs, const char* sort,
 #define SLC_DLASET   SLC_FC_FUNC(dlaset, DLASET)
 #define SLC_DGETRF   SLC_FC_FUNC(dgetrf, DGETRF)
 #define SLC_DGEQRF   SLC_FC_FUNC(dgeqrf, DGEQRF)
+#define SLC_DGEQP3   SLC_FC_FUNC(dgeqp3, DGEQP3)
 #define SLC_DGERQF   SLC_FC_FUNC(dgerqf, DGERQF)
 #define SLC_DLARFG   SLC_FC_FUNC(dlarfg, DLARFG)
 #define SLC_DLARF    SLC_FC_FUNC(dlarf, DLARF)

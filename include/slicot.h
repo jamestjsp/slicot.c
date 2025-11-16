@@ -504,6 +504,45 @@ void ma02ad(const char* job, const i32 m, const i32 n,
             f64* b, const i32 ldb);
 
 /**
+ * @brief QR factorization with column pivoting for Levenberg-Marquardt
+ *
+ * Computes QR factorization with column pivoting of m-by-n matrix J (m >= n):
+ * J*P = Q*R, where Q has orthogonal columns, P is permutation, R is upper
+ * triangular with diagonal elements of nonincreasing magnitude.
+ * Applies Q' to error vector e in-place.
+ *
+ * @param[in] m Number of rows of Jacobian matrix J (m >= 0)
+ * @param[in] n Number of columns of J (m >= n >= 0)
+ * @param[in] fnorm Euclidean norm of error vector e (fnorm >= 0)
+ * @param[in,out] j Jacobian matrix, dimension (ldj, n)
+ *                  In: m-by-n Jacobian matrix
+ *                  Out: n-by-n upper triangular R with ldj=n
+ * @param[in,out] ldj Leading dimension of J
+ *                    In: ldj >= max(1,m)
+ *                    Out: ldj = max(1,n)
+ * @param[in,out] e Error vector, dimension (m)
+ *                  In: Error vector e
+ *                  Out: Transformed vector Q'*e
+ * @param[out] jnorms Column norms of J (original order), dimension (n)
+ * @param[out] gnorm 1-norm of scaled gradient J'*Q'*e/fnorm
+ *                   (each element divided by jnorms)
+ * @param[out] ipvt Permutation indices, dimension (n)
+ *                  Column j of P is column ipvt[j] of identity
+ * @param[out] dwork Workspace, dimension (ldwork)
+ *                   dwork[0] returns optimal ldwork
+ * @param[in] ldwork Workspace size
+ *                   ldwork >= 1 if n=0 or m=1
+ *                   ldwork >= 4*n+1 if n>1
+ * @param[out] info Exit code (0=success, <0=invalid parameter)
+ */
+void md03bx(
+    i32 m, i32 n, f64 fnorm,
+    f64* j, i32* ldj, f64* e,
+    f64* jnorms, f64* gnorm, i32* ipvt,
+    f64* dwork, i32 ldwork, i32* info
+);
+
+/**
  * @brief Reduce state matrix A to real Schur form via orthogonal transformation
  *
  * Reduces system state matrix A to upper real Schur form by orthogonal similarity
