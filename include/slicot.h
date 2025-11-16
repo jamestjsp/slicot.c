@@ -90,6 +90,62 @@ void mb01uy(
 );
 
 /**
+ * @brief Incremental rank estimation for QR factorization.
+ *
+ * Computes (optionally) a rank-revealing QR factorization of real M-by-N matrix A
+ * and estimates effective rank using incremental condition estimation.
+ *
+ * Uses QR with column pivoting: A*P = Q*R, where R = [R11 R12; 0 R22].
+ * R11 is largest leading submatrix with estimated condition < 1/RCOND.
+ * Order of R11 (RANK) is effective rank of A.
+ *
+ * @param[in] jobqr 'Q' = perform QR factorization, 'N' = use existing R in A
+ * @param[in] m Number of rows of A (m >= 0)
+ * @param[in] n Number of columns of A (n >= 0)
+ * @param[in,out] a DOUBLE PRECISION array, dimension (lda,n)
+ *                  If JOBQR='Q': In: M-by-N matrix A, Out: QR factorization
+ *                  If JOBQR='N': In/Out: Upper triangular R from QR
+ * @param[in] lda Leading dimension of A (lda >= max(1,m))
+ * @param[in,out] jpvt INTEGER array, dimension (n)
+ *                     If JOBQR='Q': In: initial column flags (0=free),
+ *                                   Out: pivot permutation
+ *                     If JOBQR='N': not referenced
+ * @param[in] rcond Rank threshold: condition < 1/RCOND (rcond >= 0)
+ * @param[in] svlmax Largest singular value estimate of parent matrix (svlmax >= 0)
+ *                   Use 0 if A is standalone
+ * @param[out] tau DOUBLE PRECISION array, dimension (min(m,n))
+ *                 Scalar factors of elementary reflectors (if JOBQR='Q')
+ * @param[out] rank Effective rank of A
+ * @param[out] sval DOUBLE PRECISION array, dimension (3)
+ *                  sval[0]: largest singular value of R(1:rank,1:rank)
+ *                  sval[1]: smallest singular value of R(1:rank,1:rank)
+ *                  sval[2]: smallest singular value of R(1:rank+1,1:rank+1)
+ * @param[out] dwork DOUBLE PRECISION array, dimension (ldwork)
+ *                   On exit, dwork[0] = optimal ldwork
+ * @param[in] ldwork Length of dwork
+ *                   JOBQR='Q': ldwork >= 3*n+1 (prefer 2*n+(n+1)*NB)
+ *                   JOBQR='N': ldwork >= max(1,2*min(m,n))
+ *                   If ldwork=-1, workspace query
+ * @param[out] info Exit code (0=success, <0=invalid parameter -info)
+ */
+void mb03od(
+    const char* jobqr,
+    const i32 m,
+    const i32 n,
+    f64* a,
+    const i32 lda,
+    i32* jpvt,
+    const f64 rcond,
+    const f64 svlmax,
+    f64* tau,
+    i32* rank,
+    f64* sval,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info
+);
+
+/**
  * @brief Matrix rank determination by incremental condition estimation during QR factorization.
  *
  * Computes a rank-revealing QR factorization of a real general M-by-N matrix A,
