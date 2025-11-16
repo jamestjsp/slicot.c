@@ -1,0 +1,4 @@
+# Development dependencies (test data generation only)
+scipy>=1.7.0
+slycot>=0.6.0
+control>=0.10.2

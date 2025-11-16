@@ -1,5 +1,2 @@
 numpy>=1.20.0
 pytest>=7.0.0
-scipy>=1.7.0
-slycot>=0.6.0
-control>=0.10.2

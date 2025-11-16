@@ -48,6 +48,9 @@ pip install --upgrade pip
 echo "Installing dependencies from requirements.txt..."
 pip install -r requirements.txt
 
+echo "Installing development dependencies from requirements-dev.txt..."
+pip install -r requirements-dev.txt
+
 echo ""
 echo "===================================="
 echo "Virtual environment setup complete!"
