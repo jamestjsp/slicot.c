@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: BSD-3-Clause
+ * Copyright (c) 1996-2025, The SLICOT Team (original Fortran77 code)
+ * Copyright (c) 2025, slicot.c contributors (C11 translation)
+ */
+
 #ifndef SLICOT_TYPES_H
 #define SLICOT_TYPES_H
 

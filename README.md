@@ -2,6 +2,9 @@
 
 C11 translation of SLICOT (Subroutine Library In Control Theory) from Fortran77.
 
+**Based on:** [SLICOT-Reference](https://github.com/SLICOT/SLICOT-Reference) (BSD 3-Clause License)
+**License:** BSD 3-Clause (see [LICENSE](LICENSE))
+
 ## Quick Start
 
 ```bash

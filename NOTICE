@@ -1,0 +1,35 @@
+slicot.c - C11 translation of SLICOT
+================================================================================
+
+This project is a C11 translation of the SLICOT (Subroutine Library In
+Control Theory) library, originally written in Fortran77.
+
+ORIGINAL WORK
+-------------
+SLICOT-Reference
+Copyright (c) 1996-2025, The SLICOT Team
+Repository: https://github.com/SLICOT/SLICOT-Reference
+License: BSD 3-Clause License
+
+DERIVATIVE WORK
+---------------
+slicot.c (C11 translation)
+Copyright (c) 2025, slicot.c contributors
+License: BSD 3-Clause License (inherited from SLICOT-Reference)
+
+ATTRIBUTION
+-----------
+This C11 translation is based on the SLICOT-Reference library and maintains
+the same BSD 3-Clause License. All algorithmic content, documentation, and
+test cases are derived from the original SLICOT Fortran77 source code.
+
+The translation preserves:
+- Original algorithm implementations
+- Column-major array storage (Fortran-compatible)
+- Function signatures and parameter semantics
+- Numerical accuracy and stability
+
+For more information about the original SLICOT library:
+- Website: http://slicot.org/
+- GitHub: https://github.com/SLICOT/SLICOT-Reference
+- Citation: See SLICOT-Reference/CITATION.cff
