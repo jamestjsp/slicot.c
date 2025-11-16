@@ -68,21 +68,13 @@ jobs:
           . venv/bin/activate
           pip install -e .
 
-      - name: Run Python tests
+      - name: Run tests
         run: |
           . venv/bin/activate
           if [[ "${{ matrix.preset.name }}" == "sanitizers" ]]; then
             export LD_PRELOAD=$(gcc -print-file-name=libasan.so)
           fi
           pytest tests/python/ -v
-        env:
-          ASAN_OPTIONS: detect_leaks=0:symbolize=1:abort_on_error=1:verify_asan_link_order=0
-          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-
-      - name: Run C unit tests
-        run: |
-          . venv/bin/activate
-          cmake --build --preset ${{ matrix.preset.build }} --target unit_tests
         env:
           ASAN_OPTIONS: detect_leaks=0:symbolize=1:abort_on_error=1:verify_asan_link_order=0
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1

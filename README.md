@@ -19,11 +19,10 @@ pytest tests/python/ -v
 
 ### CI/CD
 
-- `.github/workflows/ci.yml` - Runs builds (debug, release, sanitizers) + tests on every PR/push
 - **Matrix builds:** Debug, Release, ASAN/UBSAN sanitizers
-- **Valgrind:** Separate job checks for definite memory leaks
+- **Valgrind:** Separate job for definite memory leaks
+- **Tests:** Python (pytest) runs all function tests
 - Uses devcontainer image for consistency
-- Custom CMake target `unit_tests` wraps `ctest --output-on-failure`
 
 ## Translation Status
 
