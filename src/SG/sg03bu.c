@@ -14,9 +14,9 @@ void sg03bu(const char* trans, const i32 n, const f64* a, const i32 lda,
     const f64 two = 2.0;
     const f64 zero = 0.0;
 
-    f64 m1[4], m2[4], m3[16], m3c[16], m3ew[4];
-    f64 rw[32], tm[4], ui[4];
-    i32 iw[24];
+    f64 m1[4] = {0}, m2[4] = {0}, m3[16] = {0}, m3c[16] = {0}, m3ew[4] = {0};
+    f64 rw[32] = {0}, tm[4] = {0}, ui[4] = {0};
+    i32 iw[24] = {0};
 
     f64 bignum, c, delta1, eps, r, s, scale1, smlnum, t, uflt, x;
     i32 i, info1, j, kb, kh, kl, kl1, l, ldws, m, uiipt, wpt, ypt;

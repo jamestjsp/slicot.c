@@ -19,10 +19,11 @@ def get_numpy_include():
 build_dirs = [
     'build/macos-arm64-debug/src',
     'build/macos-arm64-release/src',
-    'build/macos-x64-debug/src',
-    'build/macos-x64-release/src',
     'build/linux-x64-debug/src',
     'build/linux-x64-release/src',
+    'build/linux-x64-debug-asan/src',
+    'build/linux-x64-debug-ubsan/src',
+    'build/linux-x64-debug-sanitizers/src',
     'build/src',
 ]
 

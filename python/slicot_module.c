@@ -65,7 +65,7 @@ static PyObject* py_mb03oy(PyObject* self, PyObject* args) {
     f64 rcond, svlmax;
     PyObject *a_obj;
     PyArrayObject *a_array;
-    i32 rank, info;
+    i32 rank = 0, info = 0;
 
     if (!PyArg_ParseTuple(args, "iiOdd", &m, &n, &a_obj, &rcond, &svlmax)) {
         return NULL;
@@ -146,7 +146,7 @@ static PyObject* py_mb03od(PyObject* self, PyObject* args, PyObject* kwargs) {
     f64 rcond, svlmax;
     PyObject *a_obj;
     PyArrayObject *a_array;
-    i32 rank, info;
+    i32 rank = 0, info = 0;
 
     static char *kwlist[] = {"m", "n", "a", "rcond", "svlmax", "jobqr", NULL};
 
