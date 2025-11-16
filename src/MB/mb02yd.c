@@ -44,6 +44,14 @@ void mb02yd(
         *info = -12;
     }
 
+    // Validate ipvt array contains valid 1-based indices [1, n]
+    for (j = 0; j < n; j++) {
+        if (ipvt[j] < 1 || ipvt[j] > n) {
+            *info = -5;
+            break;
+        }
+    }
+
     if (*info != 0) {
         return;
     }
@@ -92,7 +100,7 @@ void mb02yd(
                     qtbpj = -sn * dwork[n + k] + cs * qtbpj;
                     dwork[n + k] = temp;
 
-                    i32 nk1 = n - k + 1;
+                    i32 nk1 = n - k;
                     SLC_DROT(&nk1, &r[k + k*ldr], &int1, &dwork[k], &int1, &cs, &sn);
                 }
             }

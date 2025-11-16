@@ -1,0 +1,37 @@
+{
+  "name": "SLICOT C Development",
+  "image": "mcr.microsoft.com/devcontainers/cpp:ubuntu",
+
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y libblas-dev liblapack-dev gfortran ninja-build curl && curl -fsSL https://claude.ai/install.sh | bash && rm -rf build/macos-* && python3 -m venv venv && . venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt && cmake --preset linux-x64-debug && cmake --build --preset linux-x64-debug-build && pip install -e .",
+
+  "mounts": [
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached"
+  ],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ],
+      "settings": {
+        "cmake.configureOnOpen": true,
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["tests/python/", "-v"],
+        "C_Cpp.default.cStandard": "c11",
+        "C_Cpp.default.compilerPath": "/usr/bin/gcc"
+      }
+    }
+  },
+
+  "remoteUser": "vscode"
+}
