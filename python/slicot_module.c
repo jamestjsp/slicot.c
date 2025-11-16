@@ -486,6 +486,7 @@ static PyObject* py_mb02yd(PyObject* self, PyObject* args) {
 
     bool econd = (*cond == 'E' || *cond == 'e');
     i32 ldwork = econd ? 4*n : 2*n;
+    if (ldwork < 1) ldwork = 1;  /* Ensure at least 1 element for malloc */
     f64* dwork = (f64*)malloc(ldwork * sizeof(f64));
     if (dwork == NULL) {
         Py_DECREF(r_array);
@@ -496,23 +497,43 @@ static PyObject* py_mb02yd(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    npy_intp x_dims[1] = {n};
-    PyArrayObject* x_array = (PyArrayObject*)PyArray_ZEROS(1, x_dims, NPY_DOUBLE, 1);
-    if (x_array == NULL) {
+    /* Allocate output array x */
+    f64* x_data = (n > 0) ? (f64*)calloc(n, sizeof(f64)) : NULL;
+    if (n > 0 && x_data == NULL) {
         free(dwork);
         Py_DECREF(r_array);
         Py_DECREF(ipvt_array);
         Py_DECREF(diag_array);
         Py_DECREF(qtb_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate output array");
         return NULL;
     }
-    f64* x_data = (f64*)PyArray_DATA(x_array);
 
     i32 rank = rank_in;
 
     mb02yd(cond, n, r_data, ldr, ipvt_data, diag_data, qtb_data, &rank, x_data, tol, dwork, ldwork, &info);
 
     free(dwork);
+
+    /* Resolve writebackifcopy before decref */
+    PyArray_ResolveWritebackIfCopy(r_array);
+
+    /* Create NumPy array from x_data */
+    npy_intp x_dims[1] = {n > 0 ? n : 0};
+    PyObject* x_array = (n > 0) ? PyArray_SimpleNewFromData(1, x_dims, NPY_DOUBLE, x_data) 
+                                 : PyArray_EMPTY(1, x_dims, NPY_DOUBLE, 0);
+    if (x_array == NULL) {
+        free(x_data);
+        Py_DECREF(r_array);
+        Py_DECREF(ipvt_array);
+        Py_DECREF(diag_array);
+        Py_DECREF(qtb_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to create output array");
+        return NULL;
+    }
+
+    /* Transfer ownership to NumPy */
+    if (n > 0) PyArray_ENABLEFLAGS((PyArrayObject*)x_array, NPY_ARRAY_OWNDATA);
 
     if (info < 0) {
         Py_DECREF(r_array);
