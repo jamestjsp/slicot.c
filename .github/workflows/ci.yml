@@ -8,7 +8,60 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-test:
+  # Fast check on every push
+  quick-test:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/devcontainers/cpp:ubuntu
+    name: Quick Test (Release)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y \
+            libblas-dev \
+            liblapack-dev \
+            gfortran \
+            ninja-build \
+            python3-venv \
+            python3-dev
+
+      - name: Setup Python venv
+        run: |
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+
+      - name: Configure CMake
+        run: |
+          . venv/bin/activate
+          cmake --preset linux-x64-release
+
+      - name: Build
+        run: |
+          . venv/bin/activate
+          cmake --build --preset linux-x64-release-build
+
+      - name: Install Python extension
+        run: |
+          . venv/bin/activate
+          pip install -e .
+
+      - name: Run tests
+        run: |
+          . venv/bin/activate
+          pytest tests/python/ -v
+
+  # Thorough checks on PR/manual trigger only
+  full-test:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/devcontainers/cpp:ubuntu
@@ -19,14 +72,11 @@ jobs:
           - name: debug
             configure: linux-x64-debug
             build: linux-x64-debug-build
-          - name: release
-            configure: linux-x64-release
-            build: linux-x64-release-build
           - name: sanitizers
             configure: linux-x64-debug-sanitizers
             build: linux-x64-debug-sanitizers-build
 
-    name: Build & Test (${{ matrix.preset.name }})
+    name: Full Test (${{ matrix.preset.name }})
 
     steps:
       - name: Checkout
@@ -80,6 +130,7 @@ jobs:
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
 
   valgrind:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/devcontainers/cpp:ubuntu

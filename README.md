@@ -19,10 +19,12 @@ pytest tests/python/ -v
 
 ### CI/CD
 
-- **Matrix builds:** Debug, Release, ASAN/UBSAN sanitizers
-- **Valgrind:** Separate job for definite memory leaks
-- **Tests:** Python (pytest) runs all function tests
-- Uses devcontainer image for consistency
+**Every push:** Fast release build + tests (~2 min)
+**PR/Manual only:** Debug, ASAN/UBSAN, Valgrind (~6 min)
+
+- Optimized for quick feedback on main branch
+- Thorough checks on pull requests
+- Manual trigger via Actions tab for deep testing
 
 ## Translation Status
 
