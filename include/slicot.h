@@ -731,6 +731,111 @@ void md03by(
 );
 
 /**
+ * @brief Levenberg-Marquardt nonlinear least squares optimizer.
+ *
+ * Minimize sum of squares of m nonlinear functions in n variables
+ * using modified Levenberg-Marquardt algorithm with trust region.
+ * Requires user-provided FCN (function/Jacobian), QRFACT (QR factorization),
+ * and LMPARM (L-M parameter computation) subroutines.
+ *
+ * @param[in] xinit 'R'=random initialization, 'G'=use given X
+ * @param[in] scale 'I'=internal scaling, 'S'=use specified DIAG
+ * @param[in] cond 'E'=use condition estimation, 'N'=check diagonal only
+ * @param[in] fcn Function pointer for error functions and Jacobian
+ * @param[in] qrfact Function pointer for QR factorization with pivoting
+ * @param[in] lmparm Function pointer for Levenberg-Marquardt parameter
+ * @param[in] m Number of functions (m >= 0)
+ * @param[in] n Number of variables (m >= n >= 0)
+ * @param[in] itmax Maximum iterations (itmax >= 0)
+ * @param[in] factor Initial step bound factor (factor > 0, typically 100)
+ * @param[in] nprint Print frequency (IFLAG=0 calls). If <= 0, no printing
+ * @param[in] ipar INTEGER array, dimension (lipar). Problem parameters
+ * @param[in] lipar Length of ipar (lipar >= 5)
+ * @param[in] dpar1 DOUBLE PRECISION array. First parameter set
+ * @param[in] ldpar1 Leading dimension/length of dpar1
+ * @param[in] dpar2 DOUBLE PRECISION array. Second parameter set
+ * @param[in] ldpar2 Leading dimension/length of dpar2
+ * @param[in,out] x DOUBLE PRECISION array, dimension (n)
+ *                  Input: initial guess (if xinit='G')
+ *                  Output: solution minimizing sum of squares
+ * @param[in,out] diag DOUBLE PRECISION array, dimension (n)
+ *                     Input: scaling factors (if scale='S')
+ *                     Output: final scaling factors used
+ * @param[out] nfev Number of function evaluations (IFLAG=1)
+ * @param[out] njev Number of Jacobian evaluations (IFLAG=2)
+ * @param[in] ftol Relative error tolerance for sum of squares
+ *                 (ftol < 0 uses sqrt(eps))
+ * @param[in] xtol Relative error tolerance for solution
+ *                 (xtol < 0 uses sqrt(eps))
+ * @param[in] gtol Orthogonality tolerance between e and J columns
+ *                 (gtol < 0 uses eps)
+ * @param[in] tol Tolerance for rank determination if cond='E'
+ *                (tol <= 0 uses n*eps)
+ * @param[out] iwork INTEGER array, dimension (n+r)
+ *                   iwork[0:n-1]: permutation defining J*P = Q*R
+ *                   iwork[n:n+r-1]: ranks of submatrices
+ * @param[out] dwork DOUBLE PRECISION array, dimension (ldwork)
+ *                   dwork[0]: optimal ldwork
+ *                   dwork[1]: final residual norm
+ *                   dwork[2]: iterations performed
+ *                   dwork[3]: final Levenberg-Marquardt parameter
+ * @param[in] ldwork Length of dwork (see MD03BD documentation)
+ * @param[out] iwarn Warning indicator
+ *                   <0: user set IFLAG=iwarn
+ *                   1: both actual/predicted reductions <= ftol
+ *                   2: relative error between iterates <= xtol
+ *                   3: conditions 1 and 2 both hold
+ *                   4: cosine(e,J) <= gtol
+ *                   5: iterations reached itmax
+ *                   6: ftol too small
+ *                   7: xtol too small
+ *                   8: gtol too small
+ * @param[out] info Exit code
+ *                  0: success
+ *                  <0: invalid parameter -info
+ *                  1: FCN returned info != 0 for IFLAG=1
+ *                  2: FCN returned info != 0 for IFLAG=2
+ *                  3: QRFACT returned info != 0
+ *                  4: LMPARM returned info != 0
+ */
+void md03bd(
+    const char* xinit,
+    const char* scale,
+    const char* cond,
+    void (*fcn)(i32*, i32, i32, const i32*, i32, const f64*, i32, const f64*, i32,
+                const f64*, i32*, f64*, f64*, i32*, f64*, i32, i32*),
+    void (*qrfact)(i32, const i32*, i32, f64, f64*, i32*, f64*, f64*, f64*,
+                   i32*, f64*, i32, i32*),
+    void (*lmparm)(const char*, i32, const i32*, i32, f64*, i32, const i32*,
+                   const f64*, const f64*, f64, f64*, i32*, f64*, f64*, f64,
+                   f64*, i32, i32*),
+    i32 m,
+    i32 n,
+    i32 itmax,
+    f64 factor,
+    i32 nprint,
+    const i32* ipar,
+    i32 lipar,
+    const f64* dpar1,
+    i32 ldpar1,
+    const f64* dpar2,
+    i32 ldpar2,
+    f64* x,
+    f64* diag,
+    i32* nfev,
+    i32* njev,
+    f64 ftol,
+    f64 xtol,
+    f64 gtol,
+    f64 tol,
+    i32* iwork,
+    f64* dwork,
+    i32 ldwork,
+    i32* iwarn,
+    i32* info
+);
+
+/**
  * @brief Reduce state matrix A to real Schur form via orthogonal transformation
  *
  * Reduces system state matrix A to upper real Schur form by orthogonal similarity

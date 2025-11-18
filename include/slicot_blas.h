@@ -268,6 +268,7 @@ void SLC_FC_FUNC(dgees, DGEES)(const char* jobvs, const char* sort,
 #define SLC_DSYR2K   SLC_FC_FUNC(dsyr2k, DSYR2K)
 #define SLC_DLAMCH   SLC_FC_FUNC(dlamch, DLAMCH)
 #define SLC_DLACPY   SLC_FC_FUNC(dlacpy, DLACPY)
+#define SLC_DLARNV   SLC_FC_FUNC(dlarnv, DLARNV)
 #define SLC_DLASET   SLC_FC_FUNC(dlaset, DLASET)
 #define SLC_DGETRF   SLC_FC_FUNC(dgetrf, DGETRF)
 #define SLC_DGEQRF   SLC_FC_FUNC(dgeqrf, DGEQRF)
