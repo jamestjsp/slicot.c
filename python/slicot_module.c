@@ -364,7 +364,7 @@ typedef struct {
 static md03bd_callback_data *g_cb_data = NULL;
 
 static void md03bd_fcn_wrapper(
-    i32* iflag, i32 m, i32 n, const i32* ipar, i32 lipar,
+    i32* iflag, i32 m, i32 n, i32* ipar, i32 lipar,
     const f64* dpar1, i32 ldpar1, const f64* dpar2, i32 ldpar2,
     const f64* x, i32* nfevl, f64* e, f64* j, i32* ldj,
     f64* dwork, i32 ldwork, i32* info
@@ -375,12 +375,11 @@ static void md03bd_fcn_wrapper(
 
     if (*iflag == 3) {
         *ldj = m;
-        i32* ipar_mut = (i32*)ipar;
-        ipar_mut[0] = m * n;
-        ipar_mut[1] = 0;
-        ipar_mut[2] = 0;
-        ipar_mut[3] = 4*n + 1;
-        ipar_mut[4] = 4*n;
+        ipar[0] = m * n;
+        ipar[1] = 0;
+        ipar[2] = 0;
+        ipar[3] = 4*n + 1;
+        ipar[4] = 4*n;
         return;
     }
 
@@ -565,10 +564,9 @@ static PyObject* py_md03bd(PyObject* self, PyObject* args, PyObject* kwargs) {
     g_cb_data = NULL;
     f64 fnorm = dwork[1];
 
+    // Create output array with properly allocated data
     npy_intp x_dims[1] = {n};
-    npy_intp x_strides[1] = {sizeof(f64)};
-    PyObject *x_out = PyArray_New(&PyArray_Type, 1, x_dims, NPY_DOUBLE, x_strides,
-                                   NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    PyObject *x_out = PyArray_EMPTY(1, x_dims, NPY_DOUBLE, 0);
     if (x_out == NULL) {
         free(diag);
         free(iwork);
