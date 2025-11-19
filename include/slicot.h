@@ -856,6 +856,46 @@ void ma02ad(const char* job, const i32 m, const i32 n,
 void ma02ed(const char uplo, i32 n, f64 *a, i32 lda);
 
 /**
+ * @brief QR factorization of special structured block matrix.
+ *
+ * Computes QR factorization of first block column and applies orthogonal
+ * transformations to second block column:
+ *         [[R], [A B]] -> Q' * [[R], [A B]] = [[R_bar C], [0 D]]
+ * where R and R_bar are upper triangular.
+ *
+ * @param[in] uplo Indicates structure of A:
+ *                 'U' = upper trapezoidal/triangular
+ *                 'F' = full matrix
+ * @param[in] n Order of matrices R and R_bar (n >= 0)
+ * @param[in] m Number of columns of B, C, D (m >= 0)
+ * @param[in] p Number of rows of A, B, D (p >= 0)
+ * @param[in,out] r Matrix R, dimension (ldr,n)
+ *                  In: n-by-n upper triangular R
+ *                  Out: n-by-n upper triangular R_bar
+ * @param[in] ldr Leading dimension of r (ldr >= max(1,n))
+ * @param[in,out] a Matrix A, dimension (lda,n)
+ *                  In: p-by-n matrix (full or upper trapezoidal)
+ *                  Out: Householder vectors v_i
+ * @param[in] lda Leading dimension of a (lda >= max(1,p))
+ * @param[in,out] b Matrix B, dimension (ldb,m)
+ *                  In: p-by-m matrix B
+ *                  Out: p-by-m matrix D
+ * @param[in] ldb Leading dimension of b (ldb >= max(1,p))
+ * @param[out] c Matrix C, dimension (ldc,m)
+ *               n-by-m matrix C
+ * @param[in] ldc Leading dimension of c (ldc >= max(1,n))
+ * @param[out] tau Scalar factors of elementary reflectors, dimension (n)
+ * @param[out] dwork Workspace, dimension (n)
+ */
+void mb04kd(const char uplo, i32 n, i32 m, i32 p,
+            f64 *r, i32 ldr,
+            f64 *a, i32 lda,
+            f64 *b, i32 ldb,
+            f64 *c, i32 ldc,
+            f64 *tau,
+            f64 *dwork);
+
+/**
  * @brief QR factorization with column pivoting for Levenberg-Marquardt
  *
  * Computes QR factorization with column pivoting of m-by-n matrix J (m >= n):

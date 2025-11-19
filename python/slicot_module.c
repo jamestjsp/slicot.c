@@ -1976,6 +1976,139 @@ static PyObject* py_ma02ed(PyObject* self, PyObject* args) {
     return result;
 }
 
+static PyObject* py_mb04kd(PyObject* self, PyObject* args) {
+    const char *uplo_str;
+    i32 n, m, p;
+    PyObject *r_obj, *a_obj, *b_obj;
+    PyArrayObject *r_array, *a_array, *b_array;
+
+    if (!PyArg_ParseTuple(args, "siiiOOO", &uplo_str, &n, &m, &p,
+                          &r_obj, &a_obj, &b_obj)) {
+        return NULL;
+    }
+
+    if (uplo_str == NULL || uplo_str[0] == '\0') {
+        PyErr_SetString(PyExc_ValueError, "uplo must be a non-empty string");
+        return NULL;
+    }
+    char uplo = uplo_str[0];
+
+    /* Convert input arrays - in-place modification */
+    r_array = (PyArrayObject*)PyArray_FROM_OTF(r_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (r_array == NULL) return NULL;
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) {
+        Py_DECREF(r_array);
+        return NULL;
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    /* Get dimensions */
+    npy_intp *r_dims = PyArray_DIMS(r_array);
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *b_dims = PyArray_DIMS(b_array);
+
+    i32 ldr = (i32)r_dims[0];
+    i32 lda = (i32)a_dims[0];
+    i32 ldb = (i32)b_dims[0];
+    i32 ldc = n > 0 ? n : 1;
+
+    /* Allocate output arrays */
+    npy_intp c_dims[2] = {n, m};
+    npy_intp c_strides[2] = {sizeof(f64), ldc * sizeof(f64)};
+    f64 *c_data = (f64*)calloc(ldc * m, sizeof(f64));
+    if (c_data == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate C matrix");
+        return NULL;
+    }
+
+    f64 *tau = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+    if (tau == NULL) {
+        free(c_data);
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate tau");
+        return NULL;
+    }
+
+    f64 *dwork = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+    if (dwork == NULL) {
+        free(c_data);
+        free(tau);
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        return NULL;
+    }
+
+    /* Call C function */
+    f64 *r_data = (f64*)PyArray_DATA(r_array);
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+
+    mb04kd(uplo, n, m, p, r_data, ldr, a_data, lda, b_data, ldb,
+           c_data, ldc, tau, dwork);
+
+    /* Resolve writeback */
+    PyArray_ResolveWritebackIfCopy(r_array);
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+
+    /* Create output arrays */
+    PyObject *c_array = PyArray_New(&PyArray_Type, 2, c_dims, NPY_DOUBLE,
+                                    c_strides, c_data, 0, NPY_ARRAY_FARRAY, NULL);
+    if (c_array == NULL) {
+        free(c_data);
+        free(tau);
+        free(dwork);
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)c_array, NPY_ARRAY_OWNDATA);
+
+    npy_intp tau_dims[1] = {n > 0 ? n : 1};
+    PyObject *tau_array = PyArray_SimpleNewFromData(1, tau_dims, NPY_DOUBLE, tau);
+    if (tau_array == NULL) {
+        free(tau);
+        free(dwork);
+        Py_DECREF(c_array);
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)tau_array, NPY_ARRAY_OWNDATA);
+
+    free(dwork);
+
+    /* Return (R_bar, A_out, D, C, tau) */
+    PyObject *result = Py_BuildValue("OOOOO", r_array, a_array, b_array, c_array, tau_array);
+    Py_DECREF(r_array);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(tau_array);
+
+    return result;
+}
+
 static PyObject* py_ma02ad(PyObject* self, PyObject* args) {
     const char* job;
     PyObject *a_obj;
@@ -2767,6 +2900,20 @@ static PyMethodDef SlicotMethods[] = {
      "  nrows (ndarray, optional): Block sizes\n\n"
      "Returns:\n"
      "  (a, info): Modified matrix and exit code\n"},
+
+    {"mb04kd", py_mb04kd, METH_VARARGS,
+     "QR factorization of special structured block matrix.\n\n"
+     "Computes Q' * [[R],[A B]] = [[R_bar C],[0 D]]\n\n"
+     "Parameters:\n"
+     "  uplo (str): 'U' if A is upper trapezoidal, 'F' if A is full\n"
+     "  n (int): Order of R and R_bar\n"
+     "  m (int): Number of columns of B, C, D\n"
+     "  p (int): Number of rows of A, B, D\n"
+     "  r (ndarray): Upper triangular matrix R (n x n, F-order)\n"
+     "  a (ndarray): Matrix A (p x n, F-order)\n"
+     "  b (ndarray): Matrix B (p x m, F-order)\n\n"
+     "Returns:\n"
+     "  (r_bar, a_out, d, c, tau): Transformed matrices and Householder factors\n"},
 
     {"mb01rx", py_mb01rx, METH_VARARGS,
      "Triangular symmetric rank-k update.\n\n"
