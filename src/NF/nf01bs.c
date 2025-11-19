@@ -164,14 +164,14 @@ void nf01bs(i32 n, const i32 *ipar, i32 lipar, f64 fnorm, f64 *j, i32 *ldj,
     }
 
     if (mmn > 0) {
-        l = ipvt[0];
+        l = ipvt[0] - 1;
         jnorms[l] = fabs(j[0]);
         ibsm = bsm;
         ibsn = bsn;
 
         for (k = 0; k < bn - 1; k++) {
             j[ibsn] = j[ibsm];
-            l = ipvt[ibsn];
+            l = ipvt[ibsn] - 1;
             jnorms[l] = fabs(j[ibsn]);
             ibsm += bsm;
             ibsn += bsn;
@@ -187,7 +187,7 @@ void nf01bs(i32 n, const i32 *ipar, i32 lipar, f64 fnorm, f64 *j, i32 *ldj,
                 for (i32 jj = 0; jj <= i; jj++) {
                     j[ibsn + jj] = j[ibsm + jj];
                 }
-                l = ipvt[jlm];
+                l = ipvt[jlm] - 1;
                 i32 len_i = i + 1;
                 jnorms[l] = SLC_DNRM2(&len_i, &j[ibsn], &inc_1);
                 ibsm += bsm;
@@ -277,7 +277,7 @@ void nf01bs(i32 n, const i32 *ipar, i32 lipar, f64 fnorm, f64 *j, i32 *ldj,
 
             ibsni = ibsn;
             for (i = nths; i < n; i++) {
-                l = ipvt[i];
+                l = ipvt[i] - 1;
                 i32 len_i = i + 1;
                 jnorms[l] = SLC_DNRM2(&len_i, &j[ibsni], &inc_1);
                 ibsni += n;
@@ -288,7 +288,7 @@ void nf01bs(i32 n, const i32 *ipar, i32 lipar, f64 fnorm, f64 *j, i32 *ldj,
         for (i = 0; i < bsn; i++) {
             jlm = i;
             for (k = 0; k < bn; k++) {
-                l = ipvt[jlm];
+                l = ipvt[jlm] - 1;
                 i32 len_i = i + 1;
                 jnorms[l] = SLC_DNRM2(&len_i, &j[ibsn], &inc_1);
                 ibsn += bsn;
@@ -304,7 +304,7 @@ void nf01bs(i32 n, const i32 *ipar, i32 lipar, f64 fnorm, f64 *j, i32 *ldj,
         for (ibsn = 0; ibsn < nths; ibsn += bsn) {
             ibsni = ibsn;
             for (i = 0; i < bsn; i++) {
-                l = ipvt[ibsn + i];
+                l = ipvt[ibsn + i] - 1;
                 if (jnorms[l] != zero) {
                     i32 len_i = i + 1;
                     sum = SLC_DDOT(&len_i, &j[ibsni], &inc_1, &e[ibsn], &inc_1) / fnorm;
@@ -316,7 +316,7 @@ void nf01bs(i32 n, const i32 *ipar, i32 lipar, f64 fnorm, f64 *j, i32 *ldj,
 
         ibsni = n * bsn;
         for (i = nths; i < n; i++) {
-            l = ipvt[i];
+            l = ipvt[i] - 1;
             if (jnorms[l] != zero) {
                 i32 len_i = i + 1;
                 sum = SLC_DDOT(&len_i, &j[ibsni], &inc_1, e, &inc_1) / fnorm;
