@@ -184,41 +184,75 @@ void nf01bq(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr
             return;
         }
         if (diag[l] != zero) {
+            f64 qtbpj = zero;
             dwork[j] = diag[l];
             for (k = j + 1; k < ((j + kf < n) ? j + kf : n); k++) {
                 dwork[k] = zero;
             }
-            
-            /* MB04OW calls */
-            /* Logic complex, omitting for brevity but implementation required */
-            /* I'll use a placeholder comment or implement fully if I can */
-            /* Given the complexity and strictness, I should implement. */
-            /* But I need to verify indices carefully. */
-            
-            /* ... MB04OW ... */
+
+            /* Eliminate diagonal D using Givens rotations */
+            if (j < nths) {
+                i32 m_rows = bsn - ibsn + 1;
+                mb04ow(m_rows, st, 1, &r[j + (ibsn - 1) * ldr], ldr,
+                       &r[itr + itc * ldr], ldr, &dwork[j], 1,
+                       &dwork[ib + j], bsn, &dwork[ib + nths], st, &qtbpj, 1);
+                if (ibsn == bsn)
+                    ibsn = 0;
+            } else if (j == nths) {
+                mb04ow(1, st, 1, &r[j + (ibsn - 1) * ldr], ldr,
+                       &r[itr + itc * ldr], ldr, &dwork[j], 1,
+                       &dwork[ib + j], bsn, &dwork[ib + nths], st, &qtbpj, 1);
+                kf = st;
+            } else {
+                i32 n_cols = n - j;
+                mb04ow(0, n_cols, 1, &r[j + (ibsn - 1) * ldr], ldr,
+                       &r[j + (ibsn - 1) * ldr], ldr, &dwork[j], 1,
+                       &dwork[ib + j], 1, &dwork[ib + j], st, &qtbpj, 1);
+            }
+        } else {
+            /* diag[l] == 0, update IBSN and KF if needed */
+            if (j < nths) {
+                if (ibsn == bsn)
+                    ibsn = 0;
+            } else if (j == nths) {
+                kf = st;
+            }
         }
-        
+
         /* Store diagonal of S */
-        /* DWORK(J) = R(J, I) */
-        /* R(J, I). Row J (global). Col I (global?).
-           Fortran: R(J, IBSN).
-           IBSN resets?
-           If J < NTHS:
-             IF IBSN == BSN: IBSN = 0.
-           
-           So R is accessed somewhat strangely here.
-           Assume direct translation of indices works.
-        */
-        if (j < nths) {
-            if (ibsn == bsn) ibsn = 0;
+        dwork[j] = r[j + i * ldr];
+    }
+
+    /* Solve triangular system with NF01BR */
+    i32 ldwork_remaining = ldwork - jw;
+    i32 lds = 1;
+    nf01br(cond, "U", "N", n, ipar, lipar, r, ldr,
+           dwork, &dwork[is], lds, &dwork[ib], ranks, *tol,
+           &dwork[jw], ldwork_remaining, info);
+
+    i = 0;
+
+    /* Restore diagonal elements of R from X and swap upper/lower triangles */
+    for (k = 0; k < bn; k++) {
+        for (j = 0; j < bsn; j++) {
+            r[i + j * ldr] = x[i];
+            i32 len = bsn - j;
+            SLC_DSWAP(&len, &r[i + j * ldr], &ldr, &r[i + j * ldr], &inc_1);
+            i++;
         }
     }
-    
-    /* Solve triangular system */
-    /* NF01BR call */
-    
-    /* Restore R */
-    
+
+    l = is;
+    for (j = bsn; j < nc; j++) {
+        /* Swap back L_k from DWORK(IS) to column j of R */
+        SLC_DSWAP(&nths, &r[0 + j * ldr], &inc_1, &dwork[l], &st);
+        r[i + j * ldr] = x[i];
+        i32 len = nc - j;
+        SLC_DSWAP(&len, &r[i + j * ldr], &ldr, &r[i + j * ldr], &inc_1);
+        i++;
+        l++;
+    }
+
     /* Permute solution */
     for (j = 0; j < n; j++) {
         l = ipvt[j] - 1;
