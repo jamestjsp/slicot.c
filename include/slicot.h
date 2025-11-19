@@ -1465,6 +1465,58 @@ void SLC_MB04KD(i32 m, f64* alpha, f64* x, i32 incx, f64* tau);
 void SLC_MB04OY(i32 m, i32 n, const f64* v, f64 tau,
                 f64* a, i32 lda, f64* b, i32 ldb, f64* dwork);
 
+/**
+ * @brief Apply orthogonal transformations from MB04ID to matrix C.
+ *
+ * Overwrites real n-by-m matrix C with Q'*C, Q*C, C*Q', or C*Q, where
+ * Q is orthogonal matrix defined as product of k elementary reflectors:
+ *
+ *     Q = H(1) H(2) ... H(k)
+ *
+ * as returned by MB04ID. Q is order n if SIDE='L', order m if SIDE='R'.
+ * Reflectors stored in special format for lower-left zero triangle structure.
+ *
+ * @param[in] side 'L' = apply Q or Q' from left, 'R' = from right
+ * @param[in] trans 'N' = apply Q (no transpose), 'T' = apply Q' (transpose)
+ * @param[in] n Number of rows of matrix C, n >= 0
+ * @param[in] m Number of columns of matrix C, m >= 0
+ * @param[in] k Number of elementary reflectors, constraints:
+ *              n >= k >= 0 if SIDE='L'
+ *              m >= k >= 0 if SIDE='R'
+ * @param[in] p Order of zero triangle (rows of zero trapezoid), p >= 0
+ * @param[in,out] a Reflector storage, dimension (lda,k)
+ *                  Row i+1:min(n,n-p-1+i) of column i contains H(i)
+ *                  Modified but restored on exit
+ * @param[in] lda Leading dimension: lda >= max(1,n) if SIDE='L',
+ *                                   lda >= max(1,m) if SIDE='R'
+ * @param[in] tau Reflector scalar factors, dimension (k)
+ * @param[in,out] c On entry: n-by-m matrix C
+ *                  On exit: transformed matrix
+ * @param[in] ldc Leading dimension, ldc >= max(1,n)
+ * @param[out] dwork Workspace, dimension (ldwork)
+ *                   dwork[0] returns optimal ldwork on exit
+ * @param[in] ldwork Workspace size:
+ *                   ldwork >= max(1,m) if SIDE='L'
+ *                   ldwork >= max(1,n) if SIDE='R'
+ * @param[out] info Exit code: 0=success, <0=invalid parameter
+ */
+void mb04iy(
+    const char* side,
+    const char* trans,
+    const i32 n,
+    const i32 m,
+    const i32 k,
+    const i32 p,
+    f64* a,
+    const i32 lda,
+    const f64* tau,
+    f64* c,
+    const i32 ldc,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info
+);
+
 #ifdef __cplusplus
 }
 #endif

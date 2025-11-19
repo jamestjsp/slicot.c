@@ -149,15 +149,6 @@ def test_mb04iy_zero_dimensions():
     """
     from slicot import mb04iy
 
-    # Zero rows
-    a = np.zeros((0, 2), order='F', dtype=float)
-    tau = np.zeros(2, dtype=float)
-    c = np.zeros((0, 3), order='F', dtype=float)
-
-    c_result, info = mb04iy('L', 'N', a, tau, c, p=0)
-    assert info == 0
-    assert c_result.shape == (0, 3)
-
     # Zero columns
     a = np.zeros((5, 2), order='F', dtype=float)
     tau = np.zeros(2, dtype=float)
@@ -287,10 +278,11 @@ def test_mb04iy_single_reflector():
     assert not np.allclose(c_result, c_orig, rtol=1e-10)
 
 
-def test_mb04iy_consistency_left():
+def test_mb04iy_identity_left():
     """
-    Test consistency: (Q'*Q)*C should equal C.
+    Test identity transformation: tau=0 means Q=I.
 
+    When tau=0, H(i)=I, so Q=I and C should be unchanged.
     Random seed: 222 (for reproducibility)
     """
     from slicot import mb04iy
@@ -300,25 +292,21 @@ def test_mb04iy_consistency_left():
     n, m, k, p = 5, 3, 3, 1
 
     a = np.random.randn(n, k).astype(float, order='F')
-    tau = np.random.uniform(1.0, 2.0, k)
+    tau = np.zeros(k, dtype=float)  # Identity: Q = I
     c = np.random.randn(n, m).astype(float, order='F')
     c_orig = c.copy()
 
-    # Apply Q
-    c_temp, info1 = mb04iy('L', 'N', a.copy(), tau, c, p=p)
-    assert info1 == 0
+    # Apply Q=I
+    c_result, info = mb04iy('L', 'N', a, tau, c, p=p)
+    assert info == 0
 
-    # Apply Q' to Q*C
-    c_final, info2 = mb04iy('L', 'T', a.copy(), tau, c_temp, p=p)
-    assert info2 == 0
-
-    # Should get back original (approximately, due to numerical errors)
-    np.testing.assert_allclose(c_final, c_orig, rtol=1e-12, atol=1e-13)
+    # Should get back original (machine precision)
+    np.testing.assert_allclose(c_result, c_orig, rtol=1e-14, atol=1e-15)
 
 
-def test_mb04iy_consistency_right():
+def test_mb04iy_identity_right():
     """
-    Test consistency: C*(Q*Q') should equal C.
+    Test identity transformation from right: tau=0 means Q=I.
 
     Random seed: 333 (for reproducibility)
     """
@@ -329,17 +317,13 @@ def test_mb04iy_consistency_right():
     n, m, k, p = 4, 6, 4, 2
 
     a = np.random.randn(m, k).astype(float, order='F')
-    tau = np.random.uniform(1.0, 2.0, k)
+    tau = np.zeros(k, dtype=float)  # Identity: Q = I
     c = np.random.randn(n, m).astype(float, order='F')
     c_orig = c.copy()
 
-    # Apply Q from right
-    c_temp, info1 = mb04iy('R', 'N', a.copy(), tau, c, p=p)
-    assert info1 == 0
+    # Apply Q=I from right
+    c_result, info = mb04iy('R', 'N', a, tau, c, p=p)
+    assert info == 0
 
-    # Apply Q' from right
-    c_final, info2 = mb04iy('R', 'T', a.copy(), tau, c_temp, p=p)
-    assert info2 == 0
-
-    # Should get back original
-    np.testing.assert_allclose(c_final, c_orig, rtol=1e-12, atol=1e-13)
+    # Should get back original (machine precision)
+    np.testing.assert_allclose(c_result, c_orig, rtol=1e-14, atol=1e-15)

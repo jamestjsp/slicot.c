@@ -2761,6 +2761,101 @@ static PyObject* py_mb04ow(PyObject* self, PyObject* args, PyObject* kwargs) {
     return result;
 }
 
+static PyObject* py_mb04iy(PyObject* self, PyObject* args, PyObject* kwargs) {
+    static char *kwlist[] = {"side", "trans", "a", "tau", "c", "p", NULL};
+    const char *side, *trans;
+    i32 p = 0;
+    PyObject *a_obj, *tau_obj, *c_obj;
+    PyArrayObject *a_array, *tau_array, *c_array;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ssOOO|i", kwlist,
+                                     &side, &trans, &a_obj, &tau_obj, &c_obj, &p)) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) return NULL;
+
+    tau_array = (PyArrayObject*)PyArray_FROM_OTF(tau_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY);
+    if (tau_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (c_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(tau_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *c_dims = PyArray_DIMS(c_array);
+    npy_intp *tau_dims = PyArray_DIMS(tau_array);
+
+    i32 lda = (i32)a_dims[0];
+    i32 ldc = (i32)c_dims[0];
+    i32 n = (i32)c_dims[0];
+    i32 m = (i32)c_dims[1];
+    i32 k = (i32)tau_dims[0];
+
+    bool left = (side[0] == 'L' || side[0] == 'l');
+    i32 ldwork = left ? (m > 0 ? m : 1) : (n > 0 ? n : 1);
+
+    f64 *dwork = (f64*)calloc(ldwork, sizeof(f64));
+    if (dwork == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(tau_array);
+        Py_DECREF(c_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *tau_data = (f64*)PyArray_DATA(tau_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+
+    i32 info;
+    mb04iy(side, trans, n, m, k, p, a_data, lda, tau_data, c_data, ldc, dwork, ldwork, &info);
+
+    free(dwork);
+
+    // Resolve WRITEBACKIFCOPY for 'a' array before DECREF
+    if (PyArray_ResolveWritebackIfCopy(a_array) < 0) {
+        Py_DECREF(a_array);
+        Py_DECREF(tau_array);
+        Py_DECREF(c_array);
+        PyErr_SetString(PyExc_RuntimeError, "Failed to resolve WRITEBACKIFCOPY for array 'a'");
+        return NULL;
+    }
+
+    // Resolve WRITEBACKIFCOPY for 'c' array
+    if (PyArray_ResolveWritebackIfCopy(c_array) < 0) {
+        Py_DECREF(a_array);
+        Py_DECREF(tau_array);
+        Py_DECREF(c_array);
+        PyErr_SetString(PyExc_RuntimeError, "Failed to resolve WRITEBACKIFCOPY for array 'c'");
+        return NULL;
+    }
+
+    if (info != 0) {
+        Py_DECREF(a_array);
+        Py_DECREF(tau_array);
+        Py_DECREF(c_array);
+        PyErr_Format(PyExc_ValueError, "mb04iy failed with info=%d", info);
+        return NULL;
+    }
+
+    Py_DECREF(a_array);
+    Py_DECREF(tau_array);
+
+    PyObject *result = Py_BuildValue("Oi", c_array, info);
+    Py_DECREF(c_array);
+    return result;
+}
+
 static PyObject* py_mb04oy(PyObject* self, PyObject* args) {
     i32 m, n;
     f64 tau;
@@ -2964,6 +3059,20 @@ static PyMethodDef SlicotMethods[] = {
      "  nrows (ndarray, optional): Block sizes\n\n"
      "Returns:\n"
      "  (a, info): Modified matrix and exit code\n"},
+
+    {"mb04iy", (PyCFunction)py_mb04iy, METH_VARARGS | METH_KEYWORDS,
+     "Apply orthogonal transformations from MB04ID to matrix C.\n\n"
+     "Applies Q or Q' to matrix C, where Q is product of elementary reflectors\n"
+     "as returned by MB04ID (special structure for lower-left zero triangle).\n\n"
+     "Parameters:\n"
+     "  side (str): 'L' for left (Q*C or Q'*C), 'R' for right (C*Q or C*Q')\n"
+     "  trans (str): 'N' for Q, 'T' for Q'\n"
+     "  a (ndarray): Reflector storage (lda x k, F-order), modified but restored\n"
+     "  tau (ndarray): Reflector scalar factors (k,)\n"
+     "  c (ndarray): Matrix C (n x m, F-order), modified in place\n"
+     "  p (int, optional): Order of zero triangle (default 0)\n\n"
+     "Returns:\n"
+     "  (c, info): Transformed matrix and exit code\n"},
 
     {"mb04kd", py_mb04kd, METH_VARARGS,
      "QR factorization of special structured block matrix.\n\n"
