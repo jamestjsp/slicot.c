@@ -1,5 +1,6 @@
 set(SLICOT_SOURCES
     MA/ma02ad.c
+    MA/ma02ed.c
     MB/mb01qd.c
     MB/mb01uy.c
     MB/mb02yd.c

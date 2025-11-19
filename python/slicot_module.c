@@ -1870,6 +1870,46 @@ static PyObject* py_tb01wd(PyObject* self, PyObject* args) {
     return result;
 }
 
+static PyObject* py_ma02ed(PyObject* self, PyObject* args) {
+    const char *uplo_str;
+    PyObject *a_obj;
+    PyArrayObject *a_array;
+
+    if (!PyArg_ParseTuple(args, "sO", &uplo_str, &a_obj)) {
+        return NULL;
+    }
+
+    if (uplo_str == NULL || uplo_str[0] == '\0') {
+        PyErr_SetString(PyExc_ValueError, "uplo must be a non-empty string");
+        return NULL;
+    }
+    char uplo = uplo_str[0];
+
+    /* Convert to NumPy array - preserve Fortran-order, in-place modification */
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) {
+        return NULL;
+    }
+
+    /* Get dimensions */
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    i32 n = (i32)a_dims[0];
+    i32 lda = n > 0 ? n : 1;
+
+    /* Call C function - modifies a in place */
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    ma02ed(uplo, n, a_data, lda);
+
+    /* Resolve writebackifcopy before returning */
+    PyArray_ResolveWritebackIfCopy(a_array);
+
+    /* Return modified array */
+    PyObject *result = Py_BuildValue("O", a_array);
+    Py_DECREF(a_array);
+    return result;
+}
+
 static PyObject* py_ma02ad(PyObject* self, PyObject* args) {
     const char* job;
     PyObject *a_obj;
@@ -2638,6 +2678,14 @@ static PyMethodDef SlicotMethods[] = {
      "  a (ndarray): Input matrix (m x n, F-order)\n\n"
      "Returns:\n"
      "  b (ndarray): Transposed matrix (n x m, F-order)\n"},
+
+    {"ma02ed", py_ma02ed, METH_VARARGS,
+     "Store by symmetry the upper or lower triangle of a symmetric matrix.\n\n"
+     "Parameters:\n"
+     "  uplo (str): 'U' if upper triangle given, 'L' if lower triangle given\n"
+     "  a (ndarray): Symmetric matrix (n x n, F-order), modified in place\n\n"
+     "Returns:\n"
+     "  a (ndarray): Completed symmetric matrix with both triangles\n"},
 
     {"mb01qd", py_mb01qd, METH_VARARGS,
      "Multiply matrix by scalar CTO/CFROM without overflow/underflow.\n\n"

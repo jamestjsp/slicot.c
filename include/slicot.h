@@ -838,6 +838,24 @@ void ma02ad(const char* job, const i32 m, const i32 n,
             f64* b, const i32 ldb);
 
 /**
+ * @brief Store by symmetry the upper or lower triangle of a symmetric matrix.
+ *
+ * Completes a symmetric matrix by copying one triangle to the other.
+ * Given upper triangle, constructs lower triangle (or vice versa).
+ *
+ * @param[in] uplo Specifies which part is given:
+ *                 'U' = upper triangular part given
+ *                 'L' = lower triangular part given
+ *                 Other values = no operation
+ * @param[in] n Order of matrix A (n >= 0)
+ * @param[in,out] a Matrix, dimension (lda,n), column-major
+ *                  In: N-by-N upper/lower triangle contains data
+ *                  Out: Full N-by-N symmetric matrix
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ */
+void ma02ed(const char uplo, i32 n, f64 *a, i32 lda);
+
+/**
  * @brief QR factorization with column pivoting for Levenberg-Marquardt
  *
  * Computes QR factorization with column pivoting of m-by-n matrix J (m >= n):
