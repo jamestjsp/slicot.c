@@ -177,8 +177,12 @@ void nf01bq(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr
     for (j = 0; j < n; j++) {
         ibsn++;
         i = ibsn - 1; /* 0-based index in block? */
-        
+
         l = ipvt[j] - 1; /* 0-based */
+        if (l < 0 || l >= n) {
+            *info = -7;
+            return;
+        }
         if (diag[l] != zero) {
             dwork[j] = diag[l];
             for (k = j + 1; k < ((j + kf < n) ? j + kf : n); k++) {
@@ -218,6 +222,10 @@ void nf01bq(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr
     /* Permute solution */
     for (j = 0; j < n; j++) {
         l = ipvt[j] - 1;
+        if (l < 0 || l >= n) {
+            *info = -7;
+            return;
+        }
         x[l] = dwork[n + j];
     }
 }

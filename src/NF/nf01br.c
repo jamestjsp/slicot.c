@@ -108,9 +108,6 @@ void nf01br(const char *cond, const char *uplo, const char *trans, i32 n,
         
         if (lower) {
             /* Swap diagonal elements of R and SDIAG */
-            SLC_DSWAP(&n, r, &ldr, sdiag, &inc_1); // Need check stride for diagonal of R?
-            /* R is LDR x N. Diagonal is R(i,i). Stride is LDR+1. */
-            /* In C, &r[0], stride ldr+1. */
             i32 stride_diag = ldr + 1;
             SLC_DSWAP(&n, r, &stride_diag, sdiag, &inc_1);
             
@@ -397,20 +394,15 @@ void nf01br(const char *cond, const char *uplo, const char *trans, i32 n,
                A = R(0:nths-1, bsn:bsn+st-1).
                x = b(i1:i1+st-1) (solution x_{l+1})
                y = b(0:nths-1)
-            */
-            SLC_DGEMV(trans, &nths, &st, &one, &r[0 + bsn * ldr], &ldr, 
-                      &b[i1], &inc_1, &one, b, &inc_1); /* Wait, minus one? */
-            /* Formula: R x = b.
+
+               Formula: R x = b.
                [ R_prev  L ] [ x_prev ]   [ b_prev ]
                [   0    R_last ] [ x_last ] = [ b_last ]
-               
-               x_last solved.
-               R_prev x_prev + L x_last = b_prev
-               R_prev x_prev = b_prev - L x_last.
-               So alpha should be -1.0.
+
+               x_last solved, so: R_prev x_prev = b_prev - L x_last
             */
             f64 neg_one = -1.0;
-            SLC_DGEMV(trans, &nths, &st, &neg_one, &r[0 + bsn * ldr], &ldr, 
+            SLC_DGEMV(trans, &nths, &st, &neg_one, &r[0 + bsn * ldr], &ldr,
                       &b[i1], &inc_1, &one, b, &inc_1);
         }
         

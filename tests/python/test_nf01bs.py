@@ -42,11 +42,10 @@ class TestNF01BS(unittest.TestCase):
         # "On exit, the leading N-by-N upper triangular part... contains R"
         
         # Check diagonal is non-increasing (pivoting)
-        # Note: MD03BX guarantees diagonal elements of nonincreasing magnitude?
-        # "diagonal elements of nonincreasing magnitude"
+        # MD03BX guarantees diagonal elements of nonincreasing magnitude
         diag_r = np.abs(np.diag(j_out))
-        # Check sorted descending
-        assert np.all(np.diff(diag_r) <= 1e-14) # allowing for float errors
+        # Check sorted descending (nonincreasing)
+        assert np.all(np.diff(diag_r) <= 0), "Diagonal not sorted descending"
 
 if __name__ == '__main__':
     unittest.main()
