@@ -20,7 +20,7 @@ void md03bd(
     const char* xinit,
     const char* scale,
     const char* cond,
-    void (*fcn)(i32*, i32, i32, const i32*, i32, const f64*, i32, const f64*, i32,
+    void (*fcn)(i32*, i32, i32, i32*, i32, const f64*, i32, const f64*, i32,
                 const f64*, i32*, f64*, f64*, i32*, f64*, i32, i32*),
     void (*qrfact)(i32, const i32*, i32, f64, f64*, i32*, f64*, f64*, f64*,
                    i32*, f64*, i32, i32*),
