@@ -288,6 +288,96 @@ void mb04ow(i32 m, i32 n, i32 p, f64 *a, i32 lda, f64 *t, i32 ldt,
             f64 *d, i32 incd);
 
 /**
+ * @brief Calculate the output of a set of neural networks.
+ *
+ * Calculates the output of a set of neural networks with the structure:
+ *
+ *          - tanh(w1'*z+b1) -
+ *        /      :             \
+ *      z ---    :           --- sum(ws(i)*...)+ b(n+1)  --- y,
+ *        \      :             /
+ *          - tanh(wn'*z+bn) -
+ *
+ * given the input z and the parameter vectors wi, ws, and b.
+ *
+ * @param[in] nsmp The number of training samples. NSMP >= 0.
+ * @param[in] nz The length of each input sample. NZ >= 0.
+ * @param[in] l The length of each output sample. L >= 0.
+ * @param[in] ipar Integer parameters. ipar[0] must contain NN (neurons).
+ * @param[in] lipar Length of ipar.
+ * @param[in] wb Weights and biases vector.
+ * @param[in] lwb Length of wb.
+ * @param[in] z Input samples matrix (nsmp x nz).
+ * @param[in] ldz Leading dimension of z.
+ * @param[out] y Output samples matrix (nsmp x l).
+ * @param[in] ldy Leading dimension of y.
+ * @param[out] dwork Workspace.
+ * @param[in] ldwork Length of dwork.
+ * @param[out] info Exit code.
+ */
+void nf01ay(i32 nsmp, i32 nz, i32 l, const i32 *ipar, i32 lipar, 
+            const f64 *wb, i32 lwb, const f64 *z, i32 ldz, 
+            f64 *y, i32 ldy, f64 *dwork, i32 ldwork, i32 *info);
+
+/**
+ * @brief Compute the Jacobian of the error function for a neural network.
+ *
+ * Computes the Jacobian of the error function for a neural network of the structure:
+ *
+ *          - tanh(w1*z+b1) -
+ *        /      :            \
+ *      z ---    :          --- sum(ws(i)*...)+ b(n+1)  --- y,
+ *        \      :            /
+ *          - tanh(wn*z+bn) -
+ *
+ * for the single-output case.
+ *
+ * @param[in] cjte 'C' to compute J'*e, 'N' to skip.
+ * @param[in] nsmp Number of training samples.
+ * @param[in] nz Length of each input sample.
+ * @param[in] l Length of each output sample (must be 1).
+ * @param[in,out] ipar Integer parameters. ipar[0] contains NN.
+ * @param[in] lipar Length of ipar.
+ * @param[in] wb Weights and biases vector.
+ * @param[in] lwb Length of wb.
+ * @param[in] z Input samples matrix (nsmp x nz).
+ * @param[in] ldz Leading dimension of z.
+ * @param[in] e Error vector (nsmp).
+ * @param[out] j Jacobian matrix (nsmp x nwb).
+ * @param[in] ldj Leading dimension of j.
+ * @param[out] jte Vector J'*e (nwb).
+ * @param[out] dwork Workspace.
+ * @param[in] ldwork Length of dwork.
+ * @param[out] info Exit code.
+ */
+void nf01by(const char *cjte, i32 nsmp, i32 nz, i32 l, i32 *ipar, i32 lipar, 
+            const f64 *wb, i32 lwb, const f64 *z, i32 ldz, const f64 *e, 
+            f64 *j, i32 ldj, f64 *jte, f64 *dwork, i32 ldwork, i32 *info);
+
+/**
+ * @brief QR factorization with column pivoting for Levenberg-Marquardt.
+ *
+ * This routine is an interface to SLICOT Library routine MD03BX.
+ *
+ * @param[in] n Number of columns of Jacobian matrix J.
+ * @param[in] ipar Integer parameters. ipar[0] must contain M (rows of J).
+ * @param[in] lipar Length of ipar.
+ * @param[in] fnorm Euclidean norm of error vector e.
+ * @param[in,out] j Jacobian matrix (M x N). On exit, upper triangular R.
+ * @param[in,out] ldj Leading dimension of J.
+ * @param[in,out] e Error vector (M). On exit, Q'*e.
+ * @param[out] jnorms Euclidean norms of columns of J.
+ * @param[out] gnorm 1-norm of scaled gradient.
+ * @param[out] ipvt Permutation matrix P.
+ * @param[out] dwork Workspace.
+ * @param[in] ldwork Length of dwork.
+ * @param[out] info Exit code.
+ */
+void md03ba(i32 n, const i32 *ipar, i32 lipar, f64 fnorm, f64 *j, i32 *ldj, 
+            f64 *e, f64 *jnorms, f64 *gnorm, i32 *ipvt, f64 *dwork, 
+            i32 ldwork, i32 *info);
+
+/**
  * @brief Compute complex Givens rotation in real arithmetic.
  *
  * Computes parameters for complex Givens rotation such that:

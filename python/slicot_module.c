@@ -1823,8 +1823,256 @@ static PyObject* py_tf01mx(PyObject* self, PyObject* args) {
     Py_DECREF(s_array);
     Py_DECREF(u_array);
     Py_DECREF(x_array);
+    Py_DECREF(x_array);
     Py_DECREF(y_array);
 
+    return result;
+}
+
+/* Python wrapper for md03ba */
+static PyObject* py_md03ba(PyObject* self, PyObject* args) {
+    i32 n;
+    PyObject *ipar_obj, *j_obj, *e_obj;
+    f64 fnorm;
+    PyArrayObject *ipar_array, *j_array, *e_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "iOdOO", &n, &ipar_obj, &fnorm, &j_obj, &e_obj)) {
+        return NULL;
+    }
+    
+    if (n < 0 || fnorm < 0) {
+        PyErr_Format(PyExc_ValueError, "Invalid arguments");
+        return NULL;
+    }
+
+    ipar_array = (PyArrayObject*)PyArray_FROM_OTF(ipar_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
+    j_array = (PyArrayObject*)PyArray_FROM_OTF(j_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    e_array = (PyArrayObject*)PyArray_FROM_OTF(e_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    
+    if (!ipar_array || !j_array || !e_array) {
+         Py_XDECREF(ipar_array); Py_XDECREF(j_array); Py_XDECREF(e_array);
+         return NULL;
+    }
+    
+    i32 lipar = (i32)PyArray_SIZE(ipar_array);
+    i32 *ipar_data = (i32*)PyArray_DATA(ipar_array);
+    
+    if (lipar < 1) {
+         Py_DECREF(ipar_array); Py_DECREF(j_array); Py_DECREF(e_array);
+         return NULL;
+    }
+    
+    i32 ldj = (i32)PyArray_DIM(j_array, 0);
+    f64 *j_data = (f64*)PyArray_DATA(j_array);
+    f64 *e_data = (f64*)PyArray_DATA(e_array);
+    
+    npy_intp jnorms_dims[1] = {n};
+    PyObject *jnorms_array = PyArray_SimpleNew(1, jnorms_dims, NPY_DOUBLE);
+    
+    npy_intp ipvt_dims[1] = {n};
+    PyObject *ipvt_array = PyArray_SimpleNew(1, ipvt_dims, NPY_INT32);
+    
+    f64 gnorm;
+    
+    if (!jnorms_array || !ipvt_array) {
+         Py_DECREF(ipar_array); Py_DECREF(j_array); Py_DECREF(e_array);
+         Py_XDECREF(jnorms_array); Py_XDECREF(ipvt_array);
+         return NULL;
+    }
+    
+    f64 *jnorms_data = (f64*)PyArray_DATA((PyArrayObject*)jnorms_array);
+    i32 *ipvt_data = (i32*)PyArray_DATA((PyArrayObject*)ipvt_array);
+    
+    i32 ldwork = (n > 1) ? (4*n + 1) : 1;
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (!dwork) {
+         Py_DECREF(ipar_array); Py_DECREF(j_array); Py_DECREF(e_array);
+         Py_DECREF(jnorms_array); Py_DECREF(ipvt_array);
+         return PyErr_NoMemory();
+    }
+    
+    md03ba(n, ipar_data, lipar, fnorm, j_data, &ldj, e_data, 
+           jnorms_data, &gnorm, ipvt_data, dwork, ldwork, &info);
+           
+    free(dwork);
+    
+    PyArray_ResolveWritebackIfCopy(j_array);
+    PyArray_ResolveWritebackIfCopy(e_array);
+    Py_DECREF(ipar_array);
+    
+    PyObject *result = Py_BuildValue("OOOdOi", j_array, e_array, jnorms_array, gnorm, ipvt_array, info);
+    
+    Py_DECREF(j_array);
+    Py_DECREF(e_array);
+    Py_DECREF(jnorms_array);
+    Py_DECREF(ipvt_array);
+    
+    return result;
+}
+
+/* Python wrapper for nf01ay */
+static PyObject* py_nf01ay(PyObject* self, PyObject* args) {
+    i32 nsmp, nz, l;
+    PyObject *ipar_obj, *wb_obj, *z_obj;
+    PyArrayObject *ipar_array, *wb_array, *z_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "iiiOOO", &nsmp, &nz, &l, &ipar_obj, &wb_obj, &z_obj)) {
+        return NULL;
+    }
+    
+    if (nsmp < 0 || nz < 0 || l < 0) {
+        PyErr_Format(PyExc_ValueError, "Dimensions must be non-negative");
+        return NULL;
+    }
+
+    ipar_array = (PyArrayObject*)PyArray_FROM_OTF(ipar_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
+    wb_array = (PyArrayObject*)PyArray_FROM_OTF(wb_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    z_array = (PyArrayObject*)PyArray_FROM_OTF(z_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    
+    if (!ipar_array || !wb_array || !z_array) {
+         Py_XDECREF(ipar_array); Py_XDECREF(wb_array); Py_XDECREF(z_array);
+         return NULL;
+    }
+    
+    i32 lipar = (i32)PyArray_SIZE(ipar_array);
+    i32 lwb = (i32)PyArray_SIZE(wb_array);
+    i32 ldz = (i32)PyArray_DIM(z_array, 0);
+    
+    if (ldz < 1) ldz = 1;
+    
+    i32 *ipar_data = (i32*)PyArray_DATA(ipar_array);
+    if (lipar < 1) {
+         Py_DECREF(ipar_array); Py_DECREF(wb_array); Py_DECREF(z_array);
+         PyErr_SetString(PyExc_ValueError, "ipar must have length >= 1");
+         return NULL;
+    }
+    i32 nn = ipar_data[0];
+    
+    i32 block_size = 64;
+    if (block_size > nsmp) block_size = nsmp;
+    if (block_size < 2) block_size = 2;
+    
+    i32 ldwork_target = nn * (block_size + 1);
+    if (ldwork_target < 2*nn) ldwork_target = 2*nn;
+    
+    f64 *dwork = (f64*)malloc(ldwork_target * sizeof(f64));
+    if (!dwork) {
+         Py_DECREF(ipar_array); Py_DECREF(wb_array); Py_DECREF(z_array);
+         return PyErr_NoMemory();
+    }
+    
+    npy_intp y_dims[2] = {nsmp, l};
+    npy_intp y_strides[2] = {sizeof(f64), (nsmp > 0 ? nsmp : 1) * sizeof(f64)};
+    PyObject *y_array = PyArray_New(&PyArray_Type, 2, y_dims, NPY_DOUBLE, y_strides, NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    
+    if (!y_array) {
+         free(dwork);
+         Py_DECREF(ipar_array); Py_DECREF(wb_array); Py_DECREF(z_array);
+         return NULL;
+    }
+    
+    i32 ldy = (nsmp > 0) ? nsmp : 1;
+    f64 *y_data = (f64*)PyArray_DATA((PyArrayObject*)y_array);
+    f64 *wb_data = (f64*)PyArray_DATA(wb_array);
+    f64 *z_data = (f64*)PyArray_DATA(z_array);
+    
+    nf01ay(nsmp, nz, l, ipar_data, lipar, wb_data, lwb, z_data, ldz, y_data, ldy, dwork, ldwork_target, &info);
+    
+    free(dwork);
+    Py_DECREF(ipar_array); 
+    Py_DECREF(wb_array); 
+    Py_DECREF(z_array);
+    
+    PyObject *result = Py_BuildValue("Oi", y_array, info);
+    Py_DECREF(y_array);
+    
+    return result;
+}
+
+/* Python wrapper for nf01by */
+static PyObject* py_nf01by(PyObject* self, PyObject* args) {
+    const char *cjte;
+    i32 nsmp, nz, l;
+    PyObject *ipar_obj, *wb_obj, *z_obj, *e_obj;
+    PyArrayObject *ipar_array, *wb_array, *z_array, *e_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "siiiOOOO", &cjte, &nsmp, &nz, &l, &ipar_obj, &wb_obj, &z_obj, &e_obj)) {
+        return NULL;
+    }
+    
+    if (nsmp < 0 || nz < 0 || l != 1) {
+        PyErr_Format(PyExc_ValueError, "Dimensions invalid");
+        return NULL;
+    }
+
+    ipar_array = (PyArrayObject*)PyArray_FROM_OTF(ipar_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
+    wb_array = (PyArrayObject*)PyArray_FROM_OTF(wb_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    z_array = (PyArrayObject*)PyArray_FROM_OTF(z_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    e_array = (PyArrayObject*)PyArray_FROM_OTF(e_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    
+    if (!ipar_array || !wb_array || !z_array || !e_array) {
+         Py_XDECREF(ipar_array); Py_XDECREF(wb_array); Py_XDECREF(z_array); Py_XDECREF(e_array);
+         return NULL;
+    }
+    
+    i32 lipar = (i32)PyArray_SIZE(ipar_array);
+    i32 lwb = (i32)PyArray_SIZE(wb_array);
+    i32 ldz = (i32)PyArray_DIM(z_array, 0);
+    
+    if (ldz < 1) ldz = 1;
+    
+    i32 *ipar_data = (i32*)PyArray_DATA(ipar_array);
+    if (lipar < 1) {
+         Py_DECREF(ipar_array); Py_DECREF(wb_array); Py_DECREF(z_array); Py_DECREF(e_array);
+         PyErr_SetString(PyExc_ValueError, "ipar must have length >= 1");
+         return NULL;
+    }
+    i32 nn = ipar_data[0];
+    i32 nwb = nn * (nz + 2) + 1;
+    
+    i32 ldj = (nsmp > 0) ? nsmp : 1;
+    
+    npy_intp j_dims[2] = {nsmp, nwb};
+    npy_intp j_strides[2] = {sizeof(f64), ldj * sizeof(f64)};
+    PyObject *j_array = PyArray_New(&PyArray_Type, 2, j_dims, NPY_DOUBLE, j_strides, NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    
+    npy_intp jte_dims[1] = {nwb};
+    PyObject *jte_array = PyArray_SimpleNew(1, jte_dims, NPY_DOUBLE);
+    
+    if (!j_array || !jte_array) {
+         Py_XDECREF(j_array); Py_XDECREF(jte_array);
+         Py_DECREF(ipar_array); Py_DECREF(wb_array); Py_DECREF(z_array); Py_DECREF(e_array);
+         return NULL;
+    }
+    
+    i32 ldwork = 2 * nn;
+    if (ldwork < 1) ldwork = 1;
+    
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (!dwork) {
+         Py_DECREF(j_array); Py_DECREF(jte_array);
+         Py_DECREF(ipar_array); Py_DECREF(wb_array); Py_DECREF(z_array); Py_DECREF(e_array);
+         return PyErr_NoMemory();
+    }
+    
+    f64 *wb_data = (f64*)PyArray_DATA(wb_array);
+    f64 *z_data = (f64*)PyArray_DATA(z_array);
+    f64 *e_data = (f64*)PyArray_DATA(e_array);
+    f64 *j_data = (f64*)PyArray_DATA((PyArrayObject*)j_array);
+    f64 *jte_data = (f64*)PyArray_DATA((PyArrayObject*)jte_array);
+    
+    nf01by(cjte, nsmp, nz, l, ipar_data, lipar, wb_data, lwb, z_data, ldz, e_data, 
+           j_data, ldj, jte_data, dwork, ldwork, &info);
+           
+    free(dwork);
+    Py_DECREF(ipar_array); Py_DECREF(wb_array); Py_DECREF(z_array); Py_DECREF(e_array);
+    
+    PyObject *result = Py_BuildValue("OOi", j_array, jte_array, info);
+    Py_DECREF(j_array); Py_DECREF(jte_array);
+    
     return result;
 }
 
@@ -1916,6 +2164,32 @@ static PyMethodDef SlicotMethods[] = {
      "  incd (int, optional): Increment for d\n\n"
      "Returns:\n"
      "  (a, t, x, b, c, d): Modified arrays\n"},
+
+    {"nf01ay", (PyCFunction)py_nf01ay, METH_VARARGS,
+     "Calculate the output of a set of neural networks.\n\n"
+     "Parameters:\n"
+     "  nsmp (int): Number of training samples\n"
+     "  nz (int): Length of each input sample\n"
+     "  l (int): Length of each output sample\n"
+     "  ipar (ndarray): Integer parameters (nn, ...)\n"
+     "  wb (ndarray): Weights and biases\n"
+     "  z (ndarray): Input samples (nsmp x nz, F-order)\n\n"
+     "Returns:\n"
+     "  (y, info): Output samples, exit code\n"},
+
+    {"nf01by", (PyCFunction)py_nf01by, METH_VARARGS,
+     "Compute the Jacobian of the error function for a neural network.\n\n"
+     "Parameters:\n"
+     "  cjte (str): 'C' to compute J'*e, 'N' to skip\n"
+     "  nsmp (int): Number of training samples\n"
+     "  nz (int): Length of each input sample\n"
+     "  l (int): Length of each output sample (must be 1)\n"
+     "  ipar (ndarray): Integer parameters (nn, ...)\n"
+     "  wb (ndarray): Weights and biases\n"
+     "  z (ndarray): Input samples (nsmp x nz, F-order)\n"
+     "  e (ndarray): Error vector (nsmp)\n\n"
+     "Returns:\n"
+     "  (j, jte, info): Jacobian, J'*e, exit code\n"},
 
     {"tb01vy", (PyCFunction)py_tb01vy, METH_VARARGS | METH_KEYWORDS,
      "Convert output normal form to state-space representation.\n\n"
@@ -2042,6 +2316,17 @@ static PyMethodDef SlicotMethods[] = {
      "  tol (float): Tolerance for rank determination (COND='E')\n\n"
      "Returns:\n"
      "  (r, par, rank, x, rx, info): Modified R, LM parameter, rank, solution, residual, exit code\n"},
+
+    {"md03ba", (PyCFunction)py_md03ba, METH_VARARGS,
+     "QR factorization with column pivoting for Levenberg-Marquardt.\n\n"
+     "Parameters:\n"
+     "  n (int): Number of columns of J\n"
+     "  ipar (ndarray): Integer parameters (M=ipar[0])\n"
+     "  fnorm (float): Norm of error vector\n"
+     "  j (ndarray): Jacobian matrix (M x N, F-order)\n"
+     "  e (ndarray): Error vector (M)\n\n"
+     "Returns:\n"
+     "  (r, e, jnorms, gnorm, ipvt, info): R factor, Q'*e, norms, gradient norm, permutation, exit code\n"},
 
     {"sg03br", py_sg03br, METH_VARARGS,
      "Compute complex Givens rotation in real arithmetic.\n\n"
