@@ -1411,6 +1411,60 @@ i32 slicot_mb01rx(
     i32 ldb
 );
 
+/**
+ * @brief Compute Householder reflection to zero trailing elements of a vector.
+ *
+ * Generates a real elementary reflector H of order m+1, such that
+ *
+ *     H * [ alpha ] = [ beta ]
+ *         [   x   ]   [  0   ]
+ *
+ * where H = I - tau * [ 1 ] * [1, v'],  H' * H = I.
+ *               [ v ]
+ *
+ * @param[in] m Order of vector x, m >= 0
+ * @param[in,out] alpha On entry: scalar alpha
+ *                      On exit: beta (r_11 from QR factorization)
+ * @param[in,out] x On entry: m-vector x
+ *                  On exit: Householder vector v
+ * @param[in] incx Increment for array x (incx > 0)
+ * @param[out] tau Scalar tau in Householder representation
+ *                 tau = 0 if H is identity matrix
+ * @return 0 on success
+ *
+ * @note Based on LAPACK's DLARFG with modifications for SLICOT.
+ */
+void SLC_MB04KD(i32 m, f64* alpha, f64* x, i32 incx, f64* tau);
+
+/**
+ * @brief Apply Householder reflector H to matrix [A; B] from the left.
+ *
+ * Applies elementary reflector H to (m+1)-by-n matrix C = [A; B],
+ * where A has one row:
+ *
+ *     H = I - tau * u * u',  u = [1; v]
+ *
+ * Computes C := H * C.
+ *
+ * Uses inline code for order < 11, BLAS for larger orders.
+ *
+ * @param[in] m Number of rows of matrix B, m >= 0
+ * @param[in] n Number of columns, n >= 0
+ * @param[in] v Householder vector v of dimension m
+ * @param[in] tau Scalar factor tau (if tau=0, H is identity)
+ * @param[in,out] a On entry: 1-by-n matrix A
+ *                  On exit: updated first row of H*C
+ * @param[in] lda Leading dimension of A, lda >= 1
+ * @param[in,out] b On entry: m-by-n matrix B
+ *                  On exit: updated last m rows of H*C
+ * @param[in] ldb Leading dimension of B, ldb >= max(1,m)
+ * @param[out] dwork Workspace of dimension n (not referenced if m+1 < 11)
+ *
+ * @note Based on LAPACK's DLARFX and DLATZM with special structure optimization.
+ */
+void SLC_MB04OY(i32 m, i32 n, const f64* v, f64 tau,
+                f64* a, i32 lda, f64* b, i32 ldb, f64* dwork);
+
 #ifdef __cplusplus
 }
 #endif

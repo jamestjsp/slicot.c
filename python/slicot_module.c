@@ -2757,7 +2757,71 @@ static PyObject* py_mb04ow(PyObject* self, PyObject* args, PyObject* kwargs) {
     Py_DECREF(b_array);
     Py_DECREF(c_array);
     Py_DECREF(d_array);
-    
+
+    return result;
+}
+
+static PyObject* py_mb04oy(PyObject* self, PyObject* args) {
+    i32 m, n;
+    f64 tau;
+    PyObject *v_obj, *a_obj, *b_obj;
+    PyArrayObject *v_array, *a_array, *b_array;
+
+    if (!PyArg_ParseTuple(args, "iiOdOO", &m, &n, &v_obj, &tau, &a_obj, &b_obj)) {
+        return NULL;
+    }
+
+    v_array = (PyArrayObject*)PyArray_FROM_OTF(v_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY);
+    if (v_array == NULL) return NULL;
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) {
+        Py_DECREF(v_array);
+        return NULL;
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(v_array);
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *b_dims = PyArray_DIMS(b_array);
+
+    i32 lda = (i32)a_dims[0];
+    i32 ldb = (i32)b_dims[0];
+
+    f64 *dwork = NULL;
+    if (m + 1 >= 11) {
+        dwork = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+        if (dwork == NULL) {
+            Py_DECREF(v_array);
+            Py_DECREF(a_array);
+            Py_DECREF(b_array);
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+            return NULL;
+        }
+    }
+
+    f64 *v_data = (f64*)PyArray_DATA(v_array);
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+
+    SLC_MB04OY(m, n, v_data, tau, a_data, lda, b_data, ldb, dwork);
+
+    if (dwork != NULL) {
+        free(dwork);
+    }
+
+    Py_DECREF(v_array);
+
+    PyObject *result = Py_BuildValue("OO", a_array, b_array);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
     return result;
 }
 
@@ -2914,6 +2978,20 @@ static PyMethodDef SlicotMethods[] = {
      "  b (ndarray): Matrix B (p x m, F-order)\n\n"
      "Returns:\n"
      "  (r_bar, a_out, d, c, tau): Transformed matrices and Householder factors\n"},
+
+    {"mb04oy", py_mb04oy, METH_VARARGS,
+     "Apply Householder reflector to matrix [A; B].\n\n"
+     "Applies H = I - tau*[1;v]*[1;v]' to (m+1)-by-n matrix [A; B],\n"
+     "where A has one row.\n\n"
+     "Parameters:\n"
+     "  m (int): Number of rows of B\n"
+     "  n (int): Number of columns\n"
+     "  v (ndarray): Householder vector (m, F-order)\n"
+     "  tau (float): Householder scalar\n"
+     "  a (ndarray): Matrix A (1 x n, F-order, modified in place)\n"
+     "  b (ndarray): Matrix B (m x n, F-order, modified in place)\n\n"
+     "Returns:\n"
+     "  (a, b): Updated matrices\n"},
 
     {"mb01rx", py_mb01rx, METH_VARARGS,
      "Triangular symmetric rank-k update.\n\n"

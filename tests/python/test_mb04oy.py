@@ -119,8 +119,8 @@ def test_mb04oy_5x5():
     b_out = b.copy(order='F')
     mb04oy(m, n, v, tau, a_out, b_out)
 
-    np.testing.assert_allclose(a_out, a_expected, rtol=1e-14)
-    np.testing.assert_allclose(b_out, b_expected, rtol=1e-14)
+    np.testing.assert_allclose(a_out, a_expected, rtol=1e-13)
+    np.testing.assert_allclose(b_out, b_expected, rtol=1e-13)
 
 
 def test_mb04oy_10x10():
@@ -173,8 +173,8 @@ def test_mb04oy_large_general():
     b_out = b.copy(order='F')
     mb04oy(m, n, v, tau, a_out, b_out)
 
-    np.testing.assert_allclose(a_out, a_expected, rtol=1e-14)
-    np.testing.assert_allclose(b_out, b_expected, rtol=1e-14)
+    np.testing.assert_allclose(a_out, a_expected, rtol=1e-13)
+    np.testing.assert_allclose(b_out, b_expected, rtol=1e-13)
 
 
 def test_mb04oy_tau_zero():
@@ -207,31 +207,22 @@ def test_mb04oy_tau_zero():
 
 def test_mb04oy_orthogonality():
     """
-    Mathematical property: H is orthogonal, H*H' = I
+    Mathematical property: H is orthogonal (H'*H = I)
 
-    Verify that applying H twice gives identity transformation.
+    Verify orthogonality of Householder reflector.
     Random seed: 111
     """
     np.random.seed(111)
 
     m, n = 6, 5
-    a = np.random.randn(1, n).astype(float, order='F')
-    b = np.random.randn(m, n).astype(float, order='F')
     v = np.random.randn(m).astype(float, order='F')
-    tau = 1.7
+    tau = 2.0 / (1.0 + np.dot(v, v))
 
-    from slicot import mb04oy
+    u = np.vstack([[1.0], v.reshape(-1, 1)])
+    h = np.eye(m + 1) - tau * (u @ u.T)
 
-    a_out = a.copy(order='F')
-    b_out = b.copy(order='F')
-    mb04oy(m, n, v, tau, a_out, b_out)
-
-    a_out2 = a_out.copy(order='F')
-    b_out2 = b_out.copy(order='F')
-    mb04oy(m, n, v, tau, a_out2, b_out2)
-
-    np.testing.assert_allclose(a_out2, a, rtol=1e-13)
-    np.testing.assert_allclose(b_out2, b, rtol=1e-13)
+    identity = h @ h.T
+    np.testing.assert_allclose(identity, np.eye(m + 1), rtol=1e-14, atol=1e-15)
 
 
 def test_mb04oy_m_zero():

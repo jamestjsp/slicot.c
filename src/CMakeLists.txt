@@ -9,6 +9,7 @@ set(SLICOT_SOURCES
     MB/mb03oy.c
     MB/mb04kd.c
     MB/mb04ow.c
+    MB/mb04oy.c
     MD/md03ba.c
     MD/md03bb.c
     MD/md03bd.c
