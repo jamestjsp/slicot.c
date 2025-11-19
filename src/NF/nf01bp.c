@@ -130,7 +130,10 @@ void nf01bp(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr
 
     for (j = 0; j < n; j++) {
         l = ipvt[j] - 1;
-        if (l < 0 || l >= n) break;
+        if (l < 0 || l >= n) {
+            *info = -7;
+            return;
+        }
         x[l] = rx[j];
     }
 
@@ -163,7 +166,10 @@ void nf01bp(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr
         if (rank == n) {
             for (j = 0; j < n; j++) {
                 l = ipvt[j] - 1;
-                if (l < 0 || l >= n) break;
+                if (l < 0 || l >= n) {
+                    *info = -7;
+                    return;
+                }
                 rx[j] = diag[l] * (dwork[l] / dxnorm);
             }
 
@@ -193,7 +199,10 @@ void nf01bp(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr
                 sum = SLC_DDOT(&len_jp1, &r[0 + (ibsn - 1) * ldr], &inc_1, qtb, &inc_1);
             }
             l = ipvt[j] - 1;
-            if (l < 0 || l >= n) break;
+            if (l < 0 || l >= n) {
+                *info = -7;
+                return;
+            }
             rx[j] = sum / diag[l];
         }
 
@@ -225,7 +234,10 @@ void nf01bp(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr
 
             for (j = 0; j < n; j++) {
                 l = ipvt[j] - 1;
-                if (l < 0 || l >= n) break;
+                if (l < 0 || l >= n) {
+                    *info = -7;
+                    return;
+                }
                 rx[j] = diag[l] * (dwork[n + l] / dxnorm);
             }
 
@@ -242,7 +254,10 @@ void nf01bp(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr
 
     for (j = 0; j < n; j++) {
         l = ipvt[j] - 1;
-        if (l < 0 || l >= n) break;
+        if (l < 0 || l >= n) {
+            *info = -7;
+            return;
+        }
         rx[j] = -x[l];
     }
 
