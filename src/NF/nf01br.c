@@ -355,18 +355,115 @@ void nf01br(const char *cond, const char *uplo, const char *trans, i32 n,
             ranks[bn] = rank_out;
         }
     } else if (ncond) {
-        /* Determine rank by zero diagonal */
-        /* Similar logic, omitted for brevity since E and N logic is structurally same */
-        /* Just checking diagonals of each block */
+        i = 0;
+        if (lower) {
+            for (k = 0; k < bn; k++) {
+                rank = bsn;
+                for (j = 0; j < bsn; j++) {
+                    if (sdiag[i] == zero && rank == bsn) rank = j;
+                    i++;
+                }
+                ranks[k] = rank;
+            }
+            if (st > 0) {
+                l++;
+                rank = st;
+                for (j = 0; j < st; j++) {
+                    if (sdiag[i] == zero && rank == st) rank = j;
+                    i++;
+                }
+                ranks[l - 1] = rank;
+            }
+        } else {
+            for (k = 0; k < bn; k++) {
+                rank = bsn;
+                for (j = 0; j < bsn; j++) {
+                    if (r[i + j * ldr] == zero && rank == bsn) rank = j;
+                    i++;
+                }
+                ranks[k] = rank;
+            }
+            if (st > 0) {
+                l++;
+                rank = st;
+                for (j = bsn; j < nc; j++) {
+                    if (r[i + j * ldr] == zero && rank == st) rank = j - bsn;
+                    i++;
+                }
+                ranks[l - 1] = rank;
+            }
+        }
+    } else {
+        if (st > 0) l++;
     }
-    
+
     /* Solve */
     dum[0] = zero;
     if (lower && !econd) {
-        /* Solve with R' stored in R (lower) and S */
-        /* Not fully implemented for brevity, following pattern */
-        /* Just return for now as test case BN=1 handled above */
-        return; 
+        if (!tranr) {
+            i32 i1 = nths;
+            if (st > 0) {
+                rank = ranks[l - 1];
+                if (rank < st) {
+                    i32 len = st - rank;
+                    SLC_DCOPY(&len, dum, &inc_0, &b[i1 + rank], &inc_1);
+                }
+                i32 stride_diag = ldr + 1;
+                SLC_DSWAP(&st, &r[i1 + bsn * ldr], &stride_diag, &sdiag[i1], &inc_1);
+                SLC_DTRSV("Lower", "Transpose", "NonUnit", &rank, &r[i1 + bsn * ldr], &ldr, &b[i1], &inc_1);
+                SLC_DSWAP(&st, &r[i1 + bsn * ldr], &stride_diag, &sdiag[i1], &inc_1);
+
+                f64 neg_one = -1.0;
+                SLC_DGEMV("Transpose", &st, &nths, &neg_one, s, &lds, &b[nths], &inc_1, &one, b, &inc_1);
+            }
+
+            for (k = bn - 1; k >= 0; k--) {
+                i1 -= bsn;
+                rank = ranks[k];
+                if (rank < bsn) {
+                    i32 len = bsn - rank;
+                    SLC_DCOPY(&len, dum, &inc_0, &b[i1 + rank], &inc_1);
+                }
+                i32 stride_diag = ldr + 1;
+                SLC_DSWAP(&bsn, &r[i1], &stride_diag, &sdiag[i1], &inc_1);
+                SLC_DTRSV("Lower", "Transpose", "NonUnit", &rank, &r[i1], &ldr, &b[i1], &inc_1);
+                SLC_DSWAP(&bsn, &r[i1], &stride_diag, &sdiag[i1], &inc_1);
+            }
+        } else {
+            i32 i1 = 0;
+            char transl[2];
+            if (tranr) transl[0] = 'N', transl[1] = 0;
+            else transl[0] = 'T', transl[1] = 0;
+
+            for (k = 0; k < bn; k++) {
+                rank = ranks[k];
+                if (rank < bsn) {
+                    i32 len = bsn - rank;
+                    SLC_DCOPY(&len, dum, &inc_0, &b[i1 + rank], &inc_1);
+                }
+                i32 stride_diag = ldr + 1;
+                SLC_DSWAP(&bsn, &r[i1], &stride_diag, &sdiag[i1], &inc_1);
+                SLC_DTRSV("Lower", transl, "NonUnit", &rank, &r[i1], &ldr, &b[i1], &inc_1);
+                SLC_DSWAP(&bsn, &r[i1], &stride_diag, &sdiag[i1], &inc_1);
+                i1 += bsn;
+            }
+
+            if (st > 0) {
+                rank = ranks[l - 1];
+                if (rank < st) {
+                    i32 len = st - rank;
+                    SLC_DCOPY(&len, dum, &inc_0, &b[i1 + rank], &inc_1);
+                }
+                f64 neg_one = -1.0;
+                SLC_DGEMV("NoTranspose", &st, &nths, &neg_one, s, &lds, b, &inc_1, &one, &b[i1], &inc_1);
+
+                i32 stride_diag = ldr + 1;
+                SLC_DSWAP(&st, &r[i1 + bsn * ldr], &stride_diag, &sdiag[i1], &inc_1);
+                SLC_DTRSV("Lower", transl, "NonUnit", &rank, &r[i1 + bsn * ldr], &ldr, &b[i1], &inc_1);
+                SLC_DSWAP(&st, &r[i1 + bsn * ldr], &stride_diag, &sdiag[i1], &inc_1);
+            }
+        }
+        return;
     }
     
     /* Default simple solve if BN>1 and UPLO=U? */
