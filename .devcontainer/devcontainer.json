@@ -21,7 +21,8 @@
         "ms-vscode.cpptools",
         "ms-vscode.cmake-tools",
         "ms-python.python",
-        "ms-python.vscode-pylance"
+        "ms-python.vscode-pylance",
+        "vscodevim.vim"
       ],
       "settings": {
         "cmake.configureOnOpen": true,

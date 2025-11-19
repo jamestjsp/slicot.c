@@ -2761,6 +2761,118 @@ static PyObject* py_mb04ow(PyObject* self, PyObject* args, PyObject* kwargs) {
     return result;
 }
 
+static PyObject* py_mb03ud(PyObject* self, PyObject* args, PyObject* kwargs) {
+    static char *kwlist[] = {"n", "a", "jobq", "jobp", "ldwork", NULL};
+    i32 n;
+    PyObject *a_obj;
+    char *jobq_str = "N";
+    char *jobp_str = "N";
+    i32 ldwork = 0;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iO|ssi", kwlist,
+                                     &n, &a_obj, &jobq_str, &jobp_str, &ldwork)) {
+        return NULL;
+    }
+
+    char jobq = jobq_str[0];
+    char jobp = jobp_str[0];
+
+    PyArrayObject *a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) return NULL;
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    i32 lda = (i32)a_dims[0];
+
+    bool wantq = (jobq == 'V' || jobq == 'v');
+    bool wantp = (jobp == 'V' || jobp == 'v');
+
+    i32 ldq = wantq ? (n > 0 ? n : 1) : 1;
+
+    f64 *q = NULL;
+    PyArrayObject *q_array = NULL;
+    if (wantq) {
+        npy_intp q_dims[2] = {n, n};
+        npy_intp q_strides[2] = {sizeof(f64), n * sizeof(f64)};
+        q = (f64*)calloc(n * n, sizeof(f64));
+        if (q == NULL) {
+            Py_DECREF(a_array);
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate Q");
+            return NULL;
+        }
+        q_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, q_dims, NPY_DOUBLE,
+                                              q_strides, q, 0, NPY_ARRAY_FARRAY, NULL);
+        if (q_array == NULL) {
+            free(q);
+            Py_DECREF(a_array);
+            return NULL;
+        }
+        PyArray_ENABLEFLAGS(q_array, NPY_ARRAY_OWNDATA);
+    }
+
+    f64 *sv = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+    if (sv == NULL) {
+        Py_XDECREF(q_array);
+        Py_DECREF(a_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate sv");
+        return NULL;
+    }
+
+    i32 minwork = n > 0 ? 5 * n : 1;
+    if (ldwork == 0) ldwork = minwork;
+
+    f64 *dwork = (f64*)calloc(ldwork, sizeof(f64));
+    if (dwork == NULL) {
+        free(sv);
+        Py_XDECREF(q_array);
+        Py_DECREF(a_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *q_data = wantq ? q : NULL;
+
+    i32 info;
+    mb03ud(jobq, jobp, n, a_data, lda, q_data, ldq, sv, dwork, ldwork, &info);
+
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+
+    if (info < 0) {
+        free(sv);
+        Py_XDECREF(q_array);
+        Py_DECREF(a_array);
+        PyErr_Format(PyExc_ValueError, "MB03UD: invalid parameter at position %d", -info);
+        return NULL;
+    }
+
+    npy_intp sv_dims[1] = {n};
+    PyArrayObject *sv_array = (PyArrayObject*)PyArray_SimpleNewFromData(1, sv_dims, NPY_DOUBLE, sv);
+    if (sv_array == NULL) {
+        free(sv);
+        Py_XDECREF(q_array);
+        Py_DECREF(a_array);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS(sv_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *p_array = wantp ? (PyObject*)a_array : Py_None;
+    PyObject *q_result = wantq ? (PyObject*)q_array : Py_None;
+
+    if (!wantp) Py_INCREF(Py_None);
+    if (!wantq) Py_INCREF(Py_None);
+
+    PyObject *result = Py_BuildValue("OOOi", sv_array, p_array, q_result, info);
+
+    Py_DECREF(sv_array);
+    if (wantq) Py_DECREF(q_array);
+    if (wantp) Py_DECREF(a_array);
+
+    return result;
+}
+
 static PyObject* py_mb04id(PyObject* self, PyObject* args, PyObject* kwargs) {
     static char *kwlist[] = {"n", "m", "p", "a", "b", "l", "ldwork", NULL};
     i32 n, m, p, l = 0;
@@ -3233,6 +3345,24 @@ static PyMethodDef SlicotMethods[] = {
      "  nrows (ndarray, optional): Block sizes\n\n"
      "Returns:\n"
      "  (a, info): Modified matrix and exit code\n"},
+
+    {"mb03ud", (PyCFunction)py_mb03ud, METH_VARARGS | METH_KEYWORDS,
+     "Singular value decomposition of upper triangular matrix.\n\n"
+     "Computes SVD: A = Q*S*P' where Q, P are orthogonal and S is diagonal\n"
+     "with non-negative singular values in descending order.\n\n"
+     "Parameters:\n"
+     "  n (int): Order of matrix A\n"
+     "  a (ndarray): Upper triangular matrix A (n x n, F-order)\n"
+     "               If jobp='V', returns P' on exit\n"
+     "  jobq (str, optional): 'V' to compute Q, 'N' otherwise (default 'N')\n"
+     "  jobp (str, optional): 'V' to compute P', 'N' otherwise (default 'N')\n"
+     "  ldwork (int, optional): Workspace size (-1 for query, default auto)\n\n"
+     "Returns:\n"
+     "  (sv, p, q, info): Singular values, right vectors P', left vectors Q, exit code\n"
+     "  - sv: array of singular values (descending order)\n"
+     "  - p: P' matrix if jobp='V', else None\n"
+     "  - q: Q matrix if jobq='V', else None\n"
+     "  - info: 0=success, <0=invalid param, >0=convergence failure\n"},
 
     {"mb04id", (PyCFunction)py_mb04id, METH_VARARGS | METH_KEYWORDS,
      "QR factorization of matrix with lower-left zero triangle.\n\n"

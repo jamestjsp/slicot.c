@@ -168,6 +168,9 @@ f64 SLC_FC_FUNC(dlange, DLANGE)(const char* norm, const int* m, const int* n,
 f64 SLC_FC_FUNC(dlapy2, DLAPY2)(const f64* x, const f64* y);
 
 f64 SLC_FC_FUNC(dlapy3, DLAPY3)(const f64* x, const f64* y, const f64* z);
+f64 SLC_FC_FUNC(dlantr, DLANTR)(const char* norm, const char* uplo, const char* diag,
+                                const int* m, const int* n, const f64* a,
+                                const int* lda, f64* work);
 
 void SLC_FC_FUNC(dlascl, DLASCL)(const char* type, const int* kl, const int* ku,
                                   const f64* cfrom, const f64* cto, const int* m,
@@ -302,6 +305,10 @@ void SLC_FC_FUNC(dgees, DGEES)(const char* jobvs, const char* sort,
 #define SLC_DSYEVX   SLC_FC_FUNC(dsyevx, DSYEVX)
 #define SLC_DGGES    SLC_FC_FUNC(dgges, DGGES)
 #define SLC_DGEES    SLC_FC_FUNC(dgees, DGEES)
+#define SLC_DGEBRD   SLC_FC_FUNC(dgebrd, DGEBRD)
+#define SLC_DORGBR   SLC_FC_FUNC(dorgbr, DORGBR)
+#define SLC_DBDSQR   SLC_FC_FUNC(dbdsqr, DBDSQR)
+#define SLC_DLANTR   SLC_FC_FUNC(dlantr, DLANTR)
 
 #ifdef __cplusplus
 }

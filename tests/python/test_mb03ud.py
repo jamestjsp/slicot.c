@@ -69,13 +69,14 @@ def test_mb03ud_svd_decomposition():
 
     from slicot import mb03ud
 
-    sv, p, q, info = mb03ud(n, a, jobq='V', jobp='V')
+    sv, p_transpose, q, info = mb03ud(n, a, jobq='V', jobp='V')
 
     assert info == 0
 
     # Reconstruct A from SVD: A = Q * diag(SV) * P'
+    # Note: p_transpose IS P' (not P), so use directly without .T
     s = np.diag(sv)
-    a_reconstructed = q @ s @ p.T
+    a_reconstructed = q @ s @ p_transpose
 
     # Validate reconstruction (machine precision for exact factorization)
     np.testing.assert_allclose(a_reconstructed, a_orig, rtol=1e-13, atol=1e-14)

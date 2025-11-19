@@ -1558,6 +1558,37 @@ void mb04iy(
 );
 
 /**
+ * @brief Compute singular value decomposition of upper triangular matrix.
+ *
+ * Computes SVD of N-by-N upper triangular matrix: A = Q*S*P', where Q and P
+ * are orthogonal matrices and S is diagonal with non-negative singular values
+ * in descending order. Uses bidiagonalization followed by QR algorithm.
+ *
+ * @param[in] jobq 'V' to compute left singular vectors Q, 'N' otherwise
+ * @param[in] jobp 'V' to compute right singular vectors P', 'N' otherwise
+ * @param[in] n Order of matrix A (n >= 0)
+ * @param[in,out] a DOUBLE PRECISION array, dimension (lda,n)
+ *                  In: upper triangular matrix A
+ *                  Out: if jobp='V', orthogonal matrix P'; otherwise workspace
+ * @param[in] lda Leading dimension (lda >= max(1,n))
+ * @param[out] q DOUBLE PRECISION array, dimension (ldq,n)
+ *               If jobq='V', contains orthogonal matrix Q (left singular vectors)
+ * @param[in] ldq Leading dimension (ldq >= max(1,n) if jobq='V', ldq >= 1 otherwise)
+ * @param[out] sv DOUBLE PRECISION array, dimension (n)
+ *                Singular values in descending order
+ * @param[out] dwork DOUBLE PRECISION array, dimension (ldwork)
+ *                   On exit: dwork[0] = optimal ldwork
+ *                   If info > 0: dwork[1:n-1] = unconverged superdiagonals
+ * @param[in] ldwork Workspace size (ldwork >= max(1,5*n), or -1 for query)
+ * @param[out] info Exit code:
+ *                  = 0: success
+ *                  < 0: if info = -i, i-th argument invalid
+ *                  > 0: QR algorithm failed to converge (info = # unconverged superdiagonals)
+ */
+i32 mb03ud(char jobq, char jobp, i32 n, f64 *a, i32 lda, f64 *q, i32 ldq,
+           f64 *sv, f64 *dwork, i32 ldwork, i32 *info);
+
+/**
  * @brief User's confirmation of the system order.
  *
  * Non-interactive version for library use. Validates parameters and allows
