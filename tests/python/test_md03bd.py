@@ -5,7 +5,6 @@ pytest.importorskip("slicot")
 import slicot
 
 
-@pytest.mark.skip(reason="MD03BD not yet implemented - Phase 2a only has MD03BX helper")
 class TestMD03BD:
     """Test MD03BD - Levenberg-Marquardt nonlinear least squares optimizer"""
 
