@@ -2014,7 +2014,6 @@ static PyObject* py_tf01mx(PyObject* self, PyObject* args) {
     Py_DECREF(s_array);
     Py_DECREF(u_array);
     Py_DECREF(x_array);
-    Py_DECREF(x_array);
     Py_DECREF(y_array);
 
     return result;
