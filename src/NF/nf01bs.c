@@ -162,30 +162,170 @@ void nf01bs(i32 n, const i32 *ipar, i32 lipar, f64 fnorm, f64 *j, i32 *ldj,
         */
         ibsn += bsn;
     }
-    
-    /* Further logic for BSM > BSN (swapping) and ST > 0 omitted for Batch 2 brevity/focus 
-       unless required by test.
-       My test uses BN=1 (Full case).
-       So I can skip the complex block permutation logic for now if I want to be concise,
-       but it's safer to implement fully or mark TODO.
-       Given "follow strictly", I should probably implement it if possible.
-       
-       However, the logic is quite involved (permuting rows/cols).
-       Since BN=1 is the primary use case for simple problems, I'll stick to that
-       and ensure it works.
-       If I need full support later, I can add it.
-       
-       Wait, "The algorithm consists in two phases... If l <= 1, the matrix J is triangularized in one phase".
-       My implementation handles l <= 1 via MD03BX.
-       The loop above handles l > 1.
-       So if I stop here, I have partial l > 1 support (QR per block done, but not the permutation/second phase).
-       
-       I will assume for now that standard MD03BX usage covers most cases, 
-       and I'll add basic support for the permutation if needed.
-       
-       For now I will return.
-    */
-    
+
+    if (mmn > 0) {
+        l = ipvt[0];
+        jnorms[l] = fabs(j[0]);
+        ibsm = bsm;
+        ibsn = bsn;
+
+        for (k = 0; k < bn - 1; k++) {
+            j[ibsn] = j[ibsm];
+            l = ipvt[ibsn];
+            jnorms[l] = fabs(j[ibsn]);
+            ibsm += bsm;
+            ibsn += bsn;
+        }
+
+        ibsn += st;
+
+        for (i = 1; i < bsn; i++) {
+            ibsm = i * (*ldj);
+            jlm = i;
+
+            for (k = 0; k < bn; k++) {
+                for (i32 jj = 0; jj <= i; jj++) {
+                    j[ibsn + jj] = j[ibsm + jj];
+                }
+                l = ipvt[jlm];
+                i32 len_i = i + 1;
+                jnorms[l] = SLC_DNRM2(&len_i, &j[ibsn], &inc_1);
+                ibsm += bsm;
+                ibsn += bsn;
+                jlm += bsn;
+            }
+
+            ibsn += st;
+        }
+
+        jl = (*ldj) * bsn;
+        if (bsm >= 2 * bsn) {
+            for (i = 0; i < st; i++) {
+                ibsn = bsn;
+                for (ibsm = bsm; ibsm < m; ibsm += bsm) {
+                    SLC_DSWAP(&mmn, &j[jl + ibsm], &inc_1, &j[jl + ibsn], &inc_1);
+                    ibsn += bsn;
+                }
+                jl += (*ldj);
+            }
+
+            ibsn = bsn;
+            for (ibsm = bsm; ibsm < m; ibsm += bsm) {
+                SLC_DSWAP(&mmn, &e[ibsm], &inc_1, &e[ibsn], &inc_1);
+                ibsn += bsn;
+            }
+        } else {
+            for (i = 0; i < st; i++) {
+                ibsn = bsn;
+                jlm = jl + ibsn;
+                jwork = 0;
+
+                for (ibsm = bsm; ibsm < m; ibsm += bsm) {
+                    SLC_DCOPY(&mmn, &j[jlm], &inc_1, &dwork[jwork], &inc_1);
+                    for (k = jl; k < jl + bsn; k++) {
+                        j[ibsn + k - jl] = j[ibsm + k - jl];
+                    }
+                    jlm += bsm;
+                    ibsn += bsn;
+                    jwork += mmn;
+                }
+
+                i32 len = mmn * (bn - 1);
+                SLC_DCOPY(&len, dwork, &inc_1, &j[jl + ibsn - bsm], &inc_1);
+                jl += (*ldj);
+            }
+
+            ibsn = bsn;
+            jlm = ibsn;
+            jwork = 0;
+
+            for (ibsm = bsm; ibsm < m; ibsm += bsm) {
+                SLC_DCOPY(&mmn, &e[jlm], &inc_1, &dwork[jwork], &inc_1);
+                for (k = 0; k < bsn; k++) {
+                    e[ibsn + k] = e[ibsm + k];
+                }
+                jlm += bsm;
+                ibsn += bsn;
+                jwork += mmn;
+            }
+
+            i32 len = mmn * (bn - 1);
+            SLC_DCOPY(&len, dwork, &inc_1, &e[ibsn], &inc_1);
+        }
+
+        if (st > 0) {
+            jl = ((*ldj) + bn) * bsn;
+            itau = 0;
+            jwork = itau + st;
+            i32 mmn_bn = mmn * bn;
+            i32 lwork_qp = ldwork - jwork;
+            for (i = nths; i < n; i++) ipvt[i] = 0;
+            SLC_DGEQP3(&mmn_bn, &st, &j[jl], ldj, &ipvt[nths], &dwork[itau], &dwork[jwork], &lwork_qp, info);
+            if ((i32)dwork[jwork] + jwork > wrkopt) wrkopt = (i32)dwork[jwork] + jwork;
+
+            i32 flag_true = 1;
+            SLC_DLAPMT(&flag_true, &nths, &st, &j[jl - nths], ldj, &ipvt[nths]);
+
+            for (i = nths; i < n; i++) ipvt[i] += nths;
+
+            lwork_qp = ldwork - jwork;
+            SLC_DORMQR("Left", "Transpose", &mmn_bn, &inc_1, &st, &j[jl], ldj, &dwork[itau], &e[ibsn], ldj, &dwork[jwork], &lwork_qp, info);
+            if ((i32)dwork[jwork] + jwork > wrkopt) wrkopt = (i32)dwork[jwork] + jwork;
+
+            ibsn = n * bsn;
+            SLC_DLACPY("Full", &n, &st, &j[(*ldj) * bsn], ldj, &j[ibsn], &n);
+
+            ibsni = ibsn;
+            for (i = nths; i < n; i++) {
+                l = ipvt[i];
+                i32 len_i = i + 1;
+                jnorms[l] = SLC_DNRM2(&len_i, &j[ibsni], &inc_1);
+                ibsni += n;
+            }
+        }
+    } else {
+        ibsn = 0;
+        for (i = 0; i < bsn; i++) {
+            jlm = i;
+            for (k = 0; k < bn; k++) {
+                l = ipvt[jlm];
+                i32 len_i = i + 1;
+                jnorms[l] = SLC_DNRM2(&len_i, &j[ibsn], &inc_1);
+                ibsn += bsn;
+                jlm += bsn;
+            }
+            ibsn += st;
+        }
+
+        for (i = nths; i < n; i++) ipvt[i] = i + 1;
+    }
+
+    if (fnorm != zero) {
+        for (ibsn = 0; ibsn < nths; ibsn += bsn) {
+            ibsni = ibsn;
+            for (i = 0; i < bsn; i++) {
+                l = ipvt[ibsn + i];
+                if (jnorms[l] != zero) {
+                    i32 len_i = i + 1;
+                    sum = SLC_DDOT(&len_i, &j[ibsni], &inc_1, &e[ibsn], &inc_1) / fnorm;
+                    *gnorm = (*gnorm > fabs(sum / jnorms[l])) ? *gnorm : fabs(sum / jnorms[l]);
+                }
+                ibsni += n;
+            }
+        }
+
+        ibsni = n * bsn;
+        for (i = nths; i < n; i++) {
+            l = ipvt[i];
+            if (jnorms[l] != zero) {
+                i32 len_i = i + 1;
+                sum = SLC_DDOT(&len_i, &j[ibsni], &inc_1, e, &inc_1) / fnorm;
+                *gnorm = (*gnorm > fabs(sum / jnorms[l])) ? *gnorm : fabs(sum / jnorms[l]);
+            }
+            ibsni += n;
+        }
+    }
+
     *ldj = n;
     dwork[0] = (f64)wrkopt;
 }

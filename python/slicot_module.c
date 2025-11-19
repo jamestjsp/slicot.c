@@ -2278,7 +2278,7 @@ static PyObject* py_nf01bs(PyObject* self, PyObject* args) {
     PyArray_ResolveWritebackIfCopy(e_array);
     Py_DECREF(ipar_array);
     
-    PyObject *result = Py_BuildValue("OOOddi", j_array, e_array, jnorms_array, gnorm, ipvt_array, info);
+    PyObject *result = Py_BuildValue("OOOdOi", j_array, e_array, jnorms_array, gnorm, ipvt_array, info);
     
     Py_DECREF(j_array);
     Py_DECREF(e_array);
