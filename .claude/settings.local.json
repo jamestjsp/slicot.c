@@ -3,7 +3,9 @@
     "allow": [
       "Bash(gh issue view:*)",
       "Bash(cmake --build:*)",
-      "Bash(python3:*)"
+      "Bash(cmake --preset:*)",
+      "Bash(source:*)",
+      "Bash(pytest:*)"
     ],
     "deny": [],
     "ask": []

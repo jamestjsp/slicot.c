@@ -70,8 +70,8 @@ tools/extract_dependencies.py  # Dependency analyzer
 
 ## Translation Workflow
 
+**Parallel Work**: Use `parallel-workflow-orchestrator` droid for managing concurrent development streams.
 **Use agent:** `slicot-fortran-translator` and `/skill slicot-knowledge` handles full TDD workflow (RED/GREEN/REFACTOR/VERIFY)
-
 **Check deps:** `python3 tools/extract_dependencies.py SLICOT-Reference/src/ ROUTINE_NAME`
 
 ## Critical Patterns

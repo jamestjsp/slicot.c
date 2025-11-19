@@ -5,9 +5,22 @@ set(SLICOT_SOURCES
     MB/mb02yd.c
     MB/mb03od.c
     MB/mb03oy.c
+    MB/mb04ow.c
+    MD/md03ba.c
+    MD/md03bb.c
     MD/md03bd.c
     MD/md03bx.c
     MD/md03by.c
+    NF/nf01ad.c
+    NF/nf01ay.c
+    NF/nf01bd.c
+    NF/nf01be.c
+    NF/nf01bf.c
+    NF/nf01bp.c
+    NF/nf01bq.c
+    NF/nf01br.c
+    NF/nf01bs.c
+    NF/nf01by.c
     SG/sg03bd.c
     SG/sg03br.c
     SG/sg03bu.c
