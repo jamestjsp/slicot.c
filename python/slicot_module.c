@@ -2761,6 +2761,123 @@ static PyObject* py_mb04ow(PyObject* self, PyObject* args, PyObject* kwargs) {
     return result;
 }
 
+static PyObject* py_mb04id(PyObject* self, PyObject* args, PyObject* kwargs) {
+    static char *kwlist[] = {"n", "m", "p", "a", "b", "l", "ldwork", NULL};
+    i32 n, m, p, l = 0;
+    i32 ldwork = 0;
+    PyObject *a_obj, *b_obj = NULL;
+    PyArrayObject *a_array = NULL, *b_array = NULL;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iiiO|Oii", kwlist,
+                                     &n, &m, &p, &a_obj, &b_obj, &l, &ldwork)) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) return NULL;
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    i32 lda = (i32)a_dims[0];
+
+    i32 ldb = n > 0 ? n : 1;
+    bool has_b = (b_obj != NULL && l > 0);
+
+    if (has_b) {
+        b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                                   NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+        if (b_array == NULL) {
+            Py_DECREF(a_array);
+            return NULL;
+        }
+        npy_intp *b_dims = PyArray_DIMS(b_array);
+        ldb = (i32)b_dims[0];
+    }
+
+    i32 minwork = 1;
+    if (m > 1 && m - 1 > minwork) minwork = m - 1;
+    if (m > p && m - p > minwork) minwork = m - p;
+    if (l > minwork) minwork = l;
+
+    if (ldwork == 0) ldwork = minwork;
+
+    f64 *dwork = (f64*)calloc(ldwork > 0 ? ldwork : 1, sizeof(f64));
+    if (dwork == NULL) {
+        Py_XDECREF(b_array);
+        Py_DECREF(a_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        return NULL;
+    }
+
+    i32 minval = (n < m ? n : m);
+    f64 *tau = (f64*)calloc(minval > 0 ? minval : 1, sizeof(f64));
+    if (tau == NULL) {
+        free(dwork);
+        Py_XDECREF(b_array);
+        Py_DECREF(a_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate tau");
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = has_b ? (f64*)PyArray_DATA(b_array) : NULL;
+    f64 dummy_b = 0.0;
+    if (!has_b) {
+        b_data = &dummy_b;
+        ldb = 1;
+    }
+
+    i32 info;
+    mb04id(n, m, p, l, a_data, lda, b_data, ldb, tau, dwork, ldwork, &info);
+
+    f64 optimal_work = dwork[0];
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    if (has_b) {
+        PyArray_ResolveWritebackIfCopy(b_array);
+    }
+
+    if (info != 0) {
+        free(tau);
+        Py_XDECREF(b_array);
+        Py_DECREF(a_array);
+        PyErr_Format(PyExc_ValueError, "mb04id failed with info=%d", info);
+        return NULL;
+    }
+
+    npy_intp tau_dims[1] = {minval > 0 ? minval : 1};
+    PyObject *tau_array = PyArray_SimpleNewFromData(1, tau_dims, NPY_DOUBLE, tau);
+    if (tau_array == NULL) {
+        free(tau);
+        Py_XDECREF(b_array);
+        Py_DECREF(a_array);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)tau_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *result;
+    if (ldwork == -1) {
+        if (has_b) {
+            result = Py_BuildValue("OOOid", a_array, b_array, tau_array, info, optimal_work);
+        } else {
+            result = Py_BuildValue("OOid", a_array, tau_array, info, optimal_work);
+        }
+    } else {
+        if (has_b) {
+            result = Py_BuildValue("OOOi", a_array, b_array, tau_array, info);
+        } else {
+            result = Py_BuildValue("OOi", a_array, tau_array, info);
+        }
+    }
+
+    Py_XDECREF(b_array);
+    Py_DECREF(a_array);
+    Py_DECREF(tau_array);
+
+    return result;
+}
+
 static PyObject* py_mb04iy(PyObject* self, PyObject* args, PyObject* kwargs) {
     static char *kwlist[] = {"side", "trans", "a", "tau", "c", "p", NULL};
     const char *side, *trans;
@@ -3059,6 +3176,23 @@ static PyMethodDef SlicotMethods[] = {
      "  nrows (ndarray, optional): Block sizes\n\n"
      "Returns:\n"
      "  (a, info): Modified matrix and exit code\n"},
+
+    {"mb04id", (PyCFunction)py_mb04id, METH_VARARGS | METH_KEYWORDS,
+     "QR factorization of matrix with lower-left zero triangle.\n\n"
+     "Computes A = Q*R where A has p-by-min(p,m) zero triangle in lower-left.\n"
+     "Optionally applies Q' to matrix B.\n\n"
+     "Parameters:\n"
+     "  n (int): Number of rows of A\n"
+     "  m (int): Number of columns of A\n"
+     "  p (int): Order of zero triangle\n"
+     "  a (ndarray): Matrix A (n x m, F-order), modified in place\n"
+     "  b (ndarray, optional): Matrix B (n x l, F-order), modified in place\n"
+     "  l (int, optional): Number of columns of B (default 0)\n"
+     "  ldwork (int, optional): Workspace size (-1 for query, default auto)\n\n"
+     "Returns:\n"
+     "  If l>0: (b, tau, info) - transformed B, Householder factors, exit code\n"
+     "  If l=0: (tau, info) - Householder factors, exit code\n"
+     "  If ldwork=-1: adds optimal workspace size to tuple\n"},
 
     {"mb04iy", (PyCFunction)py_mb04iy, METH_VARARGS | METH_KEYWORDS,
      "Apply orthogonal transformations from MB04ID to matrix C.\n\n"

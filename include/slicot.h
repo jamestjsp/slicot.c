@@ -896,6 +896,46 @@ void mb04kd(const char uplo, i32 n, i32 m, i32 p,
             f64 *dwork);
 
 /**
+ * @brief QR factorization of matrix with lower-left zero triangle
+ *
+ * Computes QR factorization A = Q*R of n-by-m matrix A having p-by-min(p,m)
+ * zero triangle in lower left corner. Optionally applies Q' to n-by-l matrix B.
+ * Exploits structure for efficiency (useful in Kalman filtering).
+ *
+ * Example structure (n=8, m=7, p=2):
+ *     [ x x x x x x x ]
+ *     [ x x x x x x x ]
+ *     [ x x x x x x x ]
+ *     [ x x x x x x x ]
+ * A = [ x x x x x x x ]
+ *     [ x x x x x x x ]
+ *     [ 0 x x x x x x ]  <- p rows with
+ *     [ 0 0 x x x x x ]  <- lower-left zeros
+ *
+ * @param[in] n Number of rows of A (n >= 0)
+ * @param[in] m Number of columns of A (m >= 0)
+ * @param[in] p Order of zero triangle (p >= 0)
+ * @param[in] l Number of columns of B (l >= 0)
+ * @param[in,out] a Matrix A, dimension (lda,m)
+ *                  In: n-by-m matrix with p-by-min(p,m) zero lower-left triangle
+ *                  Out: min(n,m)-by-m upper trapezoidal R, Householder vectors below diagonal
+ * @param[in] lda Leading dimension of a (lda >= max(1,n))
+ * @param[in,out] b Matrix B, dimension (ldb,l)
+ *                  In: n-by-l matrix B
+ *                  Out: Q'*B
+ *                  Not referenced if l=0
+ * @param[in] ldb Leading dimension of b (ldb >= max(1,n) if l>0, ldb >= 1 if l=0)
+ * @param[out] tau Householder scalar factors, dimension (min(n,m))
+ * @param[out] dwork Workspace, dimension (ldwork)
+ *                   dwork[0] returns optimal ldwork
+ * @param[in] ldwork Workspace size (ldwork >= max(1,m-1,m-p,l))
+ *                   If ldwork=-1, workspace query
+ * @param[out] info Exit code (0=success, <0=invalid parameter)
+ */
+void mb04id(i32 n, i32 m, i32 p, i32 l, f64 *a, i32 lda, f64 *b, i32 ldb,
+            f64 *tau, f64 *dwork, i32 ldwork, i32 *info);
+
+/**
  * @brief QR factorization with column pivoting for Levenberg-Marquardt
  *
  * Computes QR factorization with column pivoting of m-by-n matrix J (m >= n):
