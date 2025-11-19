@@ -5,7 +5,8 @@
       "Bash(cmake --build:*)",
       "Bash(cmake --preset:*)",
       "Bash(source:*)",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
