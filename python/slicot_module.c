@@ -3037,6 +3037,63 @@ static PyObject* py_mb04oy(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for ib01oy */
+static PyObject* py_ib01oy(PyObject* self, PyObject* args) {
+    i32 ns, nmax, n;
+    PyObject *sv_obj;
+    PyArrayObject *sv_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "iiiO", &ns, &nmax, &n, &sv_obj)) {
+        return NULL;
+    }
+
+    /* Validate parameters before array conversion */
+    if (ns <= 0) {
+        PyErr_SetString(PyExc_ValueError, "NS must be positive");
+        return NULL;
+    }
+
+    if (nmax < 0 || nmax > ns) {
+        PyErr_SetString(PyExc_ValueError, "NMAX must be in range [0, NS]");
+        return NULL;
+    }
+
+    if (n < 0 || n > ns) {
+        PyErr_SetString(PyExc_ValueError, "N must be in range [0, NS]");
+        return NULL;
+    }
+
+    /* Convert SV array */
+    sv_array = (PyArrayObject*)PyArray_FROM_OTF(sv_obj, NPY_DOUBLE,
+                                                NPY_ARRAY_IN_FARRAY);
+    if (sv_array == NULL) {
+        return NULL;
+    }
+
+    /* Validate SV size */
+    npy_intp sv_size = PyArray_SIZE(sv_array);
+    if (sv_size < ns) {
+        Py_DECREF(sv_array);
+        PyErr_SetString(PyExc_ValueError, "SV must have at least NS elements");
+        return NULL;
+    }
+
+    f64 *sv = (f64*)PyArray_DATA(sv_array);
+
+    /* Call C function */
+    SLC_IB01OY(ns, nmax, &n, sv, &info);
+
+    Py_DECREF(sv_array);
+
+    if (info < 0) {
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    return Py_BuildValue("ii", n, info);
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"mb04ow", (PyCFunction)py_mb04ow, METH_VARARGS | METH_KEYWORDS,
@@ -3448,6 +3505,17 @@ static PyMethodDef SlicotMethods[] = {
      "  gtol (float): Gradient tolerance (default eps)\n\n"
      "Returns:\n"
      "  (x, nfev, njev, fnorm, iwarn, info): Solution, evaluations, norm, status\n"},
+
+    {"ib01oy", (PyCFunction)py_ib01oy, METH_VARARGS,
+     "User's confirmation of the system order.\n\n"
+     "Non-interactive version for library use. Validates parameters and ensures N <= NMAX.\n\n"
+     "Parameters:\n"
+     "  ns (int): Number of singular values (ns > 0)\n"
+     "  nmax (int): Maximum value of system order (0 <= nmax <= ns)\n"
+     "  n (int): Estimated system order (0 <= n <= ns)\n"
+     "  sv (ndarray): Singular values, dimension (ns), descending order\n\n"
+     "Returns:\n"
+     "  (n, info): Validated order, exit code\n"},
 
     {NULL, NULL, 0, NULL}
 };

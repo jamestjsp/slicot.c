@@ -1557,6 +1557,29 @@ void mb04iy(
     i32* info
 );
 
+/**
+ * @brief User's confirmation of the system order.
+ *
+ * Non-interactive version for library use. Validates parameters and allows
+ * programmatic modification of the estimated system order.
+ *
+ * In the original Fortran version, this routine provides interactive user
+ * confirmation via terminal I/O. For library use, this version validates
+ * parameters and ensures N <= NMAX.
+ *
+ * @param[in] ns Number of singular values (ns > 0)
+ * @param[in] nmax Maximum value of system order (0 <= nmax <= ns)
+ * @param[in,out] n On entry: estimated system order (0 <= n <= ns)
+ *                  On exit: validated order (n <= nmax)
+ * @param[in] sv Singular values array, dimension (ns), descending order
+ * @param[out] info Exit code:
+ *                  = 0: successful exit
+ *                  < 0: if info = -i, the i-th argument had an illegal value
+ *
+ * @note This routine is typically called by IB01OD for system order validation.
+ */
+i32 SLC_IB01OY(i32 ns, i32 nmax, i32 *n, const f64 *sv, i32 *info);
+
 #ifdef __cplusplus
 }
 #endif
