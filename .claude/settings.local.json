@@ -7,7 +7,8 @@
       "Bash(source:*)",
       "Bash(pytest:*)",
       "Bash(cat:*)",
-      "WebFetch(domain:)"
+      "WebFetch(domain:)",
+      "Bash(valgrind:*)"
     ],
     "deny": [],
     "ask": []
