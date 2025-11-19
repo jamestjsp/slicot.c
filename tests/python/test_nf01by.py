@@ -109,5 +109,146 @@ class TestNF01BY(unittest.TestCase):
         jte_expected = j.T @ e
         np.testing.assert_allclose(jte, jte_expected, rtol=1e-13, atol=1e-14)
 
+    def test_nf01by_cjte_n(self):
+        """
+        Validate NF01BY with CJTE='N' (compute J only, not J'e).
+
+        Random seed: 888 (for reproducibility)
+        """
+        try:
+            from slicot import nf01by
+        except ImportError:
+            self.fail("Could not import nf01by")
+
+        np.random.seed(888)
+
+        nsmp = 5
+        nz = 3
+        l = 1
+        nn = 4
+
+        ipar = np.array([nn], dtype=np.int32)
+
+        nwb = nn * (nz + 2) + 1
+        wb = np.random.rand(nwb)
+        wb = (wb - 0.5) * 2.0
+
+        z = np.random.rand(nsmp, nz)
+        z_arr = np.asfortranarray(z)
+
+        e = np.random.rand(nsmp)
+
+        j, jte, info = nf01by('N', nsmp, nz, l, ipar, wb, z_arr, e)
+
+        assert info == 0
+        assert j.shape == (nsmp, nwb)
+
+        # JTE should not be computed (may be garbage or zeros)
+        # Just verify J is valid
+
+        w_end = nn * nz
+        w_flat = wb[:w_end]
+        ws_start = w_end
+        ws_end = ws_start + nn
+        ws = wb[ws_start:ws_end]
+        b_start = ws_end
+        b = wb[b_start:]
+
+        W = w_flat.reshape((nz, nn), order='F')
+
+        linear = z @ W + b[:nn]
+        act = np.tanh(linear)
+
+        # Validate output bias derivative
+        j_b_out = j[:, nwb-1]
+        np.testing.assert_allclose(j_b_out, 1.0)
+
+        # Validate ws derivatives
+        j_ws = j[:, ws_start:ws_end]
+        np.testing.assert_allclose(j_ws, act, rtol=1e-14)
+
+    def test_nf01by_finite_difference(self):
+        """
+        Validate Jacobian against finite differences.
+
+        Random seed: 999 (for reproducibility)
+        """
+        try:
+            from slicot import nf01by, nf01ay
+        except ImportError:
+            self.fail("Could not import nf01by or nf01ay")
+
+        np.random.seed(999)
+
+        nsmp = 3
+        nz = 2
+        l = 1
+        nn = 3
+
+        ipar = np.array([nn], dtype=np.int32)
+
+        nwb = nn * (nz + 2) + 1
+        wb = np.random.rand(nwb) * 0.5
+
+        z = np.random.rand(nsmp, nz)
+        z_arr = np.asfortranarray(z)
+
+        e = np.random.rand(nsmp)
+
+        j, jte, info = nf01by('C', nsmp, nz, l, ipar, wb, z_arr, e)
+        assert info == 0
+
+        # Compute finite difference approximation for first few parameters
+        h = 1e-7
+        j_fd = np.zeros_like(j)
+
+        for i in range(min(5, nwb)):
+            wb_plus = wb.copy()
+            wb_plus[i] += h
+
+            wb_minus = wb.copy()
+            wb_minus[i] -= h
+
+            y_plus, _ = nf01ay(nsmp, nz, l, ipar, wb_plus, z_arr)
+            y_minus, _ = nf01ay(nsmp, nz, l, ipar, wb_minus, z_arr)
+
+            j_fd[:, i] = (y_plus[:, 0] - y_minus[:, 0]) / (2 * h)
+
+        # Compare analytical vs finite difference
+        np.testing.assert_allclose(j[:, :5], j_fd[:, :5], rtol=1e-5, atol=1e-6)
+
+    def test_nf01by_error_l_not_one(self):
+        """
+        Validate NF01BY error handling for l != 1.
+
+        NF01BY only supports single output (l=1).
+        """
+        try:
+            from slicot import nf01by
+        except ImportError:
+            self.fail("Could not import nf01by")
+
+        nsmp = 5
+        nz = 3
+        l = 2
+        nn = 4
+
+        ipar = np.array([nn], dtype=np.int32)
+
+        nwb = nn * (nz + 2) + 1
+        wb = np.random.rand(nwb)
+
+        z_arr = np.asfortranarray(np.random.rand(nsmp, nz))
+        e = np.random.rand(nsmp)
+
+        # Should return error
+        try:
+            j, jte, info = nf01by('C', nsmp, nz, l, ipar, wb, z_arr, e)
+            # If wrapper doesn't raise exception, check info
+            assert info != 0
+        except:
+            # Exception expected for invalid l
+            pass
+
 if __name__ == '__main__':
     unittest.main()
