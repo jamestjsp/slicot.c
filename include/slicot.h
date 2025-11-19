@@ -378,6 +378,86 @@ void md03ba(i32 n, const i32 *ipar, i32 lipar, f64 fnorm, f64 *j, i32 *ldj,
             i32 ldwork, i32 *info);
 
 /**
+ * @brief Solve system of linear equations R*x = b or R'*x = b in least squares sense.
+ *
+ * Solves R*x = b or R'*x = b where R is an n-by-n block upper triangular matrix.
+ *
+ * @param[in] cond Condition estimation mode ('E', 'N', 'U').
+ * @param[in] uplo Storage scheme ('U', 'L').
+ * @param[in] trans Form of system ('N', 'T', 'C').
+ * @param[in] n Order of matrix R.
+ * @param[in] ipar Integer parameters (st, bn, bsm, bsn).
+ * @param[in] lipar Length of ipar.
+ * @param[in,out] r Matrix R (ldr x nc).
+ * @param[in] ldr Leading dimension of R.
+ * @param[in] sdiag Diagonal elements of blocks (if uplo='L').
+ * @param[in] s Transpose of last block column (if uplo='L').
+ * @param[in] lds Leading dimension of S.
+ * @param[in,out] b Right hand side vector b. On exit, solution x.
+ * @param[in,out] ranks Numerical ranks of submatrices.
+ * @param[in] tol Tolerance for rank determination.
+ * @param[out] dwork Workspace.
+ * @param[in] ldwork Length of dwork.
+ * @param[out] info Exit code.
+ */
+void nf01br(const char *cond, const char *uplo, const char *trans, i32 n, 
+            const i32 *ipar, i32 lipar, f64 *r, i32 ldr, f64 *sdiag, 
+            f64 *s, i32 lds, f64 *b, i32 *ranks, f64 tol, f64 *dwork, 
+            i32 ldwork, i32 *info);
+
+/**
+ * @brief Compute Levenberg-Marquardt parameter for compressed Jacobian.
+ *
+ * This routine is an interface to SLICOT Library routine MD03BY.
+ *
+ * @param[in] cond Condition estimation mode ('E', 'N', 'U').
+ * @param[in] n Order of matrix R.
+ * @param[in] ipar Integer parameters (unused, for compatibility).
+ * @param[in] lipar Length of ipar.
+ * @param[in,out] r Upper triangular matrix R.
+ * @param[in] ldr Leading dimension of R.
+ * @param[in] ipvt Permutation matrix P.
+ * @param[in] diag Diagonal scaling matrix D.
+ * @param[in] qtb First n elements of Q'*b.
+ * @param[in] delta Trust region radius.
+ * @param[in,out] par Levenberg-Marquardt parameter.
+ * @param[in,out] ranks Numerical rank.
+ * @param[out] x Least squares solution.
+ * @param[out] rx Residual -R*P'*x.
+ * @param[in] tol Tolerance for rank estimation.
+ * @param[out] dwork Workspace.
+ * @param[in] ldwork Length of dwork.
+ * @param[out] info Exit code.
+ */
+void md03bb(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, 
+            i32 ldr, const i32 *ipvt, const f64 *diag, const f64 *qtb, 
+            f64 delta, f64 *par, i32 *ranks, f64 *x, f64 *rx, f64 tol, 
+            f64 *dwork, i32 ldwork, i32 *info);
+
+/**
+ * @brief QR factorization of Jacobian in compressed form.
+ *
+ * Computes QR factorization with column pivoting of Jacobian J in compressed form.
+ *
+ * @param[in] n Number of columns of J.
+ * @param[in] ipar Integer parameters (st, bn, bsm, bsn).
+ * @param[in] lipar Length of ipar.
+ * @param[in] fnorm Norm of error vector.
+ * @param[in,out] j Jacobian matrix (ldj x nc).
+ * @param[in] ldj Leading dimension of J.
+ * @param[in,out] e Error vector.
+ * @param[out] jnorms Euclidean norms of columns of J.
+ * @param[out] gnorm 1-norm of scaled gradient.
+ * @param[out] ipvt Permutation matrix P.
+ * @param[out] dwork Workspace.
+ * @param[in] ldwork Length of dwork.
+ * @param[out] info Exit code.
+ */
+void nf01bs(i32 n, const i32 *ipar, i32 lipar, f64 fnorm, f64 *j, i32 *ldj, 
+            f64 *e, f64 *jnorms, f64 *gnorm, i32 *ipvt, f64 *dwork, 
+            i32 ldwork, i32 *info);
+
+/**
  * @brief Compute complex Givens rotation in real arithmetic.
  *
  * Computes parameters for complex Givens rotation such that:
@@ -1071,6 +1151,154 @@ void tf01mx(const i32 n, const i32 m, const i32 p, const i32 ny,
             const f64* s, const i32 lds, const f64* u, const i32 ldu,
             f64* x, f64* y, const i32 ldy, f64* dwork, const i32 ldwork,
             i32* info);
+
+/**
+ * @brief Calculate the output of the Wiener system.
+ *
+ * @param[in] nsmp Number of training samples.
+ * @param[in] m Length of each input sample.
+ * @param[in] l Length of each output sample.
+ * @param[in] ipar Integer parameters (n, nn).
+ * @param[in] lipar Length of ipar.
+ * @param[in] x Parameter vector (wb, theta).
+ * @param[in] lx Length of x.
+ * @param[in] u Input samples.
+ * @param[in] ldu Leading dimension of u.
+ * @param[out] y Simulated output.
+ * @param[in] ldy Leading dimension of y.
+ * @param[out] dwork Workspace.
+ * @param[in] ldwork Length of dwork.
+ * @param[out] info Exit code.
+ */
+void nf01ad(i32 nsmp, i32 m, i32 l, i32 *ipar, i32 lipar, f64 *x, i32 lx, 
+            f64 *u, i32 ldu, f64 *y, i32 ldy, f64 *dwork, i32 ldwork, i32 *info);
+
+/**
+ * @brief Calculate the Jacobian of the Wiener system.
+ *
+ * @param[in] cjte 'C' to compute J'*e, 'N' to skip.
+ * @param[in] nsmp Number of training samples.
+ * @param[in] m Length of each input sample.
+ * @param[in] l Length of each output sample.
+ * @param[in,out] ipar Integer parameters (n, nn).
+ * @param[in] lipar Length of ipar.
+ * @param[in,out] x Parameter vector.
+ * @param[in] lx Length of x.
+ * @param[in] u Input samples.
+ * @param[in] ldu Leading dimension of u.
+ * @param[in] e Error vector (if cjte='C').
+ * @param[out] j Jacobian matrix.
+ * @param[in,out] ldj Leading dimension of j.
+ * @param[out] jte J'*e product (if cjte='C').
+ * @param[out] dwork Workspace.
+ * @param[in] ldwork Length of dwork.
+ * @param[out] info Exit code.
+ */
+void nf01bd(const char *cjte, i32 nsmp, i32 m, i32 l, i32 *ipar, i32 lipar, 
+            f64 *x, i32 lx, f64 *u, i32 ldu, f64 *e, f64 *j, i32 *ldj, 
+            f64 *jte, f64 *dwork, i32 ldwork, i32 *info);
+
+/**
+ * @brief Error function for Wiener system identification (FCN for MD03BD).
+ *
+ * @param[in,out] iflag Integer indicating the action to be performed.
+ * @param[in] nsmp Number of training samples.
+ * @param[in] n Number of variables.
+ * @param[in,out] ipar Integer parameters.
+ * @param[in] lipar Length of ipar.
+ * @param[in] z Input samples.
+ * @param[in] ldz Leading dimension of Z.
+ * @param[in] y Output samples.
+ * @param[in] ldy Leading dimension of Y.
+ * @param[in] x Current estimate of parameters.
+ * @param[out] nfevl Number of function evaluations.
+ * @param[out] e Error vector.
+ * @param[out] j Jacobian matrix.
+ * @param[in,out] ldj Leading dimension of J.
+ * @param[out] dwork Workspace.
+ * @param[in] ldwork Length of dwork.
+ * @param[out] info Exit code.
+ */
+void nf01be(i32 *iflag, i32 nsmp, i32 n, i32 *ipar, i32 lipar, 
+            f64 *z, i32 ldz, f64 *y, i32 ldy, f64 *x, 
+            i32 *nfevl, f64 *e, f64 *j, i32 *ldj, 
+            f64 *dwork, i32 ldwork, i32 *info);
+
+/**
+ * @brief Error function for Wiener system identification (Full parameter optimization).
+ *
+ * @param[in,out] iflag Integer indicating the action to be performed.
+ * @param[in] nfun Number of functions.
+ * @param[in] lx Number of variables.
+ * @param[in,out] ipar Integer parameters.
+ * @param[in] lipar Length of ipar.
+ * @param[in] u Input samples.
+ * @param[in] ldu Leading dimension of U.
+ * @param[in] y Output samples.
+ * @param[in] ldy Leading dimension of Y.
+ * @param[in] x Current estimate of parameters.
+ * @param[out] nfevl Number of function evaluations.
+ * @param[out] e Error vector.
+ * @param[out] j Jacobian matrix.
+ * @param[in,out] ldj Leading dimension of J.
+ * @param[out] dwork Workspace.
+ * @param[in] ldwork Length of dwork.
+ * @param[out] info Exit code.
+ */
+void nf01bf(i32 *iflag, i32 nfun, i32 lx, i32 *ipar, i32 lipar, 
+            f64 *u, i32 ldu, f64 *y, i32 ldy, f64 *x, 
+            i32 *nfevl, f64 *e, f64 *j, i32 *ldj, 
+            f64 *dwork, i32 ldwork, i32 *info);
+
+/**
+ * @brief Solve linear system J*x = b, D*x = 0 in least squares sense.
+ *
+ * @param[in] cond Condition estimation mode.
+ * @param[in] n Order of matrix R.
+ * @param[in] ipar Integer parameters.
+ * @param[in] lipar Length of ipar.
+ * @param[in,out] r Matrix R.
+ * @param[in] ldr Leading dimension of R.
+ * @param[in] ipvt Permutation matrix.
+ * @param[in] diag Diagonal scaling.
+ * @param[in] qtb Q'*b.
+ * @param[in,out] ranks Ranks.
+ * @param[out] x Solution.
+ * @param[in] tol Tolerance.
+ * @param[out] dwork Workspace.
+ * @param[in] ldwork Length of dwork.
+ * @param[out] info Exit code.
+ */
+void nf01bq(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr, 
+            const i32 *ipvt, const f64 *diag, const f64 *qtb, i32 *ranks, 
+            f64 *x, f64 *tol, f64 *dwork, i32 ldwork, i32 *info);
+
+/**
+ * @brief Compute Levenberg-Marquardt parameter for Wiener system.
+ *
+ * @param[in] cond Condition estimation mode.
+ * @param[in] n Order of matrix R.
+ * @param[in] ipar Integer parameters.
+ * @param[in] lipar Length of ipar.
+ * @param[in,out] r Matrix R.
+ * @param[in] ldr Leading dimension of R.
+ * @param[in] ipvt Permutation matrix.
+ * @param[in] diag Diagonal scaling.
+ * @param[in] qtb Q'*b.
+ * @param[in] delta Trust region radius.
+ * @param[in,out] par LM parameter.
+ * @param[in,out] ranks Ranks.
+ * @param[out] x Solution.
+ * @param[out] rx Residual.
+ * @param[in] tol Tolerance.
+ * @param[out] dwork Workspace.
+ * @param[in] ldwork Length of dwork.
+ * @param[out] info Exit code.
+ */
+void nf01bp(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr, 
+            const i32 *ipvt, const f64 *diag, const f64 *qtb, f64 delta, 
+            f64 *par, i32 *ranks, f64 *x, f64 *rx, f64 tol, f64 *dwork, 
+            i32 ldwork, i32 *info);
 
 #ifdef __cplusplus
 }
