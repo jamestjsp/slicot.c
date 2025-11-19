@@ -1313,10 +1313,63 @@ void nf01bq(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr
  * @param[in] ldwork Length of dwork.
  * @param[out] info Exit code.
  */
-void nf01bp(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr, 
-            const i32 *ipvt, const f64 *diag, const f64 *qtb, f64 delta, 
-            f64 *par, i32 *ranks, f64 *x, f64 *rx, f64 tol, f64 *dwork, 
+void nf01bp(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr,
+            const i32 *ipvt, const f64 *diag, const f64 *qtb, f64 delta,
+            f64 *par, i32 *ranks, f64 *x, f64 *rx, f64 tol, f64 *dwork,
             i32 ldwork, i32 *info);
+
+/**
+ * @brief Triangular symmetric rank-k update.
+ *
+ * Computes either the upper or lower triangular part of:
+ *   R = alpha*R + beta*op(A)*B  (SIDE='L')
+ *   R = alpha*R + beta*B*op(A)  (SIDE='R')
+ *
+ * where op(A) = A or A', and only the specified triangle is computed.
+ *
+ * @param[in] side 'L' for left (R = alpha*R + beta*op(A)*B)
+ *                 'R' for right (R = alpha*R + beta*B*op(A))
+ * @param[in] uplo 'U' for upper triangle, 'L' for lower triangle
+ * @param[in] trans 'N' for op(A)=A, 'T'/'C' for op(A)=A'
+ * @param[in] m Order of matrix R
+ * @param[in] n Dimension for product:
+ *              SIDE='L': rows of B, columns of op(A)
+ *              SIDE='R': rows of op(A), columns of B
+ * @param[in] alpha Scalar multiplier for R
+ * @param[in] beta Scalar multiplier for product
+ * @param[in,out] r On entry: m-by-m matrix R (triangle only)
+ *                  On exit: updated R (triangle only)
+ * @param[in] ldr Leading dimension of R, >= max(1,m)
+ * @param[in] a Matrix A with dimensions:
+ *              SIDE='L', TRANS='N': m-by-n
+ *              SIDE='L', TRANS='T': n-by-m
+ *              SIDE='R', TRANS='N': n-by-m
+ *              SIDE='R', TRANS='T': m-by-n
+ * @param[in] lda Leading dimension of A
+ * @param[in] b Matrix B with dimensions:
+ *              SIDE='L': n-by-m
+ *              SIDE='R': m-by-n
+ * @param[in] ldb Leading dimension of B
+ * @return 0 on success, -i if argument i had an illegal value
+ *
+ * @note Main application: computing symmetric updates where B = X*op(A)'
+ *       or B = op(A)'*X with X symmetric.
+ */
+i32 slicot_mb01rx(
+    char side,
+    char uplo,
+    char trans,
+    i32 m,
+    i32 n,
+    f64 alpha,
+    f64 beta,
+    f64 *r,
+    i32 ldr,
+    const f64 *a,
+    i32 lda,
+    const f64 *b,
+    i32 ldb
+);
 
 #ifdef __cplusplus
 }

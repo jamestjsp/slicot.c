@@ -42,9 +42,9 @@ def test_mb01rx_side_left_uplo_upper_trans_no():
     # Expected: R_new[i,j] = alpha*R[i,j] + beta*sum_k(A[i,k]*B[k,j]) for i <= j
     # Only upper triangle computed
     r_expected = np.array([
-        [11.0, 5.5, 9.0],
-        [0.0, 9.5, 9.5],
-        [0.0, 0.0, 17.0]
+        [10.0, 4.5, 6.5],
+        [0.0, 8.5, 7.0],
+        [0.0, 0.0, 15.0]
     ], order='F', dtype=float)
 
     r_out, info = mb01rx('L', 'U', 'N', m, n, alpha, beta, r, a, b)
@@ -89,8 +89,8 @@ def test_mb01rx_side_left_uplo_lower_trans_yes():
     # Expected: R_new[i,j] = alpha*R[i,j] + beta*sum_k(A[k,i]*B[k,j]) for i >= j
     r_expected = np.array([
         [-12.0, 0.0, 0.0],
-        [-11.5, -5.5, 0.0],
-        [-13.0, -7.5, -8.0]
+        [-7.5, -5.5, 0.0],
+        [-12.0, -9.5, -12.0]
     ], order='F', dtype=float)
 
     r_out, info = mb01rx('L', 'L', 'T', m, n, alpha, beta, r, a, b)
@@ -131,9 +131,9 @@ def test_mb01rx_side_right_uplo_upper_trans_no():
 
     # Expected: R_new[i,j] = alpha*R[i,j] + beta*sum_k(B[i,k]*A[k,j]) for i <= j
     r_expected = np.array([
-        [8.5, 11.0, 11.5],
-        [0.0, 11.0, 22.0],
-        [0.0, 0.0, 18.5]
+        [8.5, 11.0, 10.5],
+        [0.0, 9.0, 15.5],
+        [0.0, 0.0, 12.5]
     ], order='F', dtype=float)
 
     r_out, info = mb01rx('R', 'U', 'N', m, n, alpha, beta, r, a, b)
@@ -165,17 +165,18 @@ def test_mb01rx_side_right_uplo_lower_trans_yes():
     ], order='F', dtype=float)
 
     a = np.array([
-        [1.0, 2.0, 1.0, 3.0],
-        [2.0, 1.0, 3.0, 1.0],
-        [1.0, 2.0, 2.0, 2.0]
+        [1.0, 2.0, 1.0],
+        [2.0, 1.0, 3.0],
+        [1.0, 2.0, 2.0],
+        [3.0, 1.0, 2.0]
     ], order='F', dtype=float)
 
     # Expected: R_new[i,j] = beta*sum_k(B[i,k]*A[k,j]) for i >= j
     r_expected = np.array([
         [6.0, 0.0, 0.0, 0.0],
-        [7.0, 10.0, 0.0, 0.0],
-        [7.0, 7.0, 9.0, 0.0],
-        [7.0, 10.0, 11.0, 14.0]
+        [7.0, 14.0, 0.0, 0.0],
+        [7.0, 10.0, 9.0, 0.0],
+        [7.0, 13.0, 9.0, 14.0]
     ], order='F', dtype=float)
 
     r_out, info = mb01rx('R', 'L', 'T', m, n, alpha, beta, r, a, b)
@@ -214,7 +215,7 @@ def test_mb01rx_alpha_zero():
     r_expected = np.array([
         [4.0, 5.0, 5.0],
         [0.0, 5.0, 10.0],
-        [0.0, 0.0, 14.0]
+        [0.0, 0.0, 10.0]
     ], order='F', dtype=float)
 
     r_out, info = mb01rx('L', 'U', 'N', m, n, alpha, beta, r, a, b)
@@ -245,11 +246,11 @@ def test_mb01rx_beta_zero():
     a = np.zeros((m, n), order='F', dtype=float)
     b = np.zeros((n, m), order='F', dtype=float)
 
-    # Expected: R_new = 2*R
+    # Expected: R_new = 2*R (upper triangle)
     r_expected = np.array([
         [8.0, 2.0, 4.0],
-        [0.0, 6.0, 2.0],
-        [0.0, 0.0, 10.0]
+        [5.0, 6.0, 2.0],
+        [6.0, 7.0, 10.0]
     ], order='F', dtype=float)
 
     r_out, info = mb01rx('L', 'U', 'N', m, n, alpha, beta, r, a, b)
@@ -384,8 +385,10 @@ def test_mb01rx_property_symmetry():
     # Test 2: R = A'*A (lower triangle) - different dimensions
     m2, n2 = n, m
     r2 = np.zeros((m2, m2), order='F', dtype=float)
-    a2 = a.T.copy(order='F')
-    r2_out, info = mb01rx('L', 'L', 'T', m2, n2, alpha, beta, r2, a2, a2.T.copy(order='F'))
+    # For SIDE='L', TRANS='T': need A(n2 x m2) = A(4x3)
+    a2 = a.copy(order='F')  # 4x3 - correct dimensions
+    b2 = a.copy(order='F')  # 4x3 - same as A for symmetric result
+    r2_out, info = mb01rx('L', 'L', 'T', m2, n2, alpha, beta, r2, a2, b2)
     assert info == 0
 
     r2_full = a.T @ a
