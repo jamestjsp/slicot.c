@@ -254,6 +254,22 @@ void SLC_FC_FUNC(dgees, DGEES)(const char* jobvs, const char* sort,
                                 f64* vs, const int* ldvs, f64* work,
                                 const int* lwork, int* bwork, int* info);
 
+/* LAPACK - Bidiagonal decomposition and SVD */
+void SLC_FC_FUNC(dgebrd, DGEBRD)(const int* m, const int* n, f64* a,
+                                  const int* lda, f64* d, f64* e, f64* tauq,
+                                  f64* taup, f64* work, const int* lwork,
+                                  int* info);
+
+void SLC_FC_FUNC(dorgbr, DORGBR)(const char* vect, const int* m, const int* n,
+                                  const int* k, f64* a, const int* lda,
+                                  const f64* tau, f64* work, const int* lwork,
+                                  int* info);
+
+void SLC_FC_FUNC(dbdsqr, DBDSQR)(const char* uplo, const int* n, const int* ncvt,
+                                  const int* nru, const int* ncc, f64* d, f64* e,
+                                  f64* vt, const int* ldvt, f64* u, const int* ldu,
+                                  f64* c, const int* ldc, f64* work, int* info);
+
 #undef int
 
 /* Convenience macros for calling BLAS/LAPACK */
