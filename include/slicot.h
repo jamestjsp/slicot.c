@@ -248,6 +248,46 @@ void mb03oy(i32 m, i32 n, f64* a, i32 lda, f64 rcond,
             f64* tau, f64* dwork, i32* info);
 
 /**
+ * @brief Performs a QR factorization update.
+ *
+ * MB04OW performs the QR factorization
+ *
+ *      ( U  ) = Q*( R ),  where  U = ( U1  U2 ),  R = ( R1  R2 ),
+ *      ( x' )     ( 0 )              ( 0   T  )       ( 0   R3 )
+ *
+ * where U and R are (m+n)-by-(m+n) upper triangular matrices, x is
+ * an m+n element vector, U1 is m-by-m, T is n-by-n, stored
+ * separately, and Q is an (m+n+1)-by-(m+n+1) orthogonal matrix.
+ *
+ * The transformations performed are also applied to the (m+n+1)-by-p
+ * matrix ( B' C' d )' (' denotes transposition), where B, C, and d'
+ * are m-by-p, n-by-p, and 1-by-p matrices, respectively.
+ *
+ * @param[in] m The number of rows of the matrix ( U1  U2 ). M >= 0.
+ * @param[in] n The order of the matrix T. N >= 0.
+ * @param[in] p The number of columns of the matrices B and C. P >= 0.
+ * @param[in,out] a Array of dimension (LDA, N+M). On entry, the leading M-by-(M+N) 
+ *                  upper trapezoidal part contains ( U1 U2 ). On exit, ( R1 R2 ).
+ * @param[in] lda The leading dimension of the array A. LDA >= max(1,M).
+ * @param[in,out] t Array of dimension (LDT, N). On entry, the leading N-by-N 
+ *                  upper triangular part contains T. On exit, R3.
+ * @param[in] ldt The leading dimension of the array T. LDT >= max(1,N).
+ * @param[in,out] x Array of dimension (1+(M+N-1)*INCX). On entry, the vector x. 
+ *                  On exit, the content is changed (destroyed).
+ * @param[in] incx The increment for the elements of X. INCX > 0.
+ * @param[in,out] b Array of dimension (LDB, P). On entry, B. On exit, transformed B.
+ * @param[in] ldb The leading dimension of the array B. LDB >= max(1,M) if P > 0.
+ * @param[in,out] c Array of dimension (LDC, P). On entry, C. On exit, transformed C.
+ * @param[in] ldc The leading dimension of the array C. LDC >= max(1,N) if P > 0.
+ * @param[in,out] d Array of dimension (1+(P-1)*INCD). On entry, the vector d. 
+ *                  On exit, transformed d.
+ * @param[in] incd The increment for the elements of D. INCD > 0.
+ */
+void mb04ow(i32 m, i32 n, i32 p, f64 *a, i32 lda, f64 *t, i32 ldt, 
+            f64 *x, i32 incx, f64 *b, i32 ldb, f64 *c, i32 ldc, 
+            f64 *d, i32 incd);
+
+/**
  * @brief Compute complex Givens rotation in real arithmetic.
  *
  * Computes parameters for complex Givens rotation such that:

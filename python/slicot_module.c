@@ -1828,8 +1828,95 @@ static PyObject* py_tf01mx(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for mb04ow */
+static PyObject* py_mb04ow(PyObject* self, PyObject* args, PyObject* kwargs) {
+    i32 m, n, p, incx = 1, incd = 1;
+    PyObject *a_obj, *t_obj, *x_obj, *b_obj, *c_obj, *d_obj;
+    PyArrayObject *a_array, *t_array, *x_array, *b_array, *c_array, *d_array;
+
+    static char *kwlist[] = {"m", "n", "p", "a", "t", "x", "b", "c", "d", "incx", "incd", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iiiOOOOOO|ii", kwlist,
+                                     &m, &n, &p, &a_obj, &t_obj, &x_obj, 
+                                     &b_obj, &c_obj, &d_obj, &incx, &incd)) {
+        return NULL;
+    }
+    
+    if (m < 0 || n < 0 || p < 0) {
+        PyErr_Format(PyExc_ValueError, "Dimensions must be non-negative");
+        return NULL;
+    }
+    
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    t_array = (PyArrayObject*)PyArray_FROM_OTF(t_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    x_array = (PyArrayObject*)PyArray_FROM_OTF(x_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    d_array = (PyArrayObject*)PyArray_FROM_OTF(d_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    
+    if (!a_array || !t_array || !x_array || !b_array || !c_array || !d_array) {
+         Py_XDECREF(a_array); Py_XDECREF(t_array); Py_XDECREF(x_array);
+         Py_XDECREF(b_array); Py_XDECREF(c_array); Py_XDECREF(d_array);
+         return NULL;
+    }
+    
+    i32 lda = (i32)PyArray_DIM(a_array, 0);
+    i32 ldt = (i32)PyArray_DIM(t_array, 0);
+    i32 ldb = (i32)PyArray_DIM(b_array, 0);
+    i32 ldc = (i32)PyArray_DIM(c_array, 0);
+    
+    if (lda < 1) lda = 1;
+    if (ldt < 1) ldt = 1;
+    if (ldb < 1) ldb = 1;
+    if (ldc < 1) ldc = 1;
+    
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *t_data = (f64*)PyArray_DATA(t_array);
+    f64 *x_data = (f64*)PyArray_DATA(x_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+    f64 *d_data = (f64*)PyArray_DATA(d_array);
+    
+    mb04ow(m, n, p, a_data, lda, t_data, ldt, x_data, incx, b_data, ldb, c_data, ldc, d_data, incd);
+    
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(t_array);
+    PyArray_ResolveWritebackIfCopy(x_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    PyArray_ResolveWritebackIfCopy(c_array);
+    PyArray_ResolveWritebackIfCopy(d_array);
+    
+    PyObject *result = Py_BuildValue("OOOOOO", a_array, t_array, x_array, b_array, c_array, d_array);
+    
+    Py_DECREF(a_array);
+    Py_DECREF(t_array);
+    Py_DECREF(x_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(d_array);
+    
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
+    {"mb04ow", (PyCFunction)py_mb04ow, METH_VARARGS | METH_KEYWORDS,
+     "Performs a QR factorization update.\n\n"
+     "Parameters:\n"
+     "  m (int): Rows of U1\n"
+     "  n (int): Rows of T\n"
+     "  p (int): Columns of B, C\n"
+     "  a (ndarray): Matrix U (lda x m+n), modified in place\n"
+     "  t (ndarray): Matrix T (ldt x n), modified in place\n"
+     "  x (ndarray): Vector x (m+n), modified in place\n"
+     "  b (ndarray): Matrix B (ldb x p), modified in place\n"
+     "  c (ndarray): Matrix C (ldc x p), modified in place\n"
+     "  d (ndarray): Vector d (p), modified in place\n"
+     "  incx (int, optional): Increment for x\n"
+     "  incd (int, optional): Increment for d\n\n"
+     "Returns:\n"
+     "  (a, t, x, b, c, d): Modified arrays\n"},
+
     {"tb01vy", (PyCFunction)py_tb01vy, METH_VARARGS | METH_KEYWORDS,
      "Convert output normal form to state-space representation.\n\n"
      "Parameters:\n"
