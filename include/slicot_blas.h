@@ -270,6 +270,9 @@ void SLC_FC_FUNC(dbdsqr, DBDSQR)(const char* uplo, const int* n, const int* ncvt
                                   f64* vt, const int* ldvt, f64* u, const int* ldu,
                                   f64* c, const int* ldc, f64* work, int* info);
 
+int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* opts,
+                                const int* n1, const int* n2, const int* n3, const int* n4);
+
 #undef int
 
 /* Convenience macros for calling BLAS/LAPACK */
@@ -325,6 +328,7 @@ void SLC_FC_FUNC(dbdsqr, DBDSQR)(const char* uplo, const int* n, const int* ncvt
 #define SLC_DORGBR   SLC_FC_FUNC(dorgbr, DORGBR)
 #define SLC_DBDSQR   SLC_FC_FUNC(dbdsqr, DBDSQR)
 #define SLC_DLANTR   SLC_FC_FUNC(dlantr, DLANTR)
+#define SLC_ILAENV   SLC_FC_FUNC(ilaenv, ILAENV)
 
 #ifdef __cplusplus
 }
