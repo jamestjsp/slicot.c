@@ -41,8 +41,8 @@ void mb01rb(const char* side_str, const char* uplo_str, const char* trans_str,
     } else if (ldr < (m > 1 ? m : 1)) {
         *info = -9;
     } else if (lda < 1 ||
-               ((lside && !ltrans) || (!lside && ltrans)) && lda < m ||
-               ((lside && ltrans) || (!lside && !ltrans)) && lda < n) {
+               (((lside && !ltrans) || (!lside && ltrans)) && lda < m) ||
+               (((lside && ltrans) || (!lside && !ltrans)) && lda < n)) {
         *info = -11;
     } else if (ldb < 1 || (lside && ldb < n) || (!lside && ldb < m)) {
         *info = -13;
@@ -116,8 +116,8 @@ void mb01rb(const char* side_str, const char* uplo_str, const char* trans_str,
                         slicot_mb01rx(side, uplo, trans, jb, jb2, one, beta,
                                      &r[i + i*ldr], ldr, &a[j + i*lda], lda, &b[j + i*ldb], ldb);
                     }
-                    if (ib <= m) {
-                        i32 rem = m - ib + 1;
+                    if (ib < m) {
+                        i32 rem = m - ib;
                         if (luplo) {
                             SLC_DGEMM(&trans, "N", &jb, &rem, &n, &beta, a + i*lda, &lda,
                                      b + ib*ldb, &ldb, &alpha, &r[i + ib*ldr], &ldr);
@@ -134,8 +134,8 @@ void mb01rb(const char* side_str, const char* uplo_str, const char* trans_str,
                         slicot_mb01rx(side, uplo, trans, jb, jb2, one, beta,
                                      &r[i + i*ldr], ldr, &a[i + j*lda], lda, &b[i + j*ldb], ldb);
                     }
-                    if (ib <= m) {
-                        i32 rem = m - ib + 1;
+                    if (ib < m) {
+                        i32 rem = m - ib;
                         if (luplo) {
                             SLC_DGEMM("N", &trans, &jb, &rem, &n, &beta, b + i, &ldb,
                                      a + ib, &lda, &alpha, &r[i + ib*ldr], &ldr);
@@ -154,8 +154,8 @@ void mb01rb(const char* side_str, const char* uplo_str, const char* trans_str,
                         slicot_mb01rx(side, uplo, trans, jb, jb2, one, beta,
                                      &r[i + i*ldr], ldr, &a[i + j*lda], lda, &b[j + i*ldb], ldb);
                     }
-                    if (ib <= m) {
-                        i32 rem = m - ib + 1;
+                    if (ib < m) {
+                        i32 rem = m - ib;
                         if (luplo) {
                             SLC_DGEMM(&trans, "N", &jb, &rem, &n, &beta, a + i, &lda,
                                      b + ib*ldb, &ldb, &alpha, &r[i + ib*ldr], &ldr);
@@ -172,8 +172,8 @@ void mb01rb(const char* side_str, const char* uplo_str, const char* trans_str,
                         slicot_mb01rx(side, uplo, trans, jb, jb2, one, beta,
                                      &r[i + i*ldr], ldr, &a[j + i*lda], lda, &b[i + j*ldb], ldb);
                     }
-                    if (ib <= m) {
-                        i32 rem = m - ib + 1;
+                    if (ib < m) {
+                        i32 rem = m - ib;
                         if (luplo) {
                             SLC_DGEMM("N", &trans, &jb, &rem, &n, &beta, b + i, &ldb,
                                      a + ib*lda, &lda, &alpha, &r[i + ib*ldr], &ldr);

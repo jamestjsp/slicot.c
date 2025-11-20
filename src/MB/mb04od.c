@@ -11,6 +11,7 @@ void mb04od(const char* uplo_str, const i32 n, const i32 m, const i32 p,
     i32 i, im;
     char uplo = uplo_str[0];
 
+    /* For efficiency reasons, the parameters are not checked (per SLICOT design) */
     if ((n < p ? n : p) == 0) {
         return;
     }
