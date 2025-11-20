@@ -131,6 +131,175 @@ static PyObject* py_mb01rx(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for mb01rb */
+static PyObject* py_mb01rb(PyObject* self, PyObject* args) {
+    const char *side_str, *uplo_str, *trans_str;
+    char side, uplo, trans;
+    i32 m, n, ldr, lda, ldb;
+    f64 alpha, beta;
+    PyObject *r_obj, *a_obj, *b_obj;
+    PyArrayObject *r_array, *a_array, *b_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "sssiiddOOO",
+                          &side_str, &uplo_str, &trans_str, &m, &n, &alpha, &beta,
+                          &r_obj, &a_obj, &b_obj)) {
+        return NULL;
+    }
+
+    side = side_str[0];
+    uplo = uplo_str[0];
+    trans = trans_str[0];
+
+    r_array = (PyArrayObject*)PyArray_FROM_OTF(r_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (r_array == NULL) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY);
+    if (a_array == NULL) {
+        Py_DECREF(r_array);
+        return NULL;
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY);
+    if (b_array == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    npy_intp *r_dims = PyArray_DIMS(r_array);
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *b_dims = PyArray_DIMS(b_array);
+
+    ldr = (i32)r_dims[0];
+    lda = (i32)a_dims[0];
+    ldb = (i32)b_dims[0];
+
+    f64 *r_data = (f64*)PyArray_DATA(r_array);
+    const f64 *a_data = (const f64*)PyArray_DATA(a_array);
+    const f64 *b_data = (const f64*)PyArray_DATA(b_array);
+
+    mb01rb(&side, &uplo, &trans, m, n, alpha, beta,
+           r_data, ldr, a_data, lda, b_data, ldb, &info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+
+    if (info < 0) {
+        Py_DECREF(r_array);
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    PyObject *result = Py_BuildValue("Oi", r_array, info);
+    Py_DECREF(r_array);
+    return result;
+}
+
+/* Python wrapper for mb04od */
+static PyObject* py_mb04od(PyObject* self, PyObject* args) {
+    const char *uplo_str;
+    char uplo;
+    i32 n, m, p, ldr, lda, ldb, ldc;
+    PyObject *r_obj, *a_obj, *b_obj, *c_obj;
+    PyArrayObject *r_array, *a_array, *b_array, *c_array, *tau_array;
+    f64 *dwork;
+    i32 ldwork;
+
+    if (!PyArg_ParseTuple(args, "siiiOOOO",
+                          &uplo_str, &n, &m, &p,
+                          &r_obj, &a_obj, &b_obj, &c_obj)) {
+        return NULL;
+    }
+
+    uplo = uplo_str[0];
+
+    r_array = (PyArrayObject*)PyArray_FROM_OTF(r_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (r_array == NULL) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) {
+        Py_DECREF(r_array);
+        return NULL;
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (c_array == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    npy_intp *r_dims = PyArray_DIMS(r_array);
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *b_dims = PyArray_DIMS(b_array);
+    npy_intp *c_dims = PyArray_DIMS(c_array);
+
+    ldr = (i32)r_dims[0];
+    lda = (i32)a_dims[0];
+    ldb = (i32)b_dims[0];
+    ldc = (i32)c_dims[0];
+
+    npy_intp tau_dims[1] = {n > 0 ? n : 1};
+    tau_array = (PyArrayObject*)PyArray_SimpleNew(1, tau_dims, NPY_DOUBLE);
+    if (tau_array == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        return NULL;
+    }
+
+    ldwork = (n - 1) > m ? (n - 1) : m;
+    if (ldwork < 1) ldwork = 1;
+    dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (dwork == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(tau_array);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    f64 *r_data = (f64*)PyArray_DATA(r_array);
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+    f64 *tau_data = (f64*)PyArray_DATA(tau_array);
+
+    mb04od(&uplo, n, m, p, r_data, ldr, a_data, lda,
+           b_data, ldb, c_data, ldc, tau_data, dwork);
+
+    free(dwork);
+
+    PyObject *result = Py_BuildValue("OOOOO", r_array, a_array, b_array, c_array, tau_array);
+    Py_DECREF(r_array);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(tau_array);
+    return result;
+}
+
 /* Python wrapper for mb03oy */
 static PyObject* py_mb03oy(PyObject* self, PyObject* args) {
     i32 m, n, lda;
@@ -3208,6 +3377,24 @@ static PyObject* py_ib01oy(PyObject* self, PyObject* args) {
 
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
+    {"mb04od", py_mb04od, METH_VARARGS,
+     "QR factorization of structured block matrix.\n\n"
+     "Computes QR factorization of first block column and applies\n"
+     "transformations to second block column:\n"
+     "  Q' * [R  B] = [R_  B_]\n"
+     "       [A  C]   [0   C_]\n\n"
+     "Parameters:\n"
+     "  uplo (str): 'U' for A upper trapezoidal, 'F' for A full\n"
+     "  n (int): Order of R\n"
+     "  m (int): Columns in B, C\n"
+     "  p (int): Rows in A, C\n"
+     "  r (ndarray): n-by-n upper triangular matrix R (F-order), modified\n"
+     "  a (ndarray): p-by-n matrix A (F-order), overwritten with Householder vectors\n"
+     "  b (ndarray): n-by-m matrix B (F-order), modified\n"
+     "  c (ndarray): p-by-m matrix C (F-order), modified\n\n"
+     "Returns:\n"
+     "  (r, a, b, c, tau): Updated matrices and Householder scalars\n"},
+
     {"mb04ow", (PyCFunction)py_mb04ow, METH_VARARGS | METH_KEYWORDS,
      "Performs a QR factorization update.\n\n"
      "Parameters:\n"
@@ -3422,6 +3609,25 @@ static PyMethodDef SlicotMethods[] = {
      "  b (ndarray): Matrix B (m x n, F-order, modified in place)\n\n"
      "Returns:\n"
      "  (a, b): Updated matrices\n"},
+
+    {"mb01rb", py_mb01rb, METH_VARARGS,
+     "Block triangular symmetric rank-k update (BLAS 3 version).\n\n"
+     "Computes R = alpha*R + beta*op(A)*B or R = alpha*R + beta*B*op(A)\n"
+     "where only the specified triangle is computed using block algorithm.\n\n"
+     "Parameters:\n"
+     "  side (str): 'L' for left (R = alpha*R + beta*op(A)*B)\n"
+     "              'R' for right (R = alpha*R + beta*B*op(A))\n"
+     "  uplo (str): 'U' for upper triangle, 'L' for lower triangle\n"
+     "  trans (str): 'N' for op(A)=A, 'T'/'C' for op(A)=A'\n"
+     "  m (int): Order of matrix R\n"
+     "  n (int): Dimension for product\n"
+     "  alpha (float): Scalar multiplier for R\n"
+     "  beta (float): Scalar multiplier for product\n"
+     "  r (ndarray): m-by-m matrix R (F-order), modified in place\n"
+     "  a (ndarray): Matrix A (F-order)\n"
+     "  b (ndarray): Matrix B (F-order)\n\n"
+     "Returns:\n"
+     "  (r, info): Updated R (triangle only) and exit code\n"},
 
     {"mb01rx", py_mb01rx, METH_VARARGS,
      "Triangular symmetric rank-k update.\n\n"

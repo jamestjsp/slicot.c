@@ -1611,6 +1611,90 @@ i32 mb03ud(char jobq, char jobp, i32 n, f64 *a, i32 lda, f64 *q, i32 ldq,
  */
 i32 SLC_IB01OY(i32 ns, i32 nmax, i32 *n, const f64 *sv, i32 *info);
 
+/**
+ * @brief Block symmetric rank-k update (BLAS 3 version of MB01RX).
+ *
+ * Computes triangular part of matrix formula:
+ *   R = alpha*R + beta*op(A)*B  (SIDE='L'), or
+ *   R = alpha*R + beta*B*op(A)  (SIDE='R')
+ *
+ * where alpha, beta are scalars, R is m-by-m, and op(A) is A or A'.
+ *
+ * @param[in] side 'L' for R=alpha*R+beta*op(A)*B, 'R' for R=alpha*R+beta*B*op(A)
+ * @param[in] uplo 'U' for upper triangle, 'L' for lower triangle
+ * @param[in] trans 'N' for op(A)=A, 'T'/'C' for op(A)=A'
+ * @param[in] m Order of R (m >= 0)
+ * @param[in] n Inner dimension (n >= 0)
+ * @param[in] alpha Scalar alpha
+ * @param[in] beta Scalar beta
+ * @param[in,out] r m-by-m matrix R, dimension (ldr,m)
+ * @param[in] ldr Leading dimension of R (ldr >= max(1,m))
+ * @param[in] a Matrix A
+ * @param[in] lda Leading dimension of A
+ * @param[in] b Matrix B
+ * @param[in] ldb Leading dimension of B
+ * @param[out] info Exit code (0=success, <0=invalid parameter)
+ *
+ * @note Main application: symmetric updates where B = X*op(A)' or B = op(A)'*X
+ */
+void mb01rb(const char* side, const char* uplo, const char* trans,
+            const i32 m, const i32 n, const f64 alpha, const f64 beta,
+            f64* r, const i32 ldr, const f64* a, const i32 lda,
+            const f64* b, const i32 ldb, i32* info);
+
+/**
+ * @brief QR factorization of structured block matrix.
+ *
+ * Calculates QR factorization of first block column and applies orthogonal
+ * transformations to second block column:
+ *         [ R   B ]   [ R_   B_ ]
+ *    Q' * [       ] = [         ]
+ *         [ A   C ]   [ 0    C_ ]
+ *
+ * where R and R_ are upper triangular, A can be full or upper trapezoidal.
+ *
+ * @param[in] uplo 'U' for A upper trapezoidal/triangular, 'F' for A full
+ * @param[in] n Order of R (n >= 0)
+ * @param[in] m Number of columns in B, C (m >= 0)
+ * @param[in] p Number of rows in A, C (p >= 0)
+ * @param[in,out] r n-by-n upper triangular matrix R, dimension (ldr,n)
+ * @param[in] ldr Leading dimension of R (ldr >= max(1,n))
+ * @param[in,out] a p-by-n matrix A, dimension (lda,n)
+ *                  On exit: Householder vectors
+ * @param[in] lda Leading dimension of A (lda >= max(1,p))
+ * @param[in,out] b n-by-m matrix B, dimension (ldb,m)
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,n))
+ * @param[in,out] c p-by-m matrix C, dimension (ldc,m)
+ * @param[in] ldc Leading dimension of C (ldc >= max(1,p))
+ * @param[out] tau Householder scalars, dimension (n)
+ * @param[out] dwork Workspace, dimension (max(n-1,m))
+ *
+ * @note Algorithm is backward stable
+ */
+void mb04od(const char* uplo, const i32 n, const i32 m, const i32 p,
+            f64* r, const i32 ldr, f64* a, const i32 lda,
+            f64* b, const i32 ldb, f64* c, const i32 ldc,
+            f64* tau, f64* dwork);
+
+/**
+ * @brief Apply Householder transformation to block matrix rows.
+ *
+ * Inline code for applying Householder transformation H = I - tau*u*u' where
+ * u = [1; v] to block matrix rows, exploiting structure in MB04OD.
+ *
+ * @param[in] m Length of vector v (m >= 0)
+ * @param[in] n Number of columns to update (n >= 0)
+ * @param[in] v Householder vector v, dimension (m)
+ * @param[in] tau Householder scalar
+ * @param[in,out] c1 First row to update, dimension (n)
+ * @param[in] ldc1 Leading dimension of C1
+ * @param[in,out] c2 Remaining m rows to update, dimension (ldc2,n)
+ * @param[in] ldc2 Leading dimension of C2
+ * @param[out] dwork Workspace, dimension (n)
+ */
+void mb04oy(const i32* m, const i32* n, const f64* v, const f64* tau,
+            f64* c1, const i32* ldc1, f64* c2, const i32* ldc2, f64* dwork);
+
 #ifdef __cplusplus
 }
 #endif
