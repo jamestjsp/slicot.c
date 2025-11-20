@@ -199,7 +199,7 @@ def test_mb01rb_symmetric_property():
     """
     Test MB01RB symmetric property: when B = X*A' and X is symmetric
 
-    Result should be symmetric (both triangles identical).
+    MB01RB only updates UPLO triangle. Lower triangle remains zeros.
     Random seed: 222 (for reproducibility)
     """
     np.random.seed(222)
@@ -223,10 +223,6 @@ def test_mb01rb_symmetric_property():
     assert info == 0
     np.testing.assert_allclose(np.triu(r_out), r_upper, rtol=1e-14, atol=1e-15)
 
-    for i in range(m):
-        for j in range(i + 1, m):
-            np.testing.assert_allclose(r_out[i, j], r_out[j, i], rtol=1e-13, atol=1e-14)
-
 
 def test_mb01rb_error_invalid_side():
     """
@@ -241,7 +237,7 @@ def test_mb01rb_error_invalid_side():
 
     from slicot import mb01rb
 
-    with pytest.raises(ValueError, match="SIDE"):
+    with pytest.raises(ValueError, match="Parameter 1"):
         mb01rb('X', 'U', 'N', m, n, alpha, beta, r, a, b)
 
 
@@ -258,7 +254,7 @@ def test_mb01rb_error_invalid_uplo():
 
     from slicot import mb01rb
 
-    with pytest.raises(ValueError, match="UPLO"):
+    with pytest.raises(ValueError, match="Parameter 2"):
         mb01rb('L', 'X', 'N', m, n, alpha, beta, r, a, b)
 
 
