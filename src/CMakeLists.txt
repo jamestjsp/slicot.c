@@ -1,11 +1,19 @@
 set(SLICOT_SOURCES
+    IB/ib01oy.c
     MA/ma02ad.c
+    MA/ma02ed.c
     MB/mb01qd.c
+    MB/mb01rx.c
     MB/mb01uy.c
     MB/mb02yd.c
     MB/mb03od.c
     MB/mb03oy.c
+    MB/mb04id.c
+    MB/mb04iy.c
+    MB/mb03ud.c
+    MB/mb04kd.c
     MB/mb04ow.c
+    MB/mb04oy.c
     MD/md03ba.c
     MD/md03bb.c
     MD/md03bd.c

@@ -838,6 +838,104 @@ void ma02ad(const char* job, const i32 m, const i32 n,
             f64* b, const i32 ldb);
 
 /**
+ * @brief Store by symmetry the upper or lower triangle of a symmetric matrix.
+ *
+ * Completes a symmetric matrix by copying one triangle to the other.
+ * Given upper triangle, constructs lower triangle (or vice versa).
+ *
+ * @param[in] uplo Specifies which part is given:
+ *                 'U' = upper triangular part given
+ *                 'L' = lower triangular part given
+ *                 Other values = no operation
+ * @param[in] n Order of matrix A (n >= 0)
+ * @param[in,out] a Matrix, dimension (lda,n), column-major
+ *                  In: N-by-N upper/lower triangle contains data
+ *                  Out: Full N-by-N symmetric matrix
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ */
+void ma02ed(const char uplo, i32 n, f64 *a, i32 lda);
+
+/**
+ * @brief QR factorization of special structured block matrix.
+ *
+ * Computes QR factorization of first block column and applies orthogonal
+ * transformations to second block column:
+ *         [[R], [A B]] -> Q' * [[R], [A B]] = [[R_bar C], [0 D]]
+ * where R and R_bar are upper triangular.
+ *
+ * @param[in] uplo Indicates structure of A:
+ *                 'U' = upper trapezoidal/triangular
+ *                 'F' = full matrix
+ * @param[in] n Order of matrices R and R_bar (n >= 0)
+ * @param[in] m Number of columns of B, C, D (m >= 0)
+ * @param[in] p Number of rows of A, B, D (p >= 0)
+ * @param[in,out] r Matrix R, dimension (ldr,n)
+ *                  In: n-by-n upper triangular R
+ *                  Out: n-by-n upper triangular R_bar
+ * @param[in] ldr Leading dimension of r (ldr >= max(1,n))
+ * @param[in,out] a Matrix A, dimension (lda,n)
+ *                  In: p-by-n matrix (full or upper trapezoidal)
+ *                  Out: Householder vectors v_i
+ * @param[in] lda Leading dimension of a (lda >= max(1,p))
+ * @param[in,out] b Matrix B, dimension (ldb,m)
+ *                  In: p-by-m matrix B
+ *                  Out: p-by-m matrix D
+ * @param[in] ldb Leading dimension of b (ldb >= max(1,p))
+ * @param[out] c Matrix C, dimension (ldc,m)
+ *               n-by-m matrix C
+ * @param[in] ldc Leading dimension of c (ldc >= max(1,n))
+ * @param[out] tau Scalar factors of elementary reflectors, dimension (n)
+ * @param[out] dwork Workspace, dimension (n)
+ */
+void mb04kd(const char uplo, i32 n, i32 m, i32 p,
+            f64 *r, i32 ldr,
+            f64 *a, i32 lda,
+            f64 *b, i32 ldb,
+            f64 *c, i32 ldc,
+            f64 *tau,
+            f64 *dwork);
+
+/**
+ * @brief QR factorization of matrix with lower-left zero triangle
+ *
+ * Computes QR factorization A = Q*R of n-by-m matrix A having p-by-min(p,m)
+ * zero triangle in lower left corner. Optionally applies Q' to n-by-l matrix B.
+ * Exploits structure for efficiency (useful in Kalman filtering).
+ *
+ * Example structure (n=8, m=7, p=2):
+ *     [ x x x x x x x ]
+ *     [ x x x x x x x ]
+ *     [ x x x x x x x ]
+ *     [ x x x x x x x ]
+ * A = [ x x x x x x x ]
+ *     [ x x x x x x x ]
+ *     [ 0 x x x x x x ]  <- p rows with
+ *     [ 0 0 x x x x x ]  <- lower-left zeros
+ *
+ * @param[in] n Number of rows of A (n >= 0)
+ * @param[in] m Number of columns of A (m >= 0)
+ * @param[in] p Order of zero triangle (p >= 0)
+ * @param[in] l Number of columns of B (l >= 0)
+ * @param[in,out] a Matrix A, dimension (lda,m)
+ *                  In: n-by-m matrix with p-by-min(p,m) zero lower-left triangle
+ *                  Out: min(n,m)-by-m upper trapezoidal R, Householder vectors below diagonal
+ * @param[in] lda Leading dimension of a (lda >= max(1,n))
+ * @param[in,out] b Matrix B, dimension (ldb,l)
+ *                  In: n-by-l matrix B
+ *                  Out: Q'*B
+ *                  Not referenced if l=0
+ * @param[in] ldb Leading dimension of b (ldb >= max(1,n) if l>0, ldb >= 1 if l=0)
+ * @param[out] tau Householder scalar factors, dimension (min(n,m))
+ * @param[out] dwork Workspace, dimension (ldwork)
+ *                   dwork[0] returns optimal ldwork
+ * @param[in] ldwork Workspace size (ldwork >= max(1,m-1,m-p,l))
+ *                   If ldwork=-1, workspace query
+ * @param[out] info Exit code (0=success, <0=invalid parameter)
+ */
+void mb04id(i32 n, i32 m, i32 p, i32 l, f64 *a, i32 lda, f64 *b, i32 ldb,
+            f64 *tau, f64 *dwork, i32 ldwork, i32 *info);
+
+/**
  * @brief QR factorization with column pivoting for Levenberg-Marquardt
  *
  * Computes QR factorization with column pivoting of m-by-n matrix J (m >= n):
@@ -1295,10 +1393,223 @@ void nf01bq(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr
  * @param[in] ldwork Length of dwork.
  * @param[out] info Exit code.
  */
-void nf01bp(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr, 
-            const i32 *ipvt, const f64 *diag, const f64 *qtb, f64 delta, 
-            f64 *par, i32 *ranks, f64 *x, f64 *rx, f64 tol, f64 *dwork, 
+void nf01bp(const char *cond, i32 n, const i32 *ipar, i32 lipar, f64 *r, i32 ldr,
+            const i32 *ipvt, const f64 *diag, const f64 *qtb, f64 delta,
+            f64 *par, i32 *ranks, f64 *x, f64 *rx, f64 tol, f64 *dwork,
             i32 ldwork, i32 *info);
+
+/**
+ * @brief Triangular symmetric rank-k update.
+ *
+ * Computes either the upper or lower triangular part of:
+ *   R = alpha*R + beta*op(A)*B  (SIDE='L')
+ *   R = alpha*R + beta*B*op(A)  (SIDE='R')
+ *
+ * where op(A) = A or A', and only the specified triangle is computed.
+ *
+ * @param[in] side 'L' for left (R = alpha*R + beta*op(A)*B)
+ *                 'R' for right (R = alpha*R + beta*B*op(A))
+ * @param[in] uplo 'U' for upper triangle, 'L' for lower triangle
+ * @param[in] trans 'N' for op(A)=A, 'T'/'C' for op(A)=A'
+ * @param[in] m Order of matrix R
+ * @param[in] n Dimension for product:
+ *              SIDE='L': rows of B, columns of op(A)
+ *              SIDE='R': rows of op(A), columns of B
+ * @param[in] alpha Scalar multiplier for R
+ * @param[in] beta Scalar multiplier for product
+ * @param[in,out] r On entry: m-by-m matrix R (triangle only)
+ *                  On exit: updated R (triangle only)
+ * @param[in] ldr Leading dimension of R, >= max(1,m)
+ * @param[in] a Matrix A with dimensions:
+ *              SIDE='L', TRANS='N': m-by-n
+ *              SIDE='L', TRANS='T': n-by-m
+ *              SIDE='R', TRANS='N': n-by-m
+ *              SIDE='R', TRANS='T': m-by-n
+ * @param[in] lda Leading dimension of A
+ * @param[in] b Matrix B with dimensions:
+ *              SIDE='L': n-by-m
+ *              SIDE='R': m-by-n
+ * @param[in] ldb Leading dimension of B
+ * @return 0 on success, -i if argument i had an illegal value
+ *
+ * @note Main application: computing symmetric updates where B = X*op(A)'
+ *       or B = op(A)'*X with X symmetric.
+ */
+i32 slicot_mb01rx(
+    char side,
+    char uplo,
+    char trans,
+    i32 m,
+    i32 n,
+    f64 alpha,
+    f64 beta,
+    f64 *r,
+    i32 ldr,
+    const f64 *a,
+    i32 lda,
+    const f64 *b,
+    i32 ldb
+);
+
+/**
+ * @brief Compute Householder reflection to zero trailing elements of a vector.
+ *
+ * Generates a real elementary reflector H of order m+1, such that
+ *
+ *     H * [ alpha ] = [ beta ]
+ *         [   x   ]   [  0   ]
+ *
+ * where H = I - tau * [ 1 ] * [1, v'],  H' * H = I.
+ *               [ v ]
+ *
+ * @param[in] m Order of vector x, m >= 0
+ * @param[in,out] alpha On entry: scalar alpha
+ *                      On exit: beta (r_11 from QR factorization)
+ * @param[in,out] x On entry: m-vector x
+ *                  On exit: Householder vector v
+ * @param[in] incx Increment for array x (incx > 0)
+ * @param[out] tau Scalar tau in Householder representation
+ *                 tau = 0 if H is identity matrix
+ * @return 0 on success
+ *
+ * @note Based on LAPACK's DLARFG with modifications for SLICOT.
+ */
+void SLC_MB04KD(i32 m, f64* alpha, f64* x, i32 incx, f64* tau);
+
+/**
+ * @brief Apply Householder reflector H to matrix [A; B] from the left.
+ *
+ * Applies elementary reflector H to (m+1)-by-n matrix C = [A; B],
+ * where A has one row:
+ *
+ *     H = I - tau * u * u',  u = [1; v]
+ *
+ * Computes C := H * C.
+ *
+ * Uses inline code for order < 11, BLAS for larger orders.
+ *
+ * @param[in] m Number of rows of matrix B, m >= 0
+ * @param[in] n Number of columns, n >= 0
+ * @param[in] v Householder vector v of dimension m
+ * @param[in] tau Scalar factor tau (if tau=0, H is identity)
+ * @param[in,out] a On entry: 1-by-n matrix A
+ *                  On exit: updated first row of H*C
+ * @param[in] lda Leading dimension of A, lda >= 1
+ * @param[in,out] b On entry: m-by-n matrix B
+ *                  On exit: updated last m rows of H*C
+ * @param[in] ldb Leading dimension of B, ldb >= max(1,m)
+ * @param[out] dwork Workspace of dimension n (not referenced if m+1 < 11)
+ *
+ * @note Based on LAPACK's DLARFX and DLATZM with special structure optimization.
+ */
+void SLC_MB04OY(i32 m, i32 n, const f64* v, f64 tau,
+                f64* a, i32 lda, f64* b, i32 ldb, f64* dwork);
+
+/**
+ * @brief Apply orthogonal transformations from MB04ID to matrix C.
+ *
+ * Overwrites real n-by-m matrix C with Q'*C, Q*C, C*Q', or C*Q, where
+ * Q is orthogonal matrix defined as product of k elementary reflectors:
+ *
+ *     Q = H(1) H(2) ... H(k)
+ *
+ * as returned by MB04ID. Q is order n if SIDE='L', order m if SIDE='R'.
+ * Reflectors stored in special format for lower-left zero triangle structure.
+ *
+ * @param[in] side 'L' = apply Q or Q' from left, 'R' = from right
+ * @param[in] trans 'N' = apply Q (no transpose), 'T' = apply Q' (transpose)
+ * @param[in] n Number of rows of matrix C, n >= 0
+ * @param[in] m Number of columns of matrix C, m >= 0
+ * @param[in] k Number of elementary reflectors, constraints:
+ *              n >= k >= 0 if SIDE='L'
+ *              m >= k >= 0 if SIDE='R'
+ * @param[in] p Order of zero triangle (rows of zero trapezoid), p >= 0
+ * @param[in,out] a Reflector storage, dimension (lda,k)
+ *                  Row i+1:min(n,n-p-1+i) of column i contains H(i)
+ *                  Modified but restored on exit
+ * @param[in] lda Leading dimension: lda >= max(1,n) if SIDE='L',
+ *                                   lda >= max(1,m) if SIDE='R'
+ * @param[in] tau Reflector scalar factors, dimension (k)
+ * @param[in,out] c On entry: n-by-m matrix C
+ *                  On exit: transformed matrix
+ * @param[in] ldc Leading dimension, ldc >= max(1,n)
+ * @param[out] dwork Workspace, dimension (ldwork)
+ *                   dwork[0] returns optimal ldwork on exit
+ * @param[in] ldwork Workspace size:
+ *                   ldwork >= max(1,m) if SIDE='L'
+ *                   ldwork >= max(1,n) if SIDE='R'
+ * @param[out] info Exit code: 0=success, <0=invalid parameter
+ */
+void mb04iy(
+    const char* side,
+    const char* trans,
+    const i32 n,
+    const i32 m,
+    const i32 k,
+    const i32 p,
+    f64* a,
+    const i32 lda,
+    const f64* tau,
+    f64* c,
+    const i32 ldc,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info
+);
+
+/**
+ * @brief Compute singular value decomposition of upper triangular matrix.
+ *
+ * Computes SVD of N-by-N upper triangular matrix: A = Q*S*P', where Q and P
+ * are orthogonal matrices and S is diagonal with non-negative singular values
+ * in descending order. Uses bidiagonalization followed by QR algorithm.
+ *
+ * @param[in] jobq 'V' to compute left singular vectors Q, 'N' otherwise
+ * @param[in] jobp 'V' to compute right singular vectors P', 'N' otherwise
+ * @param[in] n Order of matrix A (n >= 0)
+ * @param[in,out] a DOUBLE PRECISION array, dimension (lda,n)
+ *                  In: upper triangular matrix A
+ *                  Out: if jobp='V', orthogonal matrix P'; otherwise workspace
+ * @param[in] lda Leading dimension (lda >= max(1,n))
+ * @param[out] q DOUBLE PRECISION array, dimension (ldq,n)
+ *               If jobq='V', contains orthogonal matrix Q (left singular vectors)
+ * @param[in] ldq Leading dimension (ldq >= max(1,n) if jobq='V', ldq >= 1 otherwise)
+ * @param[out] sv DOUBLE PRECISION array, dimension (n)
+ *                Singular values in descending order
+ * @param[out] dwork DOUBLE PRECISION array, dimension (ldwork)
+ *                   On exit: dwork[0] = optimal ldwork
+ *                   If info > 0: dwork[1:n-1] = unconverged superdiagonals
+ * @param[in] ldwork Workspace size (ldwork >= max(1,5*n), or -1 for query)
+ * @param[out] info Exit code:
+ *                  = 0: success
+ *                  < 0: if info = -i, i-th argument invalid
+ *                  > 0: QR algorithm failed to converge (info = # unconverged superdiagonals)
+ */
+i32 mb03ud(char jobq, char jobp, i32 n, f64 *a, i32 lda, f64 *q, i32 ldq,
+           f64 *sv, f64 *dwork, i32 ldwork, i32 *info);
+
+/**
+ * @brief User's confirmation of the system order.
+ *
+ * Non-interactive version for library use. Validates parameters and allows
+ * programmatic modification of the estimated system order.
+ *
+ * In the original Fortran version, this routine provides interactive user
+ * confirmation via terminal I/O. For library use, this version validates
+ * parameters and ensures N <= NMAX.
+ *
+ * @param[in] ns Number of singular values (ns > 0)
+ * @param[in] nmax Maximum value of system order (0 <= nmax <= ns)
+ * @param[in,out] n On entry: estimated system order (0 <= n <= ns)
+ *                  On exit: validated order (n <= nmax)
+ * @param[in] sv Singular values array, dimension (ns), descending order
+ * @param[out] info Exit code:
+ *                  = 0: successful exit
+ *                  < 0: if info = -i, the i-th argument had an illegal value
+ *
+ * @note This routine is typically called by IB01OD for system order validation.
+ */
+i32 SLC_IB01OY(i32 ns, i32 nmax, i32 *n, const f64 *sv, i32 *info);
 
 #ifdef __cplusplus
 }
