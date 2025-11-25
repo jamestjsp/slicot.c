@@ -1,7 +1,7 @@
 ---
 name: slicot-fortran-translator
 description: Use this agent when the user needs to translate SLICOT Fortran77 routines to C11, implement new SLICOT functions, or work with SLICOT test cases. Examples:\n\n<example>\nContext: User wants to translate the AB01MD routine from Fortran to C.\nuser: "I need to implement AB01MD from the SLICOT library"\nassistant: "I'll use the slicot-fortran-translator agent to handle this translation following the TDD workflow."\n<commentary>The user is requesting SLICOT routine implementation, which requires the specialized translation workflow including parsing Fortran source, extracting test data, and following RED-GREEN-REFACTOR-VERIFY pattern.</commentary>\n</example>\n\n<example>\nContext: User has just completed some work and mentions SLICOT routine translation.\nuser: "Can you help translate MB03OY to C?"\nassistant: "I'm going to use the slicot-fortran-translator agent to translate MB03OY following the strict TDD workflow."\n<commentary>SLICOT translation request requires the specialized agent to ensure proper test-first development, dependency analysis, and memory-safe C11 implementation.</commentary>\n</example>\n\n<example>\nContext: User is working on SLICOT codebase and needs dependency analysis.\nuser: "What are the dependencies for implementing SB04MD?"\nassistant: "Let me use the slicot-fortran-translator agent to analyze SB04MD dependencies and plan the implementation."\n<commentary>Dependency analysis is part of the RED phase in SLICOT translation workflow, requiring the specialized agent's knowledge of dependency extraction tools.</commentary>\n</example>
-model: sonnet
+model: opus
 color: green
 ---
 
