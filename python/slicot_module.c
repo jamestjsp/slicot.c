@@ -3318,6 +3318,70 @@ static PyObject* py_mb04oy(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for ib01od */
+static PyObject* py_ib01od(PyObject* self, PyObject* args) {
+    const char *ctrl_str;
+    i32 nobr, l;
+    f64 tol;
+    PyObject *sv_obj;
+    PyArrayObject *sv_array;
+    i32 n, iwarn, info;
+
+    if (!PyArg_ParseTuple(args, "siiOd", &ctrl_str, &nobr, &l, &sv_obj, &tol)) {
+        return NULL;
+    }
+
+    char ctrl = ctrl_str[0];
+
+    /* Validate CTRL parameter */
+    if (ctrl != 'C' && ctrl != 'c' && ctrl != 'N' && ctrl != 'n') {
+        PyErr_SetString(PyExc_ValueError, "CTRL must be 'C' or 'N'");
+        return NULL;
+    }
+
+    /* Validate NOBR */
+    if (nobr <= 0) {
+        PyErr_SetString(PyExc_ValueError, "NOBR must be positive");
+        return NULL;
+    }
+
+    /* Validate L */
+    if (l <= 0) {
+        PyErr_SetString(PyExc_ValueError, "L must be positive");
+        return NULL;
+    }
+
+    /* Convert SV array */
+    sv_array = (PyArrayObject*)PyArray_FROM_OTF(sv_obj, NPY_DOUBLE,
+                                                NPY_ARRAY_IN_FARRAY);
+    if (sv_array == NULL) {
+        return NULL;
+    }
+
+    /* Validate SV size */
+    npy_intp sv_size = PyArray_SIZE(sv_array);
+    i32 lnobr = l * nobr;
+    if (sv_size < lnobr) {
+        Py_DECREF(sv_array);
+        PyErr_SetString(PyExc_ValueError, "SV must have at least L*NOBR elements");
+        return NULL;
+    }
+
+    f64 *sv = (f64*)PyArray_DATA(sv_array);
+
+    /* Call C function */
+    SLC_IB01OD(ctrl, nobr, l, sv, &n, tol, &iwarn, &info);
+
+    Py_DECREF(sv_array);
+
+    if (info < 0) {
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    return Py_BuildValue("iii", n, iwarn, info);
+}
+
 /* Python wrapper for ib01oy */
 static PyObject* py_ib01oy(PyObject* self, PyObject* args) {
     i32 ns, nmax, n;
@@ -3841,6 +3905,19 @@ static PyMethodDef SlicotMethods[] = {
      "  gtol (float): Gradient tolerance (default eps)\n\n"
      "Returns:\n"
      "  (x, nfev, njev, fnorm, iwarn, info): Solution, evaluations, norm, status\n"},
+
+    {"ib01od", (PyCFunction)py_ib01od, METH_VARARGS,
+     "Estimate system order from Hankel singular values.\n\n"
+     "Estimates system order based on singular values of triangular factor\n"
+     "from QR factorization of concatenated block Hankel matrices.\n\n"
+     "Parameters:\n"
+     "  ctrl (str): 'C' for user confirmation, 'N' for no confirmation\n"
+     "  nobr (int): Number of block rows (nobr > 0)\n"
+     "  l (int): Number of system outputs (l > 0)\n"
+     "  sv (ndarray): Singular values, dimension (l*nobr), descending order\n"
+     "  tol (float): Tolerance (>=0: threshold, 0: default, <0: gap-based)\n\n"
+     "Returns:\n"
+     "  (n, iwarn, info): Estimated order, warning, exit code\n"},
 
     {"ib01oy", (PyCFunction)py_ib01oy, METH_VARARGS,
      "User's confirmation of the system order.\n\n"

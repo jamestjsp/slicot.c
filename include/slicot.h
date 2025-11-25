@@ -1612,6 +1612,35 @@ i32 mb03ud(char jobq, char jobp, i32 n, f64 *a, i32 lda, f64 *q, i32 ldq,
 i32 SLC_IB01OY(i32 ns, i32 nmax, i32 *n, const f64 *sv, i32 *info);
 
 /**
+ * @brief Estimate system order from Hankel singular values.
+ *
+ * Estimates the system order based on singular values of the relevant part
+ * of the triangular factor from QR factorization of concatenated block
+ * Hankel matrices.
+ *
+ * @param[in] ctrl Control mode:
+ *                 'C' = call IB01OY for user confirmation
+ *                 'N' = no confirmation
+ * @param[in] nobr Number of block rows s in Hankel matrices (nobr > 0)
+ * @param[in] l Number of system outputs (l > 0)
+ * @param[in] sv Singular values array, dimension (l*nobr), descending order
+ * @param[out] n Estimated system order
+ * @param[in] tol Tolerance for order estimation:
+ *                tol >= 0: n = index of last SV >= tol
+ *                tol = 0: default tol = nobr * eps * sv[0]
+ *                tol < 0: n = index of largest logarithmic gap
+ * @param[out] iwarn Warning indicator:
+ *                   0 = no warning
+ *                   3 = all SVs zero, n = 0
+ * @param[out] info Exit code:
+ *                  = 0: success
+ *                  < 0: if info = -i, parameter i had illegal value
+ * @return info value
+ */
+i32 SLC_IB01OD(char ctrl, i32 nobr, i32 l, const f64 *sv, i32 *n,
+               f64 tol, i32 *iwarn, i32 *info);
+
+/**
  * @brief Block symmetric rank-k update (BLAS 3 version of MB01RX).
  *
  * Computes triangular part of matrix formula:
