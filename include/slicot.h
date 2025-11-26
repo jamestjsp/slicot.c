@@ -1565,6 +1565,73 @@ void SLC_MB04OY(i32 m, i32 n, const f64* v, f64 tau,
                 f64* a, i32 lda, f64* b, i32 ldb, f64* dwork);
 
 /**
+ * @brief Apply Householder reflector H to matrix [A B] from the right.
+ *
+ * Applies elementary reflector H to m-by-(n+1) matrix C = [A B],
+ * where A has one column:
+ *
+ *     H = I - tau * u * u',  u = [1; v]
+ *
+ * Computes C := C * H.
+ *
+ * Uses inline code for order < 11, BLAS for larger orders.
+ *
+ * @param[in] m Number of rows of matrices A and B, m >= 0
+ * @param[in] n Number of columns of matrix B, n >= 0
+ * @param[in] v Householder vector v, dimension (1+(n-1)*abs(incv))
+ * @param[in] incv Increment between elements of v, incv != 0
+ * @param[in] tau Scalar factor tau (if tau=0, H is identity)
+ * @param[in,out] a On entry: m-by-1 matrix A
+ *                  On exit: updated first column of C*H
+ * @param[in] lda Leading dimension of A, lda >= max(1,m)
+ * @param[in,out] b On entry: m-by-n matrix B
+ *                  On exit: updated last n columns of C*H
+ * @param[in] ldb Leading dimension of B, ldb >= max(1,m)
+ * @param[out] dwork Workspace of dimension m (not referenced if n+1 < 11)
+ *
+ * @note Based on LAPACK's DLARFX and DLATZM with special structure optimization.
+ */
+void SLC_MB04NY(i32 m, i32 n, const f64* v, i32 incv, f64 tau,
+                f64* a, i32 lda, f64* b, i32 ldb, f64* dwork);
+
+/**
+ * @brief RQ factorization of special structured block matrix.
+ *
+ * Calculates an RQ factorization of the first block row and applies
+ * the orthogonal transformations (from the right) to the second block row:
+ *
+ *     [ A   R ]        [ 0   R_new ]
+ *     [       ] * Q' = [           ]
+ *     [ C   B ]        [ C_new B_new ]
+ *
+ * where R and R_new are upper triangular. Matrix A can be full or
+ * upper trapezoidal/triangular.
+ *
+ * @param[in] uplo 'U' = A is upper trapezoidal, 'F' = A is full
+ * @param[in] n Order of matrices R and R_new, n >= 0
+ * @param[in] m Number of rows of matrices B and C, m >= 0
+ * @param[in] p Number of columns of matrices A and C, p >= 0
+ * @param[in,out] r On entry: n-by-n upper triangular matrix R
+ *                  On exit: n-by-n upper triangular matrix R_new
+ * @param[in] ldr Leading dimension of R, ldr >= max(1,n)
+ * @param[in,out] a On entry: n-by-p matrix A (full or upper trapezoidal)
+ *                  On exit: Householder vectors in corresponding positions
+ * @param[in] lda Leading dimension of A, lda >= max(1,n)
+ * @param[in,out] b On entry: m-by-n matrix B
+ *                  On exit: transformed matrix B_new
+ * @param[in] ldb Leading dimension of B, ldb >= max(1,m)
+ * @param[in,out] c On entry: m-by-p matrix C
+ *                  On exit: transformed matrix C_new
+ * @param[in] ldc Leading dimension of C, ldc >= max(1,m)
+ * @param[out] tau Scalar factors of elementary reflectors, dimension (n)
+ * @param[out] dwork Workspace, dimension max(n-1, m)
+ */
+void SLC_MB04ND(const char* uplo, i32 n, i32 m, i32 p,
+                f64* r, i32 ldr, f64* a, i32 lda,
+                f64* b, i32 ldb, f64* c, i32 ldc,
+                f64* tau, f64* dwork);
+
+/**
  * @brief Apply orthogonal transformations from MB04ID to matrix C.
  *
  * Overwrites real n-by-m matrix C with Q'*C, Q*C, C*Q', or C*Q, where
@@ -2129,6 +2196,356 @@ void sb02nd(
     i32* oufact,
     f64* dwork,
     const i32 ldwork,
+    i32* info);
+
+/**
+ * @brief Solve Lyapunov equation for Cholesky factor of solution.
+ *
+ * Solves for X = op(U)'*op(U) either the stable continuous-time Lyapunov equation:
+ *
+ *     op(A)'*X + X*op(A) = -scale^2*op(B)'*op(B)   (DICO='C')
+ *
+ * or the convergent discrete-time Lyapunov equation:
+ *
+ *     op(A)'*X*op(A) - X = -scale^2*op(B)'*op(B)   (DICO='D')
+ *
+ * where op(K) = K or K' (transpose), A is N-by-N, op(B) is M-by-N, and U is
+ * the upper triangular Cholesky factor of the solution X. Scale is set <= 1
+ * to avoid overflow in X.
+ *
+ * For continuous-time (DICO='C'): A must be stable (all eigenvalues have
+ * negative real parts).
+ * For discrete-time (DICO='D'): A must be convergent (all eigenvalues
+ * inside the unit circle).
+ *
+ * Based on Bartels-Stewart method [1] finding Cholesky factor directly without
+ * forming the normal matrix op(B)'*op(B) [2].
+ *
+ * References:
+ * [1] Bartels, Stewart. Solution of A'X + XB = C. CACM 15, 820-826, 1972.
+ * [2] Hammarling. Numerical solution of stable Lyapunov equation. IMA J. Num. Anal. 2, 303-325, 1982.
+ *
+ * @param[in] dico Equation type:
+ *                 'C' = continuous-time
+ *                 'D' = discrete-time
+ * @param[in] fact Schur factorization option:
+ *                 'F' = A and Q contain Schur factorization (provided by user)
+ *                 'N' = Schur factorization will be computed
+ * @param[in] trans Form of op(K):
+ *                  'N' = op(K) = K (no transpose)
+ *                  'T' = op(K) = K' (transpose)
+ * @param[in] n Order of matrix A (n >= 0)
+ * @param[in] m Number of rows of op(B) (m >= 0)
+ * @param[in,out] a N-by-N matrix A, dimension (lda,n)
+ *                  If FACT='F': upper quasi-triangular Schur form
+ *                  If FACT='N': general matrix, overwritten with Schur form
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in,out] q N-by-N orthogonal matrix Q, dimension (ldq,n)
+ *                  If FACT='F': orthogonal matrix from Schur factorization
+ *                  If FACT='N': output orthogonal matrix Q
+ * @param[in] ldq Leading dimension of Q (ldq >= max(1,n))
+ * @param[in,out] b Coefficient matrix B:
+ *                  If TRANS='N': M-by-N on entry, dimension (ldb,n)
+ *                  If TRANS='T': N-by-M on entry, dimension (ldb,max(m,n))
+ *                  On exit: N-by-N upper triangular Cholesky factor U
+ * @param[in] ldb Leading dimension of B
+ *                If TRANS='N': ldb >= max(1,n,m)
+ *                If TRANS='T': ldb >= max(1,n)
+ * @param[out] scale Scale factor (0 < scale <= 1) to prevent overflow
+ * @param[out] wr Real parts of eigenvalues of A, dimension (n)
+ * @param[out] wi Imaginary parts of eigenvalues of A, dimension (n)
+ * @param[out] dwork Workspace array, dimension (ldwork)
+ *                   On exit: dwork[0] = optimal ldwork
+ * @param[in] ldwork Workspace size:
+ *                   If m > 0: ldwork >= max(1,4*n)
+ *                   If m = 0: ldwork >= 1
+ *                   If ldwork = -1: workspace query
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  1 = nearly singular (warning): perturbed values used
+ *                  2 = A not stable/convergent (FACT='N')
+ *                  3 = Schur form S not stable/convergent (FACT='F')
+ *                  4 = S has >2x2 diagonal block (FACT='F')
+ *                  5 = S has 2x2 block with real eigenvalues (FACT='F')
+ *                  6 = DGEES failed to converge (FACT='N')
+ */
+void sb03od(
+    const char* dico,
+    const char* fact,
+    const char* trans,
+    const i32 n,
+    const i32 m,
+    f64* a,
+    const i32 lda,
+    f64* q,
+    const i32 ldq,
+    f64* b,
+    const i32 ldb,
+    f64* scale,
+    f64* wr,
+    f64* wi,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info);
+
+/**
+ * @brief Construct complex plane rotation for Lyapunov solver.
+ *
+ * Constructs a complex plane rotation such that, for a complex number a and
+ * a real number b:
+ *
+ *     ( conjg(c)   s ) * ( a ) = ( d )
+ *     (    -s      c )   ( b )   ( 0 )
+ *
+ * where d is always real and is overwritten on a, so that on return the
+ * imaginary part of a is zero. b is unaltered.
+ *
+ * @param[in,out] a DOUBLE PRECISION array, dimension (2)
+ *                  On entry: a[0] and a[1] are real and imaginary parts of a
+ *                  On exit: a[0] contains real part of d, a[1] is set to zero
+ * @param[in] b The real number b
+ * @param[in] small A small real number. If norm d of [a; b] is smaller than
+ *                  small, then the rotation is taken as unit matrix, and
+ *                  a[0] and a[1] are set to d and 0, respectively.
+ * @param[out] c DOUBLE PRECISION array, dimension (2)
+ *               c[0] and c[1] are real and imaginary parts of complex cosine
+ * @param[out] s The real sine of the plane rotation
+ */
+void sb03ov(f64* a, const f64 b, const f64 small, f64* c, f64* s);
+
+/**
+ * @brief Solve 2x2 Lyapunov equation for Cholesky factor.
+ *
+ * Solves for the Cholesky factor U of X, where op(U)'*op(U) = X, either
+ * the continuous-time two-by-two Lyapunov equation:
+ *
+ *     op(S)'*X + X*op(S) = -ISGN*scale^2*op(R)'*op(R)     (DISCR=false)
+ *
+ * or the discrete-time two-by-two Lyapunov equation:
+ *
+ *     op(S)'*X*op(S) - X = -ISGN*scale^2*op(R)'*op(R)     (DISCR=true)
+ *
+ * where op(K) = K or K', S is 2x2 with complex conjugate eigenvalues,
+ * R is 2x2 upper triangular, ISGN = -1 or 1, and scale is an output
+ * scale factor set <= 1 to avoid overflow in X.
+ *
+ * Also computes matrices B and A so that:
+ *   - B*U = U*S and A*U = scale^2*R (if LTRANS=false), or
+ *   - U*B = S*U and U*A = scale^2*R (if LTRANS=true)
+ *
+ * For continuous-time (DISCR=false), ISGN*S must be stable (eigenvalues
+ * have strictly negative real parts). For discrete-time (DISCR=true),
+ * if ISGN=1, S must be convergent (eigenvalue moduli < 1); if ISGN=-1,
+ * S must be completely divergent (eigenvalue moduli > 1).
+ *
+ * @param[in] discr Equation type:
+ *                  false = continuous-time
+ *                  true = discrete-time
+ * @param[in] ltrans Form of op(K):
+ *                   false = op(K) = K (no transpose)
+ *                   true = op(K) = K' (transpose)
+ * @param[in] isgn Sign of equation: +1 or -1
+ * @param[in,out] s DOUBLE PRECISION array, dimension (lds,2)
+ *                  On entry: 2x2 matrix S
+ *                  On exit: 2x2 matrix B such that B*U = U*S (LTRANS=false)
+ *                           or U*B = S*U (LTRANS=true)
+ * @param[in] lds Leading dimension of S (lds >= 2)
+ * @param[in,out] r DOUBLE PRECISION array, dimension (ldr,2)
+ *                  On entry: 2x2 upper triangular matrix R (R[1,0] not referenced)
+ *                  On exit: 2x2 upper triangular Cholesky factor U
+ * @param[in] ldr Leading dimension of R (ldr >= 2)
+ * @param[out] a DOUBLE PRECISION array, dimension (lda,2)
+ *               2x2 upper triangular matrix A satisfying:
+ *               A*U/scale = scale*R (LTRANS=false) or
+ *               U*A/scale = scale*R (LTRANS=true)
+ * @param[in] lda Leading dimension of A (lda >= 2)
+ * @param[out] scale Scale factor (0 < scale <= 1) to prevent overflow
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  1 = near-singular (warning): perturbed values used
+ *                  2 = stability requirement not satisfied
+ *                  4 = S has real eigenvalues (requires complex conjugate)
+ *
+ * @note In the interests of speed, this routine does not check all inputs
+ *       for errors.
+ */
+void sb03oy(
+    const bool discr,
+    const bool ltrans,
+    const i32 isgn,
+    f64* s, const i32 lds,
+    f64* r, const i32 ldr,
+    f64* a, const i32 lda,
+    f64* scale,
+    i32* info);
+
+/**
+ * @brief Solve real quasi-triangular Sylvester equation.
+ *
+ * Solves for the N-by-M matrix X (M = 1 or 2) in:
+ *
+ *     op(S)'*X + X*op(A) = scale*C   (DISCR = false, continuous)
+ *     op(S)'*X*op(A) - X = scale*C   (DISCR = true, discrete)
+ *
+ * where op(K) = K or K' (transpose), S is an N-by-N block upper triangular
+ * matrix with 1x1 and 2x2 blocks on the diagonal (real Schur form), A is an
+ * M-by-M matrix. The solution X overwrites C. Scale is set <= 1 to avoid
+ * overflow in X.
+ *
+ * This is a service routine for the Lyapunov solver SB03OT.
+ *
+ * @param[in] discr Equation type:
+ *                  false = continuous: op(S)'*X + X*op(A) = scale*C
+ *                  true = discrete: op(S)'*X*op(A) - X = scale*C
+ * @param[in] ltrans Form of op(K):
+ *                   false = op(K) = K (no transpose)
+ *                   true = op(K) = K' (transpose)
+ * @param[in] n Order of matrix S, number of rows of X and C (n >= 0)
+ * @param[in] m Order of matrix A, number of columns of X and C (m = 1 or 2)
+ * @param[in] s N-by-N block upper triangular matrix (real Schur form),
+ *              dimension (lds,n). Elements below upper Hessenberg not referenced.
+ * @param[in] lds Leading dimension of S (lds >= max(1,n))
+ * @param[in] a M-by-M matrix A, dimension (lda,m)
+ * @param[in] lda Leading dimension of A (lda >= m)
+ * @param[in,out] c N-by-M matrix, dimension (ldc,m)
+ *                  On entry: right-hand side matrix C
+ *                  On exit: solution matrix X
+ * @param[in] ldc Leading dimension of C (ldc >= max(1,n))
+ * @param[out] scale Scale factor (0 < scale <= 1) to prevent overflow
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  1 = S and -A have common eigenvalues (continuous), or
+ *                      S and A have eigenvalues with product = 1 (discrete);
+ *                      solution computed using slightly perturbed values
+ */
+void sb03or(
+    const bool discr,
+    const bool ltrans,
+    const i32 n,
+    const i32 m,
+    const f64* s,
+    const i32 lds,
+    const f64* a,
+    const i32 lda,
+    f64* c,
+    const i32 ldc,
+    f64* scale,
+    i32* info);
+
+/**
+ * @brief Solve reduced Lyapunov equation for triangular factors.
+ *
+ * Solves for X = op(U)'*op(U) either the stable continuous-time Lyapunov equation:
+ *
+ *     op(S)'*X + X*op(S) = -scale^2*op(R)'*op(R)   (continuous)
+ *
+ * or the convergent discrete-time Lyapunov equation:
+ *
+ *     op(S)'*X*op(S) - X = -scale^2*op(R)'*op(R)   (discrete)
+ *
+ * where op(K) = K or K' (transpose), S is an N-by-N block upper triangular matrix
+ * with 1x1 or 2x2 blocks on the diagonal (real Schur form), R is an N-by-N upper
+ * triangular matrix. The output U is upper triangular and overwrites R. Scale is
+ * an output scale factor set <= 1 to avoid overflow.
+ *
+ * For continuous-time: S must be stable (all eigenvalues have negative real parts).
+ * For discrete-time: S must be convergent (all eigenvalues inside unit circle).
+ *
+ * Based on Bartels-Stewart backward substitution [1] finding Cholesky factor directly
+ * without forming the normal matrix op(R)'*op(R) [2].
+ *
+ * References:
+ * [1] Bartels, Stewart. Solution of A'X + XB = C. CACM 15, 820-826, 1972.
+ * [2] Hammarling. Numerical solution of stable Lyapunov equation. IMA J. Num. Anal. 2, 303-325, 1982.
+ *
+ * @param[in] discr Equation type:
+ *                  false = continuous: op(S)'*X + X*op(S) = -scale^2*op(R)'*op(R)
+ *                  true = discrete: op(S)'*X*op(S) - X = -scale^2*op(R)'*op(R)
+ * @param[in] ltrans Form of op(K):
+ *                   false = op(K) = K (no transpose)
+ *                   true = op(K) = K' (transpose)
+ * @param[in] n Order of matrices S and R (n >= 0)
+ * @param[in] s N-by-N block upper triangular matrix (real Schur form),
+ *              dimension (lds,n). Upper Hessenberg part used; subdiagonal
+ *              elements define 2x2 blocks (must correspond to complex
+ *              conjugate eigenvalue pairs only).
+ * @param[in] lds Leading dimension of S (lds >= max(1,n))
+ * @param[in,out] r DOUBLE PRECISION array, dimension (ldr,n)
+ *                  On entry: N-by-N upper triangular matrix R
+ *                  On exit: N-by-N upper triangular Cholesky factor U
+ * @param[in] ldr Leading dimension of R (ldr >= max(1,n))
+ * @param[out] scale Scale factor (0 < scale <= 1) to prevent overflow
+ * @param[out] dwork Workspace array, dimension (4*n)
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  1 = near-singular (warning): perturbed values used
+ *                  2 = S not stable (continuous) or not convergent (discrete)
+ *                  3 = S has >2x2 diagonal block (consecutive non-zero subdiagonals)
+ *                  4 = 2x2 block has real eigenvalues (requires complex conjugate)
+ */
+void sb03ot(
+    const bool discr,
+    const bool ltrans,
+    const i32 n,
+    f64* s,
+    const i32 lds,
+    f64* r,
+    const i32 ldr,
+    f64* scale,
+    f64* dwork,
+    i32* info);
+
+/**
+ * @brief Solve small (N1xN2, 1<=N1,N2<=2) Sylvester equation.
+ *
+ * Solves for the N1-by-N2 matrix X (1 <= N1,N2 <= 2) in:
+ *
+ *     op(TL)*X*op(TR) + ISGN*X = SCALE*B
+ *
+ * where TL is N1-by-N1, TR is N2-by-N2, B is N1-by-N2, ISGN = 1 or -1,
+ * and op(T) = T or T' (transpose).
+ *
+ * Uses Gaussian elimination with complete pivoting.
+ *
+ * @param[in] ltranl If true, use TL', otherwise use TL
+ * @param[in] ltranr If true, use TR', otherwise use TR
+ * @param[in] isgn Sign of equation: +1 or -1
+ * @param[in] n1 Order of matrix TL (0, 1, or 2)
+ * @param[in] n2 Order of matrix TR (0, 1, or 2)
+ * @param[in] tl N1-by-N1 matrix TL, dimension (ldtl,n1)
+ * @param[in] ldtl Leading dimension of TL (ldtl >= max(1,n1))
+ * @param[in] tr N2-by-N2 matrix TR, dimension (ldtr,n2)
+ * @param[in] ldtr Leading dimension of TR (ldtr >= max(1,n2))
+ * @param[in] b N1-by-N2 right-hand side matrix B, dimension (ldb,n2)
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,n1))
+ * @param[out] scale Scale factor (0 < scale <= 1) to prevent overflow
+ * @param[out] x N1-by-N2 solution matrix X, dimension (ldx,n2)
+ *               Note: X may be identified with B in the calling statement
+ * @param[in] ldx Leading dimension of X (ldx >= max(1,n1))
+ * @param[out] xnorm Infinity-norm of the solution X
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  1 = TL and -ISGN*TR have almost reciprocal eigenvalues,
+ *                      so TL or TR is perturbed to get nonsingular equation
+ *
+ * @note This routine does not check inputs for errors (for speed).
+ */
+void sb04px(
+    const bool ltranl,
+    const bool ltranr,
+    const i32 isgn,
+    const i32 n1,
+    const i32 n2,
+    const f64* tl,
+    const i32 ldtl,
+    const f64* tr,
+    const i32 ldtr,
+    const f64* b,
+    const i32 ldb,
+    f64* scale,
+    f64* x,
+    const i32 ldx,
+    f64* xnorm,
     i32* info);
 
 #ifdef __cplusplus
