@@ -8,6 +8,7 @@
 #define SLICOT_TYPES_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <complex.h>
 
 /**

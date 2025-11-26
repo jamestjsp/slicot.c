@@ -1693,6 +1693,22 @@ static PyObject* py_sg03br(PyObject* self, PyObject* args) {
     return Py_BuildValue("(ddddd)", c, sr, si, zr, zi);
 }
 
+/* Python wrapper for sb03ov */
+static PyObject* py_sb03ov(PyObject* self, PyObject* args) {
+    f64 a_re, a_im, b, small;
+    f64 a[2], c[2], s;
+
+    if (!PyArg_ParseTuple(args, "dddd", &a_re, &a_im, &b, &small)) {
+        return NULL;
+    }
+
+    a[0] = a_re;
+    a[1] = a_im;
+    sb03ov(a, b, small, c, &s);
+
+    return Py_BuildValue("(ddddi)", a[0], c[0], c[1], s, 0);
+}
+
 /* Python wrapper for sg03bw */
 static PyObject* py_sg03bw(PyObject* self, PyObject* args) {
     char* trans;
@@ -3679,6 +3695,111 @@ static PyObject* py_mb04ny(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for mb04nd - RQ factorization of structured block matrix */
+static PyObject* py_mb04nd(PyObject* self, PyObject* args) {
+    const char* uplo_str;
+    i32 n, m, p;
+    PyObject *r_obj, *a_obj, *b_obj, *c_obj;
+    PyArrayObject *r_array, *a_array, *b_array, *c_array;
+
+    if (!PyArg_ParseTuple(args, "siiiOOOO", &uplo_str, &n, &m, &p,
+                          &r_obj, &a_obj, &b_obj, &c_obj)) {
+        return NULL;
+    }
+
+    char uplo = uplo_str[0];
+
+    r_array = (PyArrayObject*)PyArray_FROM_OTF(r_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (r_array == NULL) return NULL;
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) {
+        Py_DECREF(r_array);
+        return NULL;
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (c_array == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    npy_intp *r_dims = PyArray_DIMS(r_array);
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *b_dims = PyArray_DIMS(b_array);
+    npy_intp *c_dims = PyArray_DIMS(c_array);
+
+    i32 ldr = (n > 0) ? (i32)r_dims[0] : 1;
+    i32 lda = (n > 0) ? (i32)a_dims[0] : 1;
+    i32 ldb = (m > 0) ? (i32)b_dims[0] : 1;
+    i32 ldc = (m > 0) ? (i32)c_dims[0] : 1;
+
+    f64 *tau = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+    if (tau == NULL) {
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate tau");
+        return NULL;
+    }
+
+    i32 dwork_size = ((n - 1) > m) ? (n - 1) : m;
+    if (dwork_size < 1) dwork_size = 1;
+    f64 *dwork = (f64*)calloc(dwork_size, sizeof(f64));
+    if (dwork == NULL) {
+        free(tau);
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate dwork");
+        return NULL;
+    }
+
+    f64 *r_data = (f64*)PyArray_DATA(r_array);
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+
+    SLC_MB04ND(&uplo, n, m, p, r_data, ldr, a_data, lda,
+               b_data, ldb, c_data, ldc, tau, dwork);
+
+    free(dwork);
+
+    npy_intp tau_dim = n > 0 ? n : 0;
+    PyObject *tau_array = PyArray_SimpleNewFromData(1, &tau_dim, NPY_DOUBLE, tau);
+    if (tau_array == NULL) {
+        free(tau);
+        Py_DECREF(r_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)tau_array, NPY_ARRAY_OWNDATA);
+
+    Py_DECREF(r_array);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+
+    return tau_array;
+}
+
 /* Python wrapper for ib01od */
 static PyObject* py_ib01od(PyObject* self, PyObject* args) {
     const char *ctrl_str;
@@ -4768,6 +4889,144 @@ static PyObject* py_mb01sd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for sb03od */
+static PyObject* py_sb03od(PyObject* self, PyObject* args) {
+    const char *dico_str, *fact_str, *trans_str;
+    PyObject *a_obj, *b_obj, *q_obj = NULL;
+    
+    if (!PyArg_ParseTuple(args, "sssOO|O", &dico_str, &fact_str, &trans_str,
+                         &a_obj, &b_obj, &q_obj)) {
+        return NULL;
+    }
+    
+    // Convert inputs to arrays
+    PyArrayObject *a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, 
+                                                             NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) return NULL;
+    
+    PyArrayObject *b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                                             NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+    
+    i32 n = (i32)PyArray_DIM(a_array, 0);
+    i32 lda = n > 0 ? n : 1;
+    i32 ldq = n > 0 ? n : 1;
+    
+    // Get B dimensions based on transpose flag
+    i32 m, ldb;
+    if (trans_str[0] == 'N' || trans_str[0] == 'n') {
+        m = (i32)PyArray_DIM(b_array, 0);
+        ldb = m > 0 ? m : 1;
+        if (PyArray_DIM(b_array, 1) != n) {
+            PyErr_SetString(PyExc_ValueError, "B shape mismatch for trans='N'");
+            goto cleanup;
+        }
+    } else {
+        m = (i32)PyArray_DIM(b_array, 1);  
+        ldb = n > 0 ? n : 1;
+        if (PyArray_DIM(b_array, 0) != n) {
+            PyErr_SetString(PyExc_ValueError, "B shape mismatch for trans='T'");
+            goto cleanup;
+        }
+    }
+    
+    // Handle Q matrix for fact='F'
+    PyArrayObject *q_array = NULL;
+    bool nofact = (fact_str[0] == 'N' || fact_str[0] == 'n');
+    if (!nofact) {
+        if (q_obj == NULL) {
+            PyErr_SetString(PyExc_ValueError, "Q matrix required when fact='F'");
+            goto cleanup;
+        }
+        q_array = (PyArrayObject*)PyArray_FROM_OTF(q_obj, NPY_DOUBLE,
+                                                  NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+        if (q_array == NULL) goto cleanup;
+    } else {
+        // Allocate Q for output
+        npy_intp q_dims[2] = {n, n};
+        q_array = (PyArrayObject*)PyArray_ZEROS(2, q_dims, NPY_DOUBLE, 1);
+        if (q_array == NULL) goto cleanup;
+    }
+    
+    // Allocate output arrays
+    npy_intp wr_dims[1] = {n};
+    PyArrayObject *wr_array = (PyArrayObject*)PyArray_ZEROS(1, wr_dims, NPY_DOUBLE, 0);
+    if (wr_array == NULL) goto cleanup;
+    
+    PyArrayObject *wi_array = (PyArrayObject*)PyArray_ZEROS(1, wr_dims, NPY_DOUBLE, 0);
+    if (wi_array == NULL) {
+        Py_DECREF(wr_array);
+        goto cleanup;
+    }
+    
+    // Workspace query
+    f64 dwork_query;
+    i32 ldwork = -1;
+    i32 info;
+    f64 scale;
+    
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);  
+    f64 *q_data = (f64*)PyArray_DATA(q_array);
+    f64 *wr_data = (f64*)PyArray_DATA(wr_array);
+    f64 *wi_data = (f64*)PyArray_DATA(wi_array);
+    
+    sb03od(dico_str, fact_str, trans_str, n, m, a_data, lda, q_data, ldq,
+           b_data, ldb, &scale, wr_data, wi_data, &dwork_query, ldwork, &info);
+    
+    if (info < 0 && info != -16) {
+        PyErr_Format(PyExc_ValueError, "sb03od parameter error: info=%d", info);
+        Py_DECREF(wr_array);
+        Py_DECREF(wi_array);
+        goto cleanup;
+    }
+    
+    // Allocate workspace
+    ldwork = (i32)dwork_query;
+    if (m == 0) ldwork = 1;
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (dwork == NULL) {
+        PyErr_NoMemory();
+        Py_DECREF(wr_array);
+        Py_DECREF(wi_array);
+        goto cleanup;
+    }
+    
+    // Actual computation
+    sb03od(dico_str, fact_str, trans_str, n, m, a_data, lda, q_data, ldq,
+           b_data, ldb, &scale, wr_data, wi_data, dwork, ldwork, &info);
+    
+    free(dwork);
+    
+    // Resolve writebacks
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    if (!nofact && q_array) {
+        PyArray_ResolveWritebackIfCopy(q_array);
+    }
+    
+    // Build return value: (u, q, wr, wi, scale, info)
+    // Note: B array now contains U (upper triangular Cholesky factor)
+    PyObject *result = Py_BuildValue("OOOOdi", b_array, q_array, wr_array, wi_array, scale, info);
+    
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(q_array);
+    Py_DECREF(wr_array);
+    Py_DECREF(wi_array);
+    
+    return result;
+
+cleanup:
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    if (q_array) Py_DECREF(q_array);
+    return NULL;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"mb04od", py_mb04od, METH_VARARGS,
@@ -5018,6 +5277,21 @@ static PyMethodDef SlicotMethods[] = {
      "Returns:\n"
      "  (a, b): Updated matrices\n"},
 
+    {"mb04nd", py_mb04nd, METH_VARARGS,
+     "RQ factorization of special structured block matrix.\n\n"
+     "Calculates RQ factorization of [A R; C B] to produce [0 R_new; C_new B_new].\n\n"
+     "Parameters:\n"
+     "  uplo (str): 'U' for upper trapezoidal A, 'F' for full A\n"
+     "  n (int): Order of R and R_new\n"
+     "  m (int): Number of rows of B and C\n"
+     "  p (int): Number of columns of A and C\n"
+     "  r (ndarray): n-by-n upper triangular R (modified in place)\n"
+     "  a (ndarray): n-by-p matrix A (modified, stores Householder vectors)\n"
+     "  b (ndarray): m-by-n matrix B (modified in place)\n"
+     "  c (ndarray): m-by-p matrix C (modified in place)\n\n"
+     "Returns:\n"
+     "  tau (ndarray): Scalar factors of elementary reflectors\n"},
+
     {"mb01rb", py_mb01rb, METH_VARARGS,
      "Block triangular symmetric rank-k update (BLAS 3 version).\n\n"
      "Computes R = alpha*R + beta*op(A)*B or R = alpha*R + beta*B*op(A)\n"
@@ -5193,6 +5467,16 @@ static PyMethodDef SlicotMethods[] = {
      "  yi (float): Imaginary part of Y\n\n"
      "Returns:\n"
      "  (c, sr, si, zr, zi): Givens rotation parameters and result\n"},
+
+    {"sb03ov", py_sb03ov, METH_VARARGS,
+     "Construct complex plane rotation for Lyapunov solver.\n\n"
+     "Parameters:\n"
+     "  a_re (float): Real part of complex number a\n"
+     "  a_im (float): Imaginary part of complex number a\n"
+     "  b (float): Real number b\n"
+     "  small (float): Threshold for unit matrix\n\n"
+     "Returns:\n"
+     "  (d, c_re, c_im, s, info): d, complex cosine, real sine, exit code\n"},
 
     {"sg03bw", py_sg03bw, METH_VARARGS,
      "Solve generalized Sylvester equation for small systems.\n\n"
@@ -5441,6 +5725,29 @@ static PyMethodDef SlicotMethods[] = {
      "  c (ndarray): Column scale factors, dimension N (not used if jobs='R')\n\n"
      "Returns:\n"
      "  a: The scaled matrix\n"},
+
+    {"sb03od", (PyCFunction)py_sb03od, METH_VARARGS,
+     "Solve stable Lyapunov equation for Cholesky factor.\n\n"
+     "Solves either:\n"
+     "  A'*X + X*A = -scale²*B'*B   (continuous-time)\n"
+     "  A'*X*A - X = -scale²*B'*B   (discrete-time)\n"
+     "where X = U'*U (Cholesky factorization)\n\n"
+     "Parameters:\n"
+     "  dico (str): 'C' for continuous-time, 'D' for discrete-time\n"
+     "  fact (str): 'N' compute Schur, 'F' Schur factorization provided\n"
+     "  trans (str): 'N' for no transpose, 'T' for transpose of A,B\n"
+     "  a (ndarray): State matrix A (n x n, F-order) or Schur factor S\n"
+     "  b (ndarray): Right-hand side B (m x n, F-order) if trans='N'\n"
+     "               or (n x m, F-order) if trans='T'\n"
+     "  q (ndarray): Schur vectors Q (n x n, F-order) if fact='F'\n\n"
+     "Returns:\n"
+     "  (u, q_out, wr, wi, scale, info):\n"
+     "  - u: Upper triangular Cholesky factor U (n x n)\n"
+     "  - q_out: Orthogonal Schur vectors (if computed)\n"
+     "  - wr: Real parts of eigenvalues (n,)\n"
+     "  - wi: Imaginary parts of eigenvalues (n,)\n"
+     "  - scale: Scale factor (scale <= 1)\n"
+     "  - info: Exit code (0=success, 1=nearly singular, 2/3=unstable)\n"},
 
     {NULL, NULL, 0, NULL}
 };

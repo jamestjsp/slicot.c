@@ -207,6 +207,9 @@ void SLC_FC_FUNC(dlaic1, DLAIC1)(const int* job, const int* j, const f64* x,
 f64 SLC_FC_FUNC(dlange, DLANGE)(const char* norm, const int* m, const int* n,
                                   const f64* a, const int* lda, f64* work);
 
+f64 SLC_FC_FUNC(dlanhs, DLANHS)(const char* norm, const int* n,
+                                 const f64* a, const int* lda, f64* work);
+
 f64 SLC_FC_FUNC(dlapy2, DLAPY2)(const f64* x, const f64* y);
 
 f64 SLC_FC_FUNC(dlapy3, DLAPY3)(const f64* x, const f64* y, const f64* z);
@@ -231,6 +234,10 @@ void SLC_FC_FUNC(dlasv2, DLASV2)(const f64* f, const f64* g, const f64* h,
 void SLC_FC_FUNC(dladiv, DLADIV)(const f64* a, const f64* b, const f64* c, const f64* d,
                                   f64* p, f64* q);
 
+void SLC_FC_FUNC(dlanv2, DLANV2)(f64* a, f64* b, f64* c, f64* d,
+                                  f64* rt1r, f64* rt1i, f64* rt2r, f64* rt2i,
+                                  f64* cs, f64* sn);
+
 void SLC_FC_FUNC(zlarfg, ZLARFG)(const int* n, double complex* alpha, double complex* x,
                                   const int* incx, double complex* tau);
 
@@ -247,6 +254,15 @@ void SLC_FC_FUNC(dgetc2, DGETC2)(const int* n, f64* a, const int* lda,
 void SLC_FC_FUNC(dgesc2, DGESC2)(const int* n, const f64* a, const int* lda,
                                   f64* rhs, const int* ipiv, const int* jpiv,
                                   f64* scale);
+
+/* LAPACK - Sylvester equations */
+void SLC_FC_FUNC(dlasy2, DLASY2)(const int* ltranl, const int* ltranr,
+                                  const int* isgn, const int* n1, const int* n2,
+                                  const f64* tl, const int* ldtl,
+                                  const f64* tr, const int* ldtr,
+                                  const f64* b, const int* ldb,
+                                  f64* scale, f64* x, const int* ldx,
+                                  f64* xnorm, int* info);
 
 /* LAPACK - Orthogonal transformations */
 void SLC_FC_FUNC(dormqr, DORMQR)(const char* side, const char* trans,
@@ -363,6 +379,7 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DLARF    SLC_FC_FUNC(dlarf, DLARF)
 #define SLC_DLAIC1   SLC_FC_FUNC(dlaic1, DLAIC1)
 #define SLC_DLANGE   SLC_FC_FUNC(dlange, DLANGE)
+#define SLC_DLANHS   SLC_FC_FUNC(dlanhs, DLANHS)
 #define SLC_DORMQR   SLC_FC_FUNC(dormqr, DORMQR)
 #define SLC_DORMRZ   SLC_FC_FUNC(dormrz, DORMRZ)
 #define SLC_DTZRZF   SLC_FC_FUNC(dtzrzf, DTZRZF)
@@ -373,11 +390,13 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DLAG2    SLC_FC_FUNC(dlag2, DLAG2)
 #define SLC_DLASV2   SLC_FC_FUNC(dlasv2, DLASV2)
 #define SLC_DLADIV   SLC_FC_FUNC(dladiv, DLADIV)
+#define SLC_DLANV2   SLC_FC_FUNC(dlanv2, DLANV2)
 #define SLC_ZLARFG   SLC_FC_FUNC(zlarfg, ZLARFG)
 #define SLC_ZSTEIN   SLC_FC_FUNC(zstein, ZSTEIN)
 #define SLC_XERBLA   SLC_FC_FUNC(xerbla, XERBLA)
 #define SLC_DGETC2   SLC_FC_FUNC(dgetc2, DGETC2)
 #define SLC_DGESC2   SLC_FC_FUNC(dgesc2, DGESC2)
+#define SLC_DLASY2   SLC_FC_FUNC(dlasy2, DLASY2)
 #define SLC_DLARTG   SLC_FC_FUNC(dlartg, DLARTG)
 #define SLC_DROT     SLC_FC_FUNC(drot, DROT)
 #define SLC_DSYEVX   SLC_FC_FUNC(dsyevx, DSYEVX)
