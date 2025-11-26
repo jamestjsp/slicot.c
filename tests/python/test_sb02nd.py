@@ -337,7 +337,6 @@ class TestSB02NDFactoredR:
 
         np.testing.assert_allclose(f, f_expected, rtol=1e-12, atol=1e-12)
 
-    @pytest.mark.skip(reason="FACT='D' path needs debugging - QR factorization update")
     def test_d_factor_discrete(self):
         """
         Test with D factor (FACT='D') for discrete-time: R = D'D.
@@ -365,14 +364,18 @@ class TestSB02NDFactoredR:
         ipiv = np.zeros(m, dtype=np.int32)
         rnorm = 0.0
 
+        # Save originals - sb02nd modifies b in-place (DTRMM for B'XB update)
+        b_orig = b.copy()
+        x_orig = x.copy()
+
         f, r_out, x_out, oufact, rcond, info = sb02nd(
             'D', 'D', 'U', 'Z', n, m, p, a, b, r, ipiv, l, x.copy(order='F'), rnorm
         )
 
         assert info == 0, f"SB02ND failed with info={info}"
 
-        coef = r_full + b.T @ x @ b
-        rhs = b.T @ x @ a
+        coef = r_full + b_orig.T @ x_orig @ b_orig
+        rhs = b_orig.T @ x_orig @ a
         f_expected = np.linalg.solve(coef, rhs)
 
         np.testing.assert_allclose(f, f_expected, rtol=1e-10, atol=1e-10)
