@@ -1,11 +1,16 @@
 set(SLICOT_SOURCES
+    IB/ib01md.c
     IB/ib01nd.c
     IB/ib01od.c
     IB/ib01oy.c
+    IB/ib01pd.c
+    IB/ib01px.c
+    IB/ib01py.c
     IB/ib01qd.c
     IB/ib01rd.c
     MA/ma02ad.c
     MA/ma02ed.c
+    MA/ma02fd.c
     SB/sb02mt.c
     SB/sb02nd.c
     SB/sb03od.c
@@ -20,6 +25,8 @@ set(SLICOT_SOURCES
     MB/mb01sd.c
     MB/mb01td.c
     MB/mb01uy.c
+    MB/mb01vd.c
+    MB/mb02qy.c
     MB/mb02ud.c
     MB/mb02yd.c
     MB/mb03od.c
