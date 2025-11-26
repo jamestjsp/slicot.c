@@ -337,6 +337,21 @@ void SLC_FC_FUNC(dgelss, DGELSS)(const int* m, const int* n, const int* nrhs,
                                   f64* s, const f64* rcond, int* rank, f64* work,
                                   const int* lwork, int* info);
 
+void SLC_FC_FUNC(dgelsy, DGELSY)(const int* m, const int* n, const int* nrhs,
+                                  f64* a, const int* lda, f64* b, const int* ldb,
+                                  int* jpvt, const f64* rcond, int* rank, f64* work,
+                                  const int* lwork, int* info);
+
+void SLC_FC_FUNC(dtrtrs, DTRTRS)(const char* uplo, const char* trans, const char* diag,
+                                  const int* n, const int* nrhs, const f64* a,
+                                  const int* lda, f64* b, const int* ldb, int* info);
+
+void SLC_FC_FUNC(dormrz, DORMRZ)(const char* side, const char* trans,
+                                  const int* m, const int* n, const int* k, const int* l,
+                                  const f64* a, const int* lda, const f64* tau,
+                                  f64* c, const int* ldc, f64* work, const int* lwork,
+                                  int* info);
+
 int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* opts,
                                 const int* n1, const int* n2, const int* n3, const int* n4);
 
@@ -410,6 +425,10 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DLANTR   SLC_FC_FUNC(dlantr, DLANTR)
 #define SLC_DTRCON   SLC_FC_FUNC(dtrcon, DTRCON)
 #define SLC_DPOTRS   SLC_FC_FUNC(dpotrs, DPOTRS)
+#define SLC_DTRTRS   SLC_FC_FUNC(dtrtrs, DTRTRS)
+#define SLC_DGELSY   SLC_FC_FUNC(dgelsy, DGELSY)
+#define SLC_DTZRZF   SLC_FC_FUNC(dtzrzf, DTZRZF)
+#define SLC_DORMRZ   SLC_FC_FUNC(dormrz, DORMRZ)
 #define SLC_ILAENV   SLC_FC_FUNC(ilaenv, ILAENV)
 
 #ifdef __cplusplus

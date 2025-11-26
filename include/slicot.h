@@ -915,6 +915,23 @@ void ma02ad(const char* job, const i32 m, const i32 n,
 void ma02ed(const char uplo, i32 n, f64 *a, i32 lda);
 
 /**
+ * @brief Compute coefficients for modified hyperbolic plane rotation.
+ *
+ * Computes c and s (c^2 + s^2 = 1) such that:
+ *     y1 = (1/c) * x1 - (s/c) * x2 = sqrt(x1^2 - x2^2)
+ *     y2 = -s * y1 + c * x2 = 0
+ *
+ * The input must satisfy either x1 = x2 = 0, or abs(x2) < abs(x1).
+ *
+ * @param[in,out] x1 On entry: x1. On exit: y1 = sqrt(x1^2 - x2^2)
+ * @param[in] x2 The value x2
+ * @param[out] c Cosine of the modified hyperbolic rotation
+ * @param[out] s Sine of the modified hyperbolic rotation
+ * @param[out] info 0 = success, 1 = abs(x2) >= abs(x1) with x1 != 0 or x2 != 0
+ */
+void ma02fd(f64 *x1, f64 x2, f64 *c, f64 *s, i32 *info);
+
+/**
  * @brief QR factorization of special structured block matrix.
  *
  * Computes QR factorization of first block column and applies orthogonal
@@ -1869,6 +1886,117 @@ void slicot_ib01qd(
     i32* iwork, f64* dwork, i32 ldwork,
     i32* iwarn, i32* info
 );
+
+/**
+ * @brief Upper triangular factor R of concatenated block Hankel matrices.
+ *
+ * Constructs the upper triangular factor R of the concatenated block
+ * Hankel matrices using input-output data. Used in subspace identification
+ * methods (MOESP and N4SID). Data can optionally be processed sequentially.
+ *
+ * For MOESP (METH='M'): H = [Uf' Up' Y']
+ * For N4SID (METH='N'): H = [U' Y']
+ *
+ * @param[in] meth Method: 'M' = MOESP, 'N' = N4SID
+ * @param[in] alg Algorithm: 'C' = Cholesky, 'F' = Fast QR, 'Q' = QR
+ * @param[in] batch Processing mode: 'F' = first, 'I' = intermediate,
+ *                  'L' = last, 'O' = one block only
+ * @param[in] conct Connection: 'C' = connected blocks, 'N' = not connected
+ * @param[in] nobr Number of block rows s in Hankel matrices (nobr > 0)
+ * @param[in] m Number of system inputs (m >= 0)
+ * @param[in] l Number of system outputs (l > 0)
+ * @param[in] nsmp Number of samples (nsmp >= 2*nobr for sequential,
+ *                 nsmp >= 2*(m+l+1)*nobr - 1 for non-sequential)
+ * @param[in] u NSMP-by-M input data, dimension (ldu,m)
+ * @param[in] ldu Leading dimension of U (ldu >= nsmp if m>0, else >= 1)
+ * @param[in] y NSMP-by-L output data, dimension (ldy,l)
+ * @param[in] ldy Leading dimension of Y (ldy >= nsmp)
+ * @param[in,out] r On exit: 2*(m+l)*nobr-by-2*(m+l)*nobr upper triangular R
+ *                  On entry for sequential: previous R matrix
+ * @param[in] ldr Leading dimension of R (ldr >= 2*(m+l)*nobr)
+ * @param[in,out] iwork INTEGER workspace, dimension >= max(3,m+l)
+ *                      For sequential: iwork[0:2] preserves state between calls
+ * @param[out] dwork DOUBLE PRECISION workspace
+ *                   dwork[0] = optimal ldwork on exit
+ * @param[in] ldwork Workspace size (use -1 for query)
+ * @param[out] iwarn Warning: 0=none, 1=100 cycles exhausted, 2=fast alg failed
+ * @param[out] info Exit code: 0=success, -i=param i invalid, 1=fast alg failed
+ */
+void ib01md(const char *meth, const char *alg, const char *batch,
+            const char *conct, i32 nobr, i32 m, i32 l, i32 nsmp,
+            const f64 *u, i32 ldu, const f64 *y, i32 ldy,
+            f64 *r, i32 ldr, i32 *iwork, f64 *dwork, i32 ldwork,
+            i32 *iwarn, i32 *info);
+
+/**
+ * @brief Estimate system matrices from R factor (subspace identification).
+ *
+ * Estimates state-space matrices A, C, B, D from the R factor produced by
+ * IB01MD. Optionally computes covariance matrices for Kalman gain.
+ *
+ * @param[in] meth Method: 'M' = MOESP, 'N' = N4SID
+ * @param[in] job Matrices to compute: 'A' = all, 'C' = A,C only,
+ *                'B' = B only, 'D' = B,D only
+ * @param[in] jobcv Covariances: 'C' = compute, 'N' = do not compute
+ * @param[in] nobr Block rows (nobr > 1)
+ * @param[in] n System order (0 < n < nobr)
+ * @param[in] m Number of inputs (m >= 0)
+ * @param[in] l Number of outputs (l > 0)
+ * @param[in] nsmpl Number of samples (nsmpl >= 2*(m+l)*nobr if jobcv='C')
+ * @param[in,out] r R factor from IB01MD, dimension (ldr, 2*(m+l)*nobr)
+ * @param[in] ldr Leading dimension of R (ldr >= 2*(m+l)*nobr)
+ * @param[in,out] a N-by-N state matrix, dimension (lda,n)
+ * @param[in] lda Leading dimension of A
+ * @param[in,out] c L-by-N output matrix, dimension (ldc,n)
+ * @param[in] ldc Leading dimension of C
+ * @param[out] b N-by-M input matrix, dimension (ldb,m)
+ * @param[in] ldb Leading dimension of B
+ * @param[out] d L-by-M feedthrough matrix, dimension (ldd,m)
+ * @param[in] ldd Leading dimension of D
+ * @param[out] q N-by-N state covariance, dimension (ldq,n)
+ * @param[in] ldq Leading dimension of Q
+ * @param[out] ry L-by-L output covariance, dimension (ldry,l)
+ * @param[in] ldry Leading dimension of RY
+ * @param[out] s N-by-L state-output cross-covariance, dimension (lds,l)
+ * @param[in] lds Leading dimension of S
+ * @param[out] o L*nobr-by-N extended observability matrix, dimension (ldo,n)
+ * @param[in] ldo Leading dimension of O
+ * @param[in] tol Tolerance for rank estimation
+ * @param[out] iwork INTEGER workspace
+ * @param[out] dwork DOUBLE PRECISION workspace
+ * @param[in] ldwork Workspace size
+ * @param[out] iwarn Warning indicator
+ * @param[out] info Exit code
+ */
+void ib01pd(const char *meth, const char *job, const char *jobcv,
+            i32 nobr, i32 n, i32 m, i32 l, i32 nsmpl,
+            f64 *r, i32 ldr, f64 *a, i32 lda, f64 *c, i32 ldc,
+            f64 *b, i32 ldb, f64 *d, i32 ldd, f64 *q, i32 ldq,
+            f64 *ry, i32 ldry, f64 *s, i32 lds, f64 *o, i32 ldo,
+            f64 tol, i32 *iwork, f64 *dwork, i32 ldwork,
+            i32 *iwarn, i32 *info);
+
+void ib01px(const char *job, i32 nobr, i32 n, i32 m, i32 l,
+            f64 *uf, i32 lduf, const f64 *un, i32 ldun,
+            f64 *ul, i32 ldul, const f64 *pgal, i32 ldpgal,
+            const f64 *k, i32 ldk, f64 *r, i32 ldr, f64 *x,
+            f64 *b, i32 ldb, f64 *d, i32 ldd, f64 tol,
+            i32 *iwork, f64 *dwork, i32 ldwork, i32 *iwarn, i32 *info);
+
+void ib01py(const char *meth, const char *job, i32 nobr, i32 n, i32 m, i32 l,
+            i32 rankr1, f64 *ul, i32 ldul, const f64 *r1, i32 ldr1,
+            const f64 *tau1, const f64 *pgal, i32 ldpgal,
+            f64 *k, i32 ldk, f64 *r, i32 ldr, f64 *h, i32 ldh,
+            f64 *b, i32 ldb, f64 *d, i32 ldd, f64 tol,
+            i32 *iwork, f64 *dwork, i32 ldwork, i32 *iwarn, i32 *info);
+
+void mb01vd(const char *trana, const char *tranb, i32 ma, i32 na, i32 mb, i32 nb,
+            f64 alpha, f64 beta, const f64 *a, i32 lda, const f64 *b, i32 ldb,
+            f64 *c, i32 ldc, i32 *mc, i32 *nc, i32 *info);
+
+void mb02qy(i32 m, i32 n, i32 nrhs, i32 rank, f64 *a, i32 lda,
+            const i32 *jpvt, f64 *b, i32 ldb, f64 *tau,
+            f64 *dwork, i32 ldwork, i32 *info);
 
 /**
  * @brief Estimate initial state for discrete-time LTI system.

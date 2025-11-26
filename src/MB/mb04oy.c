@@ -253,3 +253,8 @@ void SLC_MB04OY(i32 m, i32 n, const f64* v, f64 tau,
     SLC_DAXPY(&n, &mtau, dwork, &inc1, a, &lda);
     SLC_DGER(&m, &n, &mtau, v, &inc1, dwork, &inc1, b, &ldb);
 }
+
+void mb04oy(const i32* m, const i32* n, const f64* v, const f64* tau,
+            f64* c1, const i32* ldc1, f64* c2, const i32* ldc2, f64* dwork) {
+    SLC_MB04OY(*m, *n, v, *tau, c1, *ldc1, c2, *ldc2, dwork);
+}
