@@ -380,12 +380,12 @@ def test_ib01md_sequential_basic():
     assert r3.shape == (nr, nr)
 
 
-@pytest.mark.skip(reason="Fast QR algorithm requires IB01MY implementation")
 def test_ib01md_fast_qr_algorithm():
     """
-    Test fast QR algorithm (ALG='F').
+    Test fast QR algorithm (ALG='F') with N4SID.
 
-    Requires IB01MY subroutine to be implemented.
+    Tests IB01MY implementation.
+    Random seed: 202 (for reproducibility)
     """
     nobr = 2
     m = 1
@@ -402,3 +402,133 @@ def test_ib01md_fast_qr_algorithm():
     r, iwarn, info = ib01md(meth, alg, batch, conct, nobr, m, l, u, y)
 
     assert info == 0
+    assert iwarn == 0
+
+    nr = 2 * (m + l) * nobr
+    assert r.shape == (nr, nr)
+
+    for i in range(nr):
+        for j in range(i):
+            assert abs(r[i, j]) < 1e-14, f"R not upper triangular at ({i},{j})"
+
+
+def test_ib01md_fast_qr_moesp():
+    """
+    Test fast QR algorithm (ALG='F') with MOESP.
+
+    Tests IB01MY with MOESP algorithm.
+    Random seed: 303 (for reproducibility)
+    """
+    nobr = 2
+    m = 1
+    l = 1
+    nsmp = 2 * (m + l + 1) * nobr
+
+    u, y = generate_io_data(nsmp, m, l, seed=303)
+
+    meth = 'M'
+    alg = 'F'
+    batch = 'O'
+    conct = 'N'
+
+    r, iwarn, info = ib01md(meth, alg, batch, conct, nobr, m, l, u, y)
+
+    assert info == 0
+    assert iwarn == 0
+
+    nr = 2 * (m + l) * nobr
+    assert r.shape == (nr, nr)
+
+    for i in range(nr):
+        for j in range(i):
+            assert abs(r[i, j]) < 1e-14, f"R not upper triangular at ({i},{j})"
+
+
+def test_ib01md_fast_qr_larger_system():
+    """
+    Test fast QR algorithm with larger system dimensions.
+
+    Random seed: 404 (for reproducibility)
+    """
+    nobr = 3
+    m = 2
+    l = 2
+    nsmp = 2 * (m + l + 1) * nobr + 20
+
+    u, y = generate_io_data(nsmp, m, l, seed=404)
+
+    meth = 'N'
+    alg = 'F'
+    batch = 'O'
+    conct = 'N'
+
+    r, iwarn, info = ib01md(meth, alg, batch, conct, nobr, m, l, u, y)
+
+    assert info == 0
+
+    nr = 2 * (m + l) * nobr
+    assert r.shape == (nr, nr)
+
+    for i in range(nr):
+        for j in range(i):
+            assert abs(r[i, j]) < 1e-14
+
+
+def test_ib01md_fast_qr_m_zero():
+    """
+    Test fast QR algorithm with M=0 (output-only identification).
+
+    Random seed: 505 (for reproducibility)
+    """
+    nobr = 2
+    m = 0
+    l = 1
+    nsmp = 2 * (m + l + 1) * nobr
+
+    np.random.seed(505)
+    u = np.zeros((nsmp, 0), order='F', dtype=float)
+    y = np.random.randn(nsmp, l).astype(float, order='F')
+
+    meth = 'N'
+    alg = 'F'
+    batch = 'O'
+    conct = 'N'
+
+    r, iwarn, info = ib01md(meth, alg, batch, conct, nobr, m, l, u, y)
+
+    assert info == 0
+
+    nr = 2 * l * nobr
+    assert r.shape == (nr, nr)
+
+
+def test_ib01md_fast_qr_consistency_with_standard_qr():
+    """
+    Mathematical property: Fast QR should give same R'R as standard QR.
+
+    Both methods compute QR factorization of same block-Hankel matrix,
+    so R'R = H'H should be identical.
+
+    Random seed: 606 (for reproducibility)
+    """
+    nobr = 2
+    m = 1
+    l = 1
+    nsmp = 2 * (m + l + 1) * nobr + 5
+
+    u, y = generate_io_data(nsmp, m, l, seed=606)
+
+    meth = 'N'
+    batch = 'O'
+    conct = 'N'
+
+    r_qr, iwarn_qr, info_qr = ib01md(meth, 'Q', batch, conct, nobr, m, l, u, y)
+    assert info_qr == 0
+
+    r_fast, iwarn_fast, info_fast = ib01md(meth, 'F', batch, conct, nobr, m, l, u, y)
+    assert info_fast == 0
+
+    rtr_qr = r_qr.T @ r_qr
+    rtr_fast = r_fast.T @ r_fast
+
+    np.testing.assert_allclose(rtr_qr, rtr_fast, rtol=1e-10, atol=1e-12)
