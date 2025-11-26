@@ -3318,6 +3318,214 @@ static PyObject* py_mb04oy(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for ib01od */
+static PyObject* py_ib01od(PyObject* self, PyObject* args) {
+    const char *ctrl_str;
+    i32 nobr, l;
+    f64 tol;
+    PyObject *sv_obj;
+    PyArrayObject *sv_array;
+    i32 n, iwarn, info;
+
+    if (!PyArg_ParseTuple(args, "siiOd", &ctrl_str, &nobr, &l, &sv_obj, &tol)) {
+        return NULL;
+    }
+
+    char ctrl = ctrl_str[0];
+
+    /* Validate CTRL parameter */
+    if (ctrl != 'C' && ctrl != 'c' && ctrl != 'N' && ctrl != 'n') {
+        PyErr_SetString(PyExc_ValueError, "CTRL must be 'C' or 'N'");
+        return NULL;
+    }
+
+    /* Validate NOBR */
+    if (nobr <= 0) {
+        PyErr_SetString(PyExc_ValueError, "NOBR must be positive");
+        return NULL;
+    }
+
+    /* Validate L */
+    if (l <= 0) {
+        PyErr_SetString(PyExc_ValueError, "L must be positive");
+        return NULL;
+    }
+
+    /* Convert SV array */
+    sv_array = (PyArrayObject*)PyArray_FROM_OTF(sv_obj, NPY_DOUBLE,
+                                                NPY_ARRAY_IN_FARRAY);
+    if (sv_array == NULL) {
+        return NULL;
+    }
+
+    /* Validate SV size */
+    npy_intp sv_size = PyArray_SIZE(sv_array);
+    i32 lnobr = l * nobr;
+    if (sv_size < lnobr) {
+        Py_DECREF(sv_array);
+        PyErr_SetString(PyExc_ValueError, "SV must have at least L*NOBR elements");
+        return NULL;
+    }
+
+    f64 *sv = (f64*)PyArray_DATA(sv_array);
+
+    /* Call C function */
+    SLC_IB01OD(ctrl, nobr, l, sv, &n, tol, &iwarn, &info);
+
+    Py_DECREF(sv_array);
+
+    if (info < 0) {
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    return Py_BuildValue("iii", n, iwarn, info);
+}
+
+/* Python wrapper for ib01nd */
+static PyObject* py_ib01nd(PyObject* self, PyObject* args) {
+    const char *meth_str, *jobd_str;
+    i32 nobr, m, l;
+    f64 tol;
+    PyObject *r_obj;
+    PyArrayObject *r_array;
+    i32 iwarn, info;
+
+    if (!PyArg_ParseTuple(args, "ssiiiOd", &meth_str, &jobd_str, &nobr, &m, &l,
+                          &r_obj, &tol)) {
+        return NULL;
+    }
+
+    char meth = meth_str[0];
+    char jobd = jobd_str[0];
+
+    /* Validate METH */
+    if (meth != 'M' && meth != 'm' && meth != 'N' && meth != 'n') {
+        PyErr_SetString(PyExc_ValueError, "METH must be 'M' or 'N'");
+        return NULL;
+    }
+
+    /* Validate JOBD for MOESP */
+    if ((meth == 'M' || meth == 'm') &&
+        jobd != 'M' && jobd != 'm' && jobd != 'N' && jobd != 'n') {
+        PyErr_SetString(PyExc_ValueError, "JOBD must be 'M' or 'N'");
+        return NULL;
+    }
+
+    /* Validate dimensions */
+    if (nobr <= 0) {
+        PyErr_SetString(PyExc_ValueError, "NOBR must be positive");
+        return NULL;
+    }
+    if (m < 0) {
+        PyErr_SetString(PyExc_ValueError, "M must be non-negative");
+        return NULL;
+    }
+    if (l <= 0) {
+        PyErr_SetString(PyExc_ValueError, "L must be positive");
+        return NULL;
+    }
+
+    /* Convert R array */
+    r_array = (PyArrayObject*)PyArray_FROM_OTF(r_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (r_array == NULL) {
+        return NULL;
+    }
+
+    /* Get dimensions */
+    int ndim = PyArray_NDIM(r_array);
+    if (ndim != 2) {
+        Py_DECREF(r_array);
+        PyErr_SetString(PyExc_ValueError, "R must be a 2D array");
+        return NULL;
+    }
+
+    npy_intp *r_dims = PyArray_DIMS(r_array);
+    i32 ldr = (i32)r_dims[0];
+    i32 nr = 2 * (m + l) * nobr;
+
+    /* Validate R size */
+    if (ldr < nr || r_dims[1] < nr) {
+        Py_DECREF(r_array);
+        PyErr_SetString(PyExc_ValueError, "R must be at least 2*(m+l)*nobr x 2*(m+l)*nobr");
+        return NULL;
+    }
+
+    f64 *r_data = (f64*)PyArray_DATA(r_array);
+
+    /* Allocate output singular values */
+    i32 lnobr = l * nobr;
+    npy_intp sv_dims[1] = {lnobr};
+    PyArrayObject *sv_array = (PyArrayObject*)PyArray_SimpleNew(1, sv_dims, NPY_DOUBLE);
+    if (sv_array == NULL) {
+        Py_DECREF(r_array);
+        return NULL;
+    }
+    f64 *sv = (f64*)PyArray_DATA(sv_array);
+
+    /* Allocate workspace */
+    i32 lmnobr = lnobr + m * nobr;
+    i32 ldwork;
+    bool moesp = (meth == 'M' || meth == 'm');
+    bool jobdm = (jobd == 'M' || jobd == 'm');
+
+    if (moesp) {
+        if (jobdm) {
+            i32 t1 = (2 * m - 1) * nobr;
+            if (t1 < 0) t1 = 1;
+            i32 t2 = lmnobr;
+            i32 t3 = 5 * lnobr;
+            ldwork = t1 > t2 ? t1 : t2;
+            ldwork = ldwork > t3 ? ldwork : t3;
+        } else {
+            ldwork = 5 * lnobr;
+        }
+    } else {
+        ldwork = 5 * lmnobr + 1;
+    }
+    ldwork = ldwork > 1 ? ldwork : 1;
+
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    i32 *iwork = (i32*)malloc(lmnobr * sizeof(i32));
+    if (dwork == NULL || iwork == NULL) {
+        free(dwork);
+        free(iwork);
+        Py_DECREF(r_array);
+        Py_DECREF(sv_array);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    /* Call C function */
+    SLC_IB01ND(meth, jobd, nobr, m, l, r_data, ldr, sv, tol,
+               iwork, dwork, ldwork, &iwarn, &info);
+
+    /* Get rcond values for N4SID */
+    f64 rcond1 = 0.0, rcond2 = 0.0;
+    if (!moesp) {
+        rcond1 = dwork[1];
+        rcond2 = dwork[2];
+    }
+
+    free(dwork);
+    free(iwork);
+
+    if (info < 0) {
+        Py_DECREF(r_array);
+        Py_DECREF(sv_array);
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    /* Build result: (r, sv, rcond1, rcond2, iwarn, info) */
+    PyObject *result = Py_BuildValue("OOddii", r_array, sv_array,
+                                      rcond1, rcond2, iwarn, info);
+    Py_DECREF(r_array);
+    Py_DECREF(sv_array);
+    return result;
+}
+
 /* Python wrapper for ib01oy */
 static PyObject* py_ib01oy(PyObject* self, PyObject* args) {
     i32 ns, nmax, n;
@@ -3841,6 +4049,34 @@ static PyMethodDef SlicotMethods[] = {
      "  gtol (float): Gradient tolerance (default eps)\n\n"
      "Returns:\n"
      "  (x, nfev, njev, fnorm, iwarn, info): Solution, evaluations, norm, status\n"},
+
+    {"ib01nd", (PyCFunction)py_ib01nd, METH_VARARGS,
+     "SVD system order via block Hankel.\n\n"
+     "Computes SVD of triangular factor R from QR factorization of\n"
+     "concatenated block Hankel matrices to determine system order.\n\n"
+     "Parameters:\n"
+     "  meth (str): 'M' for MOESP, 'N' for N4SID\n"
+     "  jobd (str): 'M' or 'N' for MOESP BD computation mode\n"
+     "  nobr (int): Number of block rows (nobr > 0)\n"
+     "  m (int): Number of system inputs (m >= 0)\n"
+     "  l (int): Number of system outputs (l > 0)\n"
+     "  r (ndarray): Upper triangular R matrix, dimension 2*(m+l)*nobr x 2*(m+l)*nobr\n"
+     "  tol (float): Tolerance for rank estimation (N4SID only)\n\n"
+     "Returns:\n"
+     "  (r, sv, rcond1, rcond2, iwarn, info): Processed R, singular values, rconds, status\n"},
+
+    {"ib01od", (PyCFunction)py_ib01od, METH_VARARGS,
+     "Estimate system order from Hankel singular values.\n\n"
+     "Estimates system order based on singular values of triangular factor\n"
+     "from QR factorization of concatenated block Hankel matrices.\n\n"
+     "Parameters:\n"
+     "  ctrl (str): 'C' for user confirmation, 'N' for no confirmation\n"
+     "  nobr (int): Number of block rows (nobr > 0)\n"
+     "  l (int): Number of system outputs (l > 0)\n"
+     "  sv (ndarray): Singular values, dimension (l*nobr), descending order\n"
+     "  tol (float): Tolerance (>=0: threshold, 0: default, <0: gap-based)\n\n"
+     "Returns:\n"
+     "  (n, iwarn, info): Estimated order, warning, exit code\n"},
 
     {"ib01oy", (PyCFunction)py_ib01oy, METH_VARARGS,
      "User's confirmation of the system order.\n\n"

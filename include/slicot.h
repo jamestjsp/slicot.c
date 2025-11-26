@@ -1612,6 +1612,86 @@ i32 mb03ud(char jobq, char jobp, i32 n, f64 *a, i32 lda, f64 *q, i32 ldq,
 i32 SLC_IB01OY(i32 ns, i32 nmax, i32 *n, const f64 *sv, i32 *info);
 
 /**
+ * @brief Estimate system order from Hankel singular values.
+ *
+ * Estimates the system order based on singular values of the relevant part
+ * of the triangular factor from QR factorization of concatenated block
+ * Hankel matrices.
+ *
+ * @param[in] ctrl Control mode:
+ *                 'C' = call IB01OY for user confirmation
+ *                 'N' = no confirmation
+ * @param[in] nobr Number of block rows s in Hankel matrices (nobr > 0)
+ * @param[in] l Number of system outputs (l > 0)
+ * @param[in] sv Singular values array, dimension (l*nobr), descending order
+ * @param[out] n Estimated system order
+ * @param[in] tol Tolerance for order estimation:
+ *                tol >= 0: n = index of last SV >= tol
+ *                tol = 0: default tol = nobr * eps * sv[0]
+ *                tol < 0: n = index of largest logarithmic gap
+ * @param[out] iwarn Warning indicator:
+ *                   0 = no warning
+ *                   3 = all SVs zero, n = 0
+ * @param[out] info Exit code:
+ *                  = 0: success
+ *                  < 0: if info = -i, parameter i had illegal value
+ * @return info value
+ */
+i32 SLC_IB01OD(char ctrl, i32 nobr, i32 l, const f64 *sv, i32 *n,
+               f64 tol, i32 *iwarn, i32 *info);
+
+/**
+ * @brief SVD system order via block Hankel.
+ *
+ * Computes singular value decomposition (SVD) of triangular factor R from
+ * QR factorization of concatenated block Hankel matrices to determine system
+ * order. Related preliminary calculations for computing system matrices are
+ * also performed.
+ *
+ * @param[in] meth Subspace identification method:
+ *                 'M' = MOESP with past inputs/outputs
+ *                 'N' = N4SID algorithm
+ * @param[in] jobd MOESP BD computation mode (not relevant for N4SID):
+ *                 'M' = compute B,D using MOESP approach
+ *                 'N' = don't compute B,D using MOESP
+ * @param[in] nobr Number of block rows s (nobr > 0)
+ * @param[in] m Number of system inputs (m >= 0)
+ * @param[in] l Number of system outputs (l > 0)
+ * @param[in,out] r DOUBLE PRECISION array, dimension (ldr, 2*(m+l)*nobr)
+ *                  In: upper triangular factor R from QR factorization
+ *                  Out: processed matrix S for subsequent routines
+ * @param[in] ldr Leading dimension of R
+ *                MOESP/JOBD='M': ldr >= max(2*(m+l)*nobr, 3*m*nobr)
+ *                Otherwise: ldr >= 2*(m+l)*nobr
+ * @param[out] sv Singular values array, dimension (l*nobr), descending
+ * @param[in] tol Tolerance for rank estimation (N4SID only):
+ *                tol > 0: lower bound for reciprocal condition number
+ *                tol <= 0: use default m*n*eps
+ * @param[out] iwork INTEGER array, dimension ((m+l)*nobr)
+ *                   Not referenced for METH='M'
+ * @param[out] dwork DOUBLE PRECISION array, dimension (ldwork)
+ *                   dwork[0] = optimal ldwork
+ *                   For N4SID: dwork[1], dwork[2] = reciprocal cond numbers
+ * @param[in] ldwork Length of dwork:
+ *                   MOESP/JOBD='M': max((2*m-1)*nobr, (m+l)*nobr, 5*l*nobr)
+ *                   MOESP/JOBD='N': 5*l*nobr
+ *                   N4SID: 5*(m+l)*nobr+1
+ * @param[out] iwarn Warning indicator:
+ *                   0 = no warning
+ *                   4 = U_f rank-deficient (N4SID)
+ *                   5 = r_1 rank-deficient (N4SID)
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  -i = parameter i had illegal value
+ *                  2 = SVD did not converge
+ * @return info value
+ */
+i32 SLC_IB01ND(char meth, char jobd, i32 nobr, i32 m, i32 l,
+               f64 *r, i32 ldr, f64 *sv, f64 tol,
+               i32 *iwork, f64 *dwork, i32 ldwork,
+               i32 *iwarn, i32 *info);
+
+/**
  * @brief Block symmetric rank-k update (BLAS 3 version of MB01RX).
  *
  * Computes triangular part of matrix formula:

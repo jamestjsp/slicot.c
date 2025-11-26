@@ -328,6 +328,7 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DORGBR   SLC_FC_FUNC(dorgbr, DORGBR)
 #define SLC_DBDSQR   SLC_FC_FUNC(dbdsqr, DBDSQR)
 #define SLC_DLANTR   SLC_FC_FUNC(dlantr, DLANTR)
+#define SLC_DTRCON   SLC_FC_FUNC(dtrcon, DTRCON)
 #define SLC_ILAENV   SLC_FC_FUNC(ilaenv, ILAENV)
 
 #ifdef __cplusplus
