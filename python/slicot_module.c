@@ -62,6 +62,7 @@ static PyObject* py_mb01qd(PyObject* self, PyObject* args) {
         Py_DECREF(nrows_array);
     }
 
+    PyArray_ResolveWritebackIfCopy(a_array);
     PyObject *result = Py_BuildValue("Oi", a_array, info);
     Py_DECREF(a_array);
     return result;
@@ -128,6 +129,7 @@ static PyObject* py_mb01rx(PyObject* self, PyObject* args) {
     Py_DECREF(a_array);
     Py_DECREF(b_array);
 
+    PyArray_ResolveWritebackIfCopy(r_array);
     PyObject *result = Py_BuildValue("Oi", r_array, info);
     Py_DECREF(r_array);
     return result;
@@ -191,11 +193,13 @@ static PyObject* py_mb01rb(PyObject* self, PyObject* args) {
     Py_DECREF(b_array);
 
     if (info < 0) {
+        PyArray_DiscardWritebackIfCopy(r_array);
         Py_DECREF(r_array);
         PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
         return NULL;
     }
 
+    PyArray_ResolveWritebackIfCopy(r_array);
     PyObject *result = Py_BuildValue("Oi", r_array, info);
     Py_DECREF(r_array);
     return result;
@@ -249,11 +253,13 @@ static PyObject* py_mb01td(PyObject* self, PyObject* args) {
     Py_DECREF(a_array);
 
     if (info < 0) {
+        PyArray_DiscardWritebackIfCopy(b_array);
         Py_DECREF(b_array);
         PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
         return NULL;
     }
 
+    PyArray_ResolveWritebackIfCopy(b_array);
     PyObject *result = Py_BuildValue("Oi", b_array, info);
     Py_DECREF(b_array);
     return result;
@@ -351,6 +357,10 @@ static PyObject* py_mb04od(PyObject* self, PyObject* args) {
 
     free(dwork);
 
+    PyArray_ResolveWritebackIfCopy(r_array);
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    PyArray_ResolveWritebackIfCopy(c_array);
     PyObject *result = Py_BuildValue("OOOOO", r_array, a_array, b_array, c_array, tau_array);
     Py_DECREF(r_array);
     Py_DECREF(a_array);
@@ -878,6 +888,7 @@ static PyObject* py_md03bd(PyObject* self, PyObject* args, PyObject* kwargs) {
     free(iwork);
     free(dwork);
 
+    PyArray_ResolveWritebackIfCopy(x_array);
     PyObject *result = Py_BuildValue("(Oiidii)", x_out, nfev, njev, fnorm, iwarn, info);
     Py_DECREF(x_array);
     Py_DECREF(x_out);
