@@ -272,6 +272,7 @@ def test_mb02ud_factored_input():
 
     r = np.triu(np.random.randn(l, l)).astype(float, order='F')
     r = r + 3.0 * np.eye(l, order='F')
+    r_factored = r.copy()
     b = np.random.randn(m, n).astype(float, order='F')
 
     from slicot import mb02ud
@@ -280,14 +281,14 @@ def test_mb02ud_factored_input():
     rcond = 1e-12
 
     x1, q1, sv1, rank1, rp1, info1 = mb02ud(
-        'N', 'L', 'N', 'N', m, n, alpha, rcond, r.copy(), b.copy()
+        'N', 'L', 'N', 'N', m, n, alpha, rcond, r_factored, b.copy()
     )
     assert info1 == 0
 
     b2 = np.random.randn(m, n).astype(float, order='F')
 
     x2, q2, sv2, rank2, rp2, info2 = mb02ud(
-        'F', 'L', 'N', 'N', m, n, alpha, rcond, x1.copy(), b2.copy(),
+        'F', 'L', 'N', 'N', m, n, alpha, rcond, r_factored.copy(), b2.copy(),
         q=q1.copy(), sv=sv1.copy(), rank=rank1
     )
     assert info2 == 0
