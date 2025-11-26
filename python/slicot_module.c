@@ -8,6 +8,7 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <stdbool.h>
+#include <ctype.h>
 #include "slicot.h"
 
 /* Python wrapper for mb01qd */
@@ -3526,6 +3527,397 @@ static PyObject* py_ib01nd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for sb02mt */
+static PyObject* py_sb02mt(PyObject* self, PyObject* args) {
+    const char *jobg_str, *jobl_str, *fact_str, *uplo_str;
+    i32 n, m;
+    PyObject *a_obj, *b_obj, *q_obj, *r_obj, *l_obj, *g_obj;
+    PyArrayObject *a_array = NULL, *b_array = NULL, *q_array = NULL;
+    PyArrayObject *r_array = NULL, *l_array = NULL, *g_array = NULL;
+    i32 oufact, info;
+
+    if (!PyArg_ParseTuple(args, "ssssiiOOOOOO",
+                          &jobg_str, &jobl_str, &fact_str, &uplo_str,
+                          &n, &m, &a_obj, &b_obj, &q_obj, &r_obj, &l_obj, &g_obj)) {
+        return NULL;
+    }
+
+    char jobg = toupper((unsigned char)jobg_str[0]);
+    char jobl = toupper((unsigned char)jobl_str[0]);
+    char fact = toupper((unsigned char)fact_str[0]);
+    char uplo = toupper((unsigned char)uplo_str[0]);
+
+    bool ljobg = (jobg == 'G');
+    bool ljobl = (jobl == 'N');
+    bool lfactc = (fact == 'C');
+    bool lfactu = (fact == 'U');
+    bool lnfact = (!lfactc && !lfactu);
+
+    if (!ljobg && jobg != 'N') {
+        PyErr_SetString(PyExc_ValueError, "Parameter 1 (JOBG) must be 'G' or 'N'");
+        return NULL;
+    }
+    if (!ljobl && jobl != 'Z') {
+        PyErr_SetString(PyExc_ValueError, "Parameter 2 (JOBL) must be 'Z' or 'N'");
+        return NULL;
+    }
+    if (lnfact && fact != 'N') {
+        PyErr_SetString(PyExc_ValueError, "Parameter 3 (FACT) must be 'N', 'C', or 'U'");
+        return NULL;
+    }
+    if (uplo != 'U' && uplo != 'L') {
+        PyErr_SetString(PyExc_ValueError, "Parameter 4 (UPLO) must be 'U' or 'L'");
+        return NULL;
+    }
+    if (n < 0) {
+        PyErr_SetString(PyExc_ValueError, "n must be non-negative");
+        return NULL;
+    }
+    if (m < 0) {
+        PyErr_SetString(PyExc_ValueError, "m must be non-negative");
+        return NULL;
+    }
+
+    i32 lda = 1, ldb = 1, ldq = 1, ldr = 1, ldl = 1, ldg = 1;
+    f64 *a_data = NULL, *b_data = NULL, *q_data = NULL;
+    f64 *r_data = NULL, *l_data = NULL, *g_data = NULL;
+
+    if (ljobl && a_obj != Py_None) {
+        a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                                   NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+        if (!a_array) goto cleanup;
+        lda = (i32)PyArray_DIM(a_array, 0);
+        a_data = (f64*)PyArray_DATA(a_array);
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!b_array) goto cleanup;
+    ldb = (i32)PyArray_DIM(b_array, 0);
+    b_data = (f64*)PyArray_DATA(b_array);
+
+    if (ljobl && q_obj != Py_None) {
+        q_array = (PyArrayObject*)PyArray_FROM_OTF(q_obj, NPY_DOUBLE,
+                                                   NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+        if (!q_array) goto cleanup;
+        ldq = (i32)PyArray_DIM(q_array, 0);
+        q_data = (f64*)PyArray_DATA(q_array);
+    }
+
+    r_array = (PyArrayObject*)PyArray_FROM_OTF(r_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!r_array) goto cleanup;
+    ldr = (i32)PyArray_DIM(r_array, 0);
+    r_data = (f64*)PyArray_DATA(r_array);
+
+    if (ljobl && l_obj != Py_None) {
+        l_array = (PyArrayObject*)PyArray_FROM_OTF(l_obj, NPY_DOUBLE,
+                                                   NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+        if (!l_array) goto cleanup;
+        ldl = (i32)PyArray_DIM(l_array, 0);
+        l_data = (f64*)PyArray_DATA(l_array);
+    }
+
+    if (ljobg && g_obj != Py_None) {
+        g_array = (PyArrayObject*)PyArray_FROM_OTF(g_obj, NPY_DOUBLE,
+                                                   NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+        if (!g_array) goto cleanup;
+        ldg = (i32)PyArray_DIM(g_array, 0);
+        g_data = (f64*)PyArray_DATA(g_array);
+    }
+
+    i32 ldwork;
+    if (lfactc) {
+        ldwork = 1;
+    } else if (lfactu) {
+        ldwork = (ljobg || ljobl) ? (n * m > 1 ? n * m : 1) : 1;
+    } else {
+        if (ljobg || ljobl) {
+            i32 nm = n * m;
+            i32 tmp = 3 * m > nm ? 3 * m : nm;
+            ldwork = tmp > 2 ? tmp : 2;
+        } else {
+            ldwork = 3 * m > 2 ? 3 * m : 2;
+        }
+    }
+
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    i32 *iwork = (i32*)malloc((m > 0 ? m : 1) * sizeof(i32));
+    i32 *ipiv = (i32*)malloc((m > 0 ? m : 1) * sizeof(i32));
+
+    if (!dwork || !iwork || !ipiv) {
+        free(dwork); free(iwork); free(ipiv);
+        PyErr_NoMemory();
+        goto cleanup;
+    }
+
+    sb02mt(jobg_str, jobl_str, fact_str, uplo_str,
+           n, m, a_data, lda, b_data, ldb, q_data, ldq,
+           r_data, ldr, l_data, ldl, ipiv, &oufact, g_data, ldg,
+           iwork, dwork, ldwork, &info);
+
+    free(dwork);
+    free(iwork);
+    free(ipiv);
+
+    if (a_array) PyArray_ResolveWritebackIfCopy(a_array);
+    if (b_array) PyArray_ResolveWritebackIfCopy(b_array);
+    if (q_array) PyArray_ResolveWritebackIfCopy(q_array);
+    if (r_array) PyArray_ResolveWritebackIfCopy(r_array);
+    if (l_array) PyArray_ResolveWritebackIfCopy(l_array);
+    if (g_array) PyArray_ResolveWritebackIfCopy(g_array);
+
+    if (info < 0) {
+        Py_XDECREF(a_array);
+        Py_XDECREF(b_array);
+        Py_XDECREF(q_array);
+        Py_XDECREF(r_array);
+        Py_XDECREF(l_array);
+        Py_XDECREF(g_array);
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    PyObject *result;
+    if (ljobg && !ljobl) {
+        result = Py_BuildValue("Oii", g_array, oufact, info);
+    } else if (!ljobg && ljobl) {
+        result = Py_BuildValue("OOOOii", a_array, b_array, q_array, l_array, oufact, info);
+    } else if (ljobg && ljobl) {
+        result = Py_BuildValue("OOOOOii", a_array, b_array, q_array, l_array, g_array, oufact, info);
+    } else {
+        result = Py_BuildValue("ii", oufact, info);
+    }
+
+    Py_XDECREF(a_array);
+    Py_XDECREF(b_array);
+    Py_XDECREF(q_array);
+    Py_XDECREF(r_array);
+    Py_XDECREF(l_array);
+    Py_XDECREF(g_array);
+
+    return result;
+
+cleanup:
+    Py_XDECREF(a_array);
+    Py_XDECREF(b_array);
+    Py_XDECREF(q_array);
+    Py_XDECREF(r_array);
+    Py_XDECREF(l_array);
+    Py_XDECREF(g_array);
+    return NULL;
+}
+
+/* Python wrapper for sb02nd */
+static PyObject* py_sb02nd(PyObject* self, PyObject* args) {
+    const char *dico_str, *fact_str, *uplo_str, *jobl_str;
+    i32 n, m, p;
+    f64 rnorm;
+    PyObject *a_obj, *b_obj, *r_obj, *ipiv_obj, *l_obj, *x_obj;
+    PyArrayObject *a_array = NULL, *b_array = NULL, *r_array = NULL;
+    PyArrayObject *ipiv_array = NULL, *l_array = NULL, *x_array = NULL;
+    PyArrayObject *f_array = NULL;
+    i32 oufact[2] = {0, 0};
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "ssssiiiOOOOOOd",
+                          &dico_str, &fact_str, &uplo_str, &jobl_str,
+                          &n, &m, &p, &a_obj, &b_obj, &r_obj,
+                          &ipiv_obj, &l_obj, &x_obj, &rnorm)) {
+        return NULL;
+    }
+
+    char dico = toupper((unsigned char)dico_str[0]);
+    char fact = toupper((unsigned char)fact_str[0]);
+    char uplo = toupper((unsigned char)uplo_str[0]);
+    char jobl = toupper((unsigned char)jobl_str[0]);
+
+    bool discr = (dico == 'D');
+    bool lfactc = (fact == 'C');
+    bool lfactd = (fact == 'D');
+    bool lfactu = (fact == 'U');
+    bool withl = (jobl == 'N');
+    bool lfacta = lfactc || lfactd || lfactu;
+    bool lnfact = !lfacta;
+
+    if (!discr && dico != 'C') {
+        PyErr_SetString(PyExc_ValueError, "DICO must be 'D' or 'C'");
+        return NULL;
+    }
+    if ((lnfact && fact != 'N') || (discr && lfactu)) {
+        PyErr_SetString(PyExc_ValueError, "FACT must be 'N', 'D', 'C', or 'U' (U not for discrete)");
+        return NULL;
+    }
+    if (uplo != 'U' && uplo != 'L') {
+        PyErr_SetString(PyExc_ValueError, "UPLO must be 'U' or 'L'");
+        return NULL;
+    }
+    if (!withl && jobl != 'Z') {
+        PyErr_SetString(PyExc_ValueError, "JOBL must be 'Z' or 'N'");
+        return NULL;
+    }
+    if (n < 0) {
+        PyErr_SetString(PyExc_ValueError, "n must be non-negative");
+        return NULL;
+    }
+    if (m < 0) {
+        PyErr_SetString(PyExc_ValueError, "m must be non-negative");
+        return NULL;
+    }
+
+    i32 lda = 1, ldb = 1, ldr = 1, ldl = 1, ldx = 1, ldf = 1;
+    f64 *a_data = NULL, *b_data = NULL, *r_data = NULL;
+    f64 *l_data = NULL, *x_data = NULL, *f_data = NULL;
+    i32 *ipiv_data = NULL;
+
+    if (discr && a_obj != Py_None) {
+        a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                                   NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+        if (!a_array) goto cleanup;
+        lda = (i32)PyArray_DIM(a_array, 0);
+        a_data = (f64*)PyArray_DATA(a_array);
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!b_array) goto cleanup;
+    ldb = (i32)PyArray_DIM(b_array, 0);
+    b_data = (f64*)PyArray_DATA(b_array);
+
+    r_array = (PyArrayObject*)PyArray_FROM_OTF(r_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!r_array) goto cleanup;
+    ldr = (i32)PyArray_DIM(r_array, 0);
+    r_data = (f64*)PyArray_DATA(r_array);
+
+    ipiv_array = (PyArrayObject*)PyArray_FROM_OTF(ipiv_obj, NPY_INT32,
+                                                  NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!ipiv_array) goto cleanup;
+    ipiv_data = (i32*)PyArray_DATA(ipiv_array);
+
+    if (withl && l_obj != Py_None) {
+        l_array = (PyArrayObject*)PyArray_FROM_OTF(l_obj, NPY_DOUBLE,
+                                                   NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+        if (!l_array) goto cleanup;
+        ldl = (i32)PyArray_DIM(l_array, 0);
+        l_data = (f64*)PyArray_DATA(l_array);
+    }
+
+    x_array = (PyArrayObject*)PyArray_FROM_OTF(x_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!x_array) goto cleanup;
+    ldx = (i32)PyArray_DIM(x_array, 0);
+    x_data = (f64*)PyArray_DATA(x_array);
+
+    ldf = m > 1 ? m : 1;
+    npy_intp f_dims[2] = {ldf, n};
+    npy_intp f_strides[2] = {sizeof(f64), ldf * sizeof(f64)};
+    f_data = (f64*)malloc(ldf * n * sizeof(f64));
+    if (!f_data) {
+        PyErr_NoMemory();
+        goto cleanup;
+    }
+    f_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, f_dims, NPY_DOUBLE,
+                                          f_strides, f_data, 0, NPY_ARRAY_FARRAY, NULL);
+    if (!f_array) {
+        free(f_data);
+        goto cleanup;
+    }
+    PyArray_ENABLEFLAGS(f_array, NPY_ARRAY_OWNDATA);
+
+    i32 ldwork;
+    if (discr) {
+        if (lnfact) {
+            i32 tmp = 3 * m > n ? 3 * m : n;
+            ldwork = tmp > 2 ? tmp : 2;
+        } else {
+            i32 tmp1 = n + 3 * m + 2;
+            i32 tmp2 = 4 * n + 1;
+            ldwork = tmp1 > tmp2 ? tmp1 : tmp2;
+        }
+    } else {
+        if (lfactu) {
+            ldwork = 2 * m > 2 ? 2 * m : 2;
+        } else {
+            ldwork = 3 * m > 2 ? 3 * m : 2;
+        }
+    }
+    i32 nm = n * m;
+    ldwork = ldwork > nm ? ldwork : nm;
+
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (!dwork) {
+        PyErr_NoMemory();
+        goto cleanup;
+    }
+
+    sb02nd(dico_str, fact_str, uplo_str, jobl_str,
+           n, m, p, a_data, lda, b_data, ldb, r_data, ldr,
+           ipiv_data, l_data, ldl, x_data, ldx, rnorm,
+           f_data, ldf, oufact, dwork, ldwork, &info);
+
+    f64 rcond = dwork[1];
+    free(dwork);
+
+    if (a_array) PyArray_ResolveWritebackIfCopy(a_array);
+    if (b_array) PyArray_ResolveWritebackIfCopy(b_array);
+    if (r_array) PyArray_ResolveWritebackIfCopy(r_array);
+    if (ipiv_array) PyArray_ResolveWritebackIfCopy(ipiv_array);
+    if (l_array) PyArray_ResolveWritebackIfCopy(l_array);
+    if (x_array) PyArray_ResolveWritebackIfCopy(x_array);
+
+    if (info < 0) {
+        Py_XDECREF(a_array);
+        Py_XDECREF(b_array);
+        Py_XDECREF(r_array);
+        Py_XDECREF(ipiv_array);
+        Py_XDECREF(l_array);
+        Py_XDECREF(x_array);
+        Py_XDECREF(f_array);
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    npy_intp oufact_dims[1] = {2};
+    PyArrayObject *oufact_array = (PyArrayObject*)PyArray_SimpleNew(1, oufact_dims, NPY_INT32);
+    if (!oufact_array) {
+        Py_XDECREF(a_array);
+        Py_XDECREF(b_array);
+        Py_XDECREF(r_array);
+        Py_XDECREF(ipiv_array);
+        Py_XDECREF(l_array);
+        Py_XDECREF(x_array);
+        Py_XDECREF(f_array);
+        return NULL;
+    }
+    ((i32*)PyArray_DATA(oufact_array))[0] = oufact[0];
+    ((i32*)PyArray_DATA(oufact_array))[1] = oufact[1];
+
+    PyObject *result = Py_BuildValue("OOOOdi", f_array, r_array, x_array,
+                                     oufact_array, rcond, info);
+
+    Py_XDECREF(a_array);
+    Py_XDECREF(b_array);
+    Py_XDECREF(r_array);
+    Py_XDECREF(ipiv_array);
+    Py_XDECREF(l_array);
+    Py_XDECREF(x_array);
+    Py_XDECREF(f_array);
+    Py_XDECREF(oufact_array);
+
+    return result;
+
+cleanup:
+    Py_XDECREF(a_array);
+    Py_XDECREF(b_array);
+    Py_XDECREF(r_array);
+    Py_XDECREF(ipiv_array);
+    Py_XDECREF(l_array);
+    Py_XDECREF(x_array);
+    Py_XDECREF(f_array);
+    return NULL;
+}
+
 /* Python wrapper for ib01oy */
 static PyObject* py_ib01oy(PyObject* self, PyObject* args) {
     i32 ns, nmax, n;
@@ -4088,6 +4480,60 @@ static PyMethodDef SlicotMethods[] = {
      "  sv (ndarray): Singular values, dimension (ns), descending order\n\n"
      "Returns:\n"
      "  (n, info): Validated order, exit code\n"},
+
+    {"sb02mt", (PyCFunction)py_sb02mt, METH_VARARGS,
+     "Riccati preprocessing - convert coupling weight problems to standard form.\n\n"
+     "Computes:\n"
+     "  G = B*R^(-1)*B'\n"
+     "  A_bar = A - B*R^(-1)*L'\n"
+     "  Q_bar = Q - L*R^(-1)*L'\n\n"
+     "Parameters:\n"
+     "  jobg (str): 'G' to compute G, 'N' to skip\n"
+     "  jobl (str): 'Z' if L is zero, 'N' if L is nonzero\n"
+     "  fact (str): 'N' R unfactored, 'C' Cholesky, 'U' UdU'/LdL'\n"
+     "  uplo (str): 'U' upper triangle, 'L' lower triangle\n"
+     "  n (int): Order of A, Q, G (n >= 0)\n"
+     "  m (int): Order of R (m >= 0)\n"
+     "  a (ndarray or None): Matrix A (n x n, F-order) if jobl='N'\n"
+     "  b (ndarray): Matrix B (n x m, F-order)\n"
+     "  q (ndarray or None): Matrix Q (n x n, F-order) if jobl='N'\n"
+     "  r (ndarray): Matrix R (m x m, F-order)\n"
+     "  l (ndarray or None): Matrix L (n x m, F-order) if jobl='N'\n"
+     "  g (ndarray or None): Output G (n x n, F-order) if jobg='G'\n\n"
+     "Returns:\n"
+     "  Variable outputs based on jobg and jobl:\n"
+     "  - If jobg='G', jobl='Z': (g, oufact, info)\n"
+     "  - If jobg='N', jobl='N': (a, b, q, l, oufact, info)\n"
+     "  - If jobg='G', jobl='N': (a, b, q, l, g, oufact, info)\n"},
+
+    {"sb02nd", (PyCFunction)py_sb02nd, METH_VARARGS,
+     "Optimal state feedback matrix for optimal control problem.\n\n"
+     "Computes:\n"
+     "  F = (R + B'XB)^(-1) (B'XA + L')  [discrete-time]\n"
+     "  F = R^(-1) (B'X + L')            [continuous-time]\n\n"
+     "Parameters:\n"
+     "  dico (str): 'D' for discrete-time, 'C' for continuous-time\n"
+     "  fact (str): 'N' R unfactored, 'D' R=D'D, 'C' Cholesky, 'U' UdU'/LdL' (continuous only)\n"
+     "  uplo (str): 'U' upper triangle, 'L' lower triangle\n"
+     "  jobl (str): 'Z' if L is zero, 'N' if L is nonzero\n"
+     "  n (int): Order of A, X (n >= 0)\n"
+     "  m (int): Number of inputs (m >= 0)\n"
+     "  p (int): Rows of D if fact='D' (p >= m for continuous)\n"
+     "  rnorm (float): 1-norm of R (required for fact='U' only)\n"
+     "  a (ndarray): State matrix A (n x n, F-order), discrete only\n"
+     "  b (ndarray): Input matrix B (n x m, F-order)\n"
+     "  r (ndarray): Weighting matrix R (m x m or p x m, F-order)\n"
+     "  ipiv (ndarray): Pivot indices (m,), input for fact='U'\n"
+     "  l (ndarray): Cross weighting L (n x m, F-order) if jobl='N'\n"
+     "  x (ndarray): Riccati solution X (n x n, F-order)\n\n"
+     "Returns:\n"
+     "  (f, r_out, x_out, oufact, rcond, info):\n"
+     "  - f: Optimal feedback matrix F (m x n)\n"
+     "  - r_out: Factored R or R+B'XB\n"
+     "  - x_out: Possibly modified X (for discrete with factored R)\n"
+     "  - oufact: Array [fact_type, x_fact_type]\n"
+     "  - rcond: Reciprocal condition number\n"
+     "  - info: Exit code (0=success, m+1=singular)\n"},
 
     {NULL, NULL, 0, NULL}
 };

@@ -103,6 +103,11 @@ void SLC_FC_FUNC(dtrmm, DTRMM)(const char* side, const char* uplo, const char* t
                                 const f64* alpha, const f64* a, const int* lda,
                                 f64* b, const int* ldb);
 
+void SLC_FC_FUNC(dtrsm, DTRSM)(const char* side, const char* uplo, const char* transa,
+                                const char* diag, const int* m, const int* n,
+                                const f64* alpha, const f64* a, const int* lda,
+                                f64* b, const int* ldb);
+
 void SLC_FC_FUNC(dgemm, DGEMM)(const char* transa, const char* transb,
                                 const int* m, const int* n, const int* k,
                                 const f64* alpha, const f64* a, const int* lda,
@@ -119,6 +124,12 @@ void SLC_FC_FUNC(dsyr2k, DSYR2K)(const char* uplo, const char* trans,
                                   const f64* a, const int* lda, const f64* b,
                                   const int* ldb, const f64* beta, f64* c,
                                   const int* ldc);
+
+void SLC_FC_FUNC(dsymm, DSYMM)(const char* side, const char* uplo,
+                                const int* m, const int* n, const f64* alpha,
+                                const f64* a, const int* lda, const f64* b,
+                                const int* ldb, const f64* beta, f64* c,
+                                const int* ldc);
 
 /* LAPACK - Utilities */
 f64 SLC_FC_FUNC(dlamch, DLAMCH)(const char* cmach);
@@ -137,6 +148,37 @@ void SLC_FC_FUNC(dlaset, DLASET)(const char* uplo, const int* m, const int* n,
 /* LAPACK - Factorizations */
 void SLC_FC_FUNC(dgetrf, DGETRF)(const int* m, const int* n, f64* a,
                                   const int* lda, int* ipiv, int* info);
+
+void SLC_FC_FUNC(dpotrf, DPOTRF)(const char* uplo, const int* n, f64* a,
+                                  const int* lda, int* info);
+
+void SLC_FC_FUNC(dsytrf, DSYTRF)(const char* uplo, const int* n, f64* a,
+                                  const int* lda, int* ipiv, f64* work,
+                                  const int* lwork, int* info);
+
+void SLC_FC_FUNC(dpocon, DPOCON)(const char* uplo, const int* n, const f64* a,
+                                  const int* lda, const f64* anorm, f64* rcond,
+                                  f64* work, int* iwork, int* info);
+
+void SLC_FC_FUNC(dsycon, DSYCON)(const char* uplo, const int* n, const f64* a,
+                                  const int* lda, const int* ipiv, const f64* anorm,
+                                  f64* rcond, f64* work, int* iwork, int* info);
+
+void SLC_FC_FUNC(dsytrs, DSYTRS)(const char* uplo, const int* n, const int* nrhs,
+                                  const f64* a, const int* lda, const int* ipiv,
+                                  f64* b, const int* ldb, int* info);
+
+void SLC_FC_FUNC(dpotrs, DPOTRS)(const char* uplo, const int* n, const int* nrhs,
+                                  const f64* a, const int* lda,
+                                  f64* b, const int* ldb, int* info);
+
+void SLC_FC_FUNC(dtrcon, DTRCON)(const char* norm, const char* uplo,
+                                  const char* diag, const int* n, const f64* a,
+                                  const int* lda, f64* rcond, f64* work,
+                                  int* iwork, int* info);
+
+f64 SLC_FC_FUNC(dlansy, DLANSY)(const char* norm, const char* uplo, const int* n,
+                                 const f64* a, const int* lda, f64* work);
 
 void SLC_FC_FUNC(dgeqrf, DGEQRF)(const int* m, const int* n, f64* a,
                                   const int* lda, f64* tau, f64* work,
@@ -238,6 +280,10 @@ void SLC_FC_FUNC(dsyevx, DSYEVX)(const char* jobz, const char* range, const char
                                   const int* lwork, int* iwork, int* ifail,
                                   int* info);
 
+void SLC_FC_FUNC(dsyev, DSYEV)(const char* jobz, const char* uplo, const int* n,
+                                f64* a, const int* lda, f64* w, f64* work,
+                                const int* lwork, int* info);
+
 void SLC_FC_FUNC(dgges, DGGES)(const char* jobvsl, const char* jobvsr,
                                 const char* sort, int (*selctg)(),
                                 const int* n, f64* a, const int* lda,
@@ -288,15 +334,23 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DTRSV    SLC_FC_FUNC(dtrsv, DTRSV)
 #define SLC_DGER     SLC_FC_FUNC(dger, DGER)
 #define SLC_DTRMM    SLC_FC_FUNC(dtrmm, DTRMM)
+#define SLC_DTRSM    SLC_FC_FUNC(dtrsm, DTRSM)
 #define SLC_DGEMM    SLC_FC_FUNC(dgemm, DGEMM)
 #define SLC_DSYRK    SLC_FC_FUNC(dsyrk, DSYRK)
 #define SLC_DSYR2K   SLC_FC_FUNC(dsyr2k, DSYR2K)
+#define SLC_DSYMM    SLC_FC_FUNC(dsymm, DSYMM)
 #define SLC_DLAMCH   SLC_FC_FUNC(dlamch, DLAMCH)
 #define SLC_DLACPY   SLC_FC_FUNC(dlacpy, DLACPY)
 #define SLC_DLAPMT   SLC_FC_FUNC(dlapmt, DLAPMT)
 #define SLC_DLARNV   SLC_FC_FUNC(dlarnv, DLARNV)
 #define SLC_DLASET   SLC_FC_FUNC(dlaset, DLASET)
 #define SLC_DGETRF   SLC_FC_FUNC(dgetrf, DGETRF)
+#define SLC_DPOTRF   SLC_FC_FUNC(dpotrf, DPOTRF)
+#define SLC_DSYTRF   SLC_FC_FUNC(dsytrf, DSYTRF)
+#define SLC_DPOCON   SLC_FC_FUNC(dpocon, DPOCON)
+#define SLC_DSYCON   SLC_FC_FUNC(dsycon, DSYCON)
+#define SLC_DSYTRS   SLC_FC_FUNC(dsytrs, DSYTRS)
+#define SLC_DLANSY   SLC_FC_FUNC(dlansy, DLANSY)
 #define SLC_DGEQRF   SLC_FC_FUNC(dgeqrf, DGEQRF)
 #define SLC_DGEQP3   SLC_FC_FUNC(dgeqp3, DGEQP3)
 #define SLC_DGERQF   SLC_FC_FUNC(dgerqf, DGERQF)
@@ -322,6 +376,7 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DLARTG   SLC_FC_FUNC(dlartg, DLARTG)
 #define SLC_DROT     SLC_FC_FUNC(drot, DROT)
 #define SLC_DSYEVX   SLC_FC_FUNC(dsyevx, DSYEVX)
+#define SLC_DSYEV    SLC_FC_FUNC(dsyev, DSYEV)
 #define SLC_DGGES    SLC_FC_FUNC(dgges, DGGES)
 #define SLC_DGEES    SLC_FC_FUNC(dgees, DGEES)
 #define SLC_DGEBRD   SLC_FC_FUNC(dgebrd, DGEBRD)
@@ -329,6 +384,7 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DBDSQR   SLC_FC_FUNC(dbdsqr, DBDSQR)
 #define SLC_DLANTR   SLC_FC_FUNC(dlantr, DLANTR)
 #define SLC_DTRCON   SLC_FC_FUNC(dtrcon, DTRCON)
+#define SLC_DPOTRS   SLC_FC_FUNC(dpotrs, DPOTRS)
 #define SLC_ILAENV   SLC_FC_FUNC(ilaenv, ILAENV)
 
 #ifdef __cplusplus

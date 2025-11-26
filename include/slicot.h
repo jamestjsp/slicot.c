@@ -1775,6 +1775,157 @@ void mb04od(const char* uplo, const i32 n, const i32 m, const i32 p,
 void mb04oy(const i32* m, const i32* n, const f64* v, const f64* tau,
             f64* c1, const i32* ldc1, f64* c2, const i32* ldc2, f64* dwork);
 
+/**
+ * @brief Riccati preprocessing - convert coupling weight problems to standard form.
+ *
+ * Computes:
+ *   G = B*R^(-1)*B'
+ *   A_bar = A - B*R^(-1)*L'
+ *   Q_bar = Q - L*R^(-1)*L'
+ *
+ * where A, B, Q, R, L, and G are N-by-N, N-by-M, N-by-N, M-by-M,
+ * N-by-M, and N-by-N matrices, respectively, with Q, R and G symmetric.
+ *
+ * @param[in] jobg 'G' to compute G, 'N' to not compute G
+ * @param[in] jobl 'Z' if L is zero, 'N' if L is nonzero
+ * @param[in] fact 'N' R unfactored, 'C' Cholesky factor, 'U' UdU'/LdL' factor
+ * @param[in] uplo 'U' upper triangle stored, 'L' lower triangle stored
+ * @param[in] n Order of A, Q, G; rows of B, L (n >= 0)
+ * @param[in] m Order of R; columns of B, L (m >= 0)
+ * @param[in,out] a N-by-N matrix A (if jobl='N'), dimension (lda,n)
+ *                  On exit: A_bar = A - B*R^(-1)*L'
+ * @param[in] lda Leading dimension of A (lda >= max(1,n) if jobl='N', else >= 1)
+ * @param[in,out] b N-by-M matrix B, dimension (ldb,m)
+ *                  On exit if oufact=1: B*chol(R)^(-1)
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,n))
+ * @param[in,out] q N-by-N symmetric matrix Q (if jobl='N'), dimension (ldq,n)
+ *                  On exit: Q_bar = Q - L*R^(-1)*L'
+ * @param[in] ldq Leading dimension of Q (ldq >= max(1,n) if jobl='N', else >= 1)
+ * @param[in,out] r M-by-M symmetric matrix R, dimension (ldr,m)
+ *                  On exit if oufact=1: Cholesky factor
+ *                  On exit if oufact=2: UdU'/LdL' factors
+ * @param[in] ldr Leading dimension of R (ldr >= max(1,m))
+ * @param[in,out] l N-by-M matrix L (if jobl='N'), dimension (ldl,m)
+ *                  On exit if oufact=1: L*chol(R)^(-1)
+ * @param[in] ldl Leading dimension of L (ldl >= max(1,n) if jobl='N', else >= 1)
+ * @param[in,out] ipiv Pivot indices for UdU'/LdL' (dimension m)
+ * @param[out] oufact 0=no factorization (m=0), 1=Cholesky, 2=UdU'/LdL'
+ * @param[out] g N-by-N matrix G = B*R^(-1)*B' (if jobg='G'), dimension (ldg,n)
+ * @param[in] ldg Leading dimension of G (ldg >= max(1,n) if jobg='G', else >= 1)
+ * @param[out] iwork Integer workspace, dimension (m). Not referenced if fact='C'/'U'.
+ * @param[out] dwork Double workspace, dimension (ldwork)
+ *                   On exit: dwork[0]=optimal ldwork, dwork[1]=rcond (if fact='N')
+ * @param[in] ldwork Workspace size. Required sizes depend on fact, jobg, jobl.
+ * @param[out] info 0=success, <0=invalid param, 1..m=singular d factor, m+1=R singular
+ */
+void sb02mt(
+    const char* jobg,
+    const char* jobl,
+    const char* fact,
+    const char* uplo,
+    const i32 n,
+    const i32 m,
+    f64* a,
+    const i32 lda,
+    f64* b,
+    const i32 ldb,
+    f64* q,
+    const i32 ldq,
+    f64* r,
+    const i32 ldr,
+    f64* l,
+    const i32 ldl,
+    i32* ipiv,
+    i32* oufact,
+    f64* g,
+    const i32 ldg,
+    i32* iwork,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info);
+
+/**
+ * @brief Optimal state feedback matrix for optimal control problem.
+ *
+ * Computes the optimal feedback matrix F for the problem of optimal control:
+ *
+ *   F = (R + B'XB)^(-1) (B'XA + L')   [discrete-time, DICO='D']
+ *   F = R^(-1) (B'X + L')             [continuous-time, DICO='C']
+ *
+ * where A is N-by-N, B is N-by-M, L is N-by-M, R and X are M-by-M and N-by-N
+ * symmetric matrices respectively.
+ *
+ * @param[in] dico 'D' for discrete-time, 'C' for continuous-time
+ * @param[in] fact Specifies how R is given:
+ *                 'N' = R is unfactored
+ *                 'D' = R contains P-by-M matrix D where R = D'D
+ *                 'C' = R contains Cholesky factor
+ *                 'U' = R contains UdU'/LdL' factorization (continuous only)
+ * @param[in] uplo 'U' = upper triangle stored, 'L' = lower triangle
+ * @param[in] jobl 'Z' = L is zero, 'N' = L is nonzero
+ * @param[in] n Order of matrices A and X (n >= 0)
+ * @param[in] m Number of system inputs (m >= 0)
+ * @param[in] p Number of rows of D (fact='D' only, p >= m for continuous)
+ * @param[in] a N-by-N state matrix A (discrete only), dimension (lda,n)
+ * @param[in] lda Leading dimension of A (lda >= max(1,n) if discrete, else >= 1)
+ * @param[in,out] b N-by-M input matrix B, dimension (ldb,m)
+ *                  May be modified on exit for discrete-time with factored R
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,n))
+ * @param[in,out] r M-by-M symmetric input weighting matrix R, dimension (ldr,m)
+ *                  On exit: Cholesky or UdU'/LdL' factorization
+ *                  For fact='D': P-by-M matrix D on entry
+ * @param[in] ldr Leading dimension of R (ldr >= max(1,m), or max(1,m,p) for fact='D')
+ * @param[in,out] ipiv Pivot indices for UdU'/LdL' factorization, dimension (m)
+ *                     Input for fact='U', output for oufact[0]=2
+ * @param[in] l N-by-M cross weighting matrix L (if jobl='N'), dimension (ldl,m)
+ * @param[in] ldl Leading dimension of L (ldl >= max(1,n) if jobl='N', else >= 1)
+ * @param[in,out] x N-by-N Riccati solution matrix X, dimension (ldx,n)
+ *                  May be modified for discrete-time with factored R
+ * @param[in] ldx Leading dimension of X (ldx >= max(1,n))
+ * @param[in] rnorm 1-norm of original R (required for fact='U' only)
+ * @param[out] f M-by-N optimal feedback matrix F, dimension (ldf,n)
+ * @param[in] ldf Leading dimension of F (ldf >= max(1,m))
+ * @param[out] oufact Array of dimension 2:
+ *                    oufact[0]: 1=Cholesky of R/R+B'XB, 2=UdU'/LdL'
+ *                    oufact[1]: 1=Cholesky of X, 2=spectral (discrete+factored only)
+ * @param[out] dwork Workspace, dimension (ldwork)
+ *                   On exit: dwork[0]=optimal ldwork, dwork[1]=rcond
+ *                   If oufact[1]=2: dwork[2..n+1] contain eigenvalues of X
+ * @param[in] ldwork Workspace size:
+ *                   fact='U': >= max(2,2*m)
+ *                   fact!='U', dico='C': >= max(2,3*m)
+ *                   fact='N', dico='D': >= max(2,3*m,n)
+ *                   fact!='N', dico='D': >= max(n+3*m+2,4*n+1)
+ * @param[out] info 0=success, <0=invalid param, 1..m=singular d factor,
+ *                  m+1=R singular, m+2=eigenvalue convergence, m+3=X indefinite
+ */
+void sb02nd(
+    const char* dico,
+    const char* fact,
+    const char* uplo,
+    const char* jobl,
+    const i32 n,
+    const i32 m,
+    const i32 p,
+    f64* a,
+    const i32 lda,
+    f64* b,
+    const i32 ldb,
+    f64* r,
+    const i32 ldr,
+    i32* ipiv,
+    f64* l,
+    const i32 ldl,
+    f64* x,
+    const i32 ldx,
+    const f64 rnorm,
+    f64* f,
+    const i32 ldf,
+    i32* oufact,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info);
+
 #ifdef __cplusplus
 }
 #endif
