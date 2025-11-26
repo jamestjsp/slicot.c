@@ -640,10 +640,10 @@ class TestSB03ODLargerSystems:
         scale = ctypes.c_double(0.0)
         wr = np.zeros(n, dtype=np.float64)
         wi = np.zeros(n, dtype=np.float64)
-        ldwork = max(4*n, n*n)  # n*n needed for mb01uy workspace
+        ldwork = max(1, 4*n)
         dwork = np.zeros(ldwork, dtype=np.float64)
         info = ctypes.c_int(0)
-        
+
         ldb = max(n, m)
         b_padded = np.zeros((ldb, max(m, n)), order='F', dtype=np.float64)
         b_padded[:m, :n] = b
@@ -692,10 +692,10 @@ class TestSB03ODLargerSystems:
         scale = ctypes.c_double(0.0)
         wr = np.zeros(n, dtype=np.float64)
         wi = np.zeros(n, dtype=np.float64)
-        ldwork = max(4*n, n*n)  # n*n needed for mb01uy workspace
+        ldwork = max(1, 4*n)
         dwork = np.zeros(ldwork, dtype=np.float64)
         info = ctypes.c_int(0)
-        
+
         ldb = n
         b_padded = np.zeros((ldb, max(m, n)), order='F', dtype=np.float64)
         b_padded[:n, :m] = b
