@@ -1093,6 +1093,231 @@ static PyObject* py_mb02yd(PyObject* self, PyObject* args) {
     return result;
 }
 
+static PyObject* py_mb02ud(PyObject* self, PyObject* args, PyObject* kwargs) {
+    static char* kwlist[] = {"fact", "side", "trans", "jobp", "m", "n", "alpha", "rcond",
+                             "r", "b", "q", "sv", "rank", "rp", "ldwork", NULL};
+
+    char *fact_str, *side_str, *trans_str, *jobp_str;
+    i32 m_in, n_in, rank_in = 0;
+    f64 alpha, rcond;
+    i32 ldwork = 0;
+    PyObject *r_obj, *b_obj;
+    PyObject *q_obj = NULL, *sv_obj = NULL, *rp_obj = NULL;
+    PyArrayObject *r_array, *b_array;
+    PyArrayObject *q_array = NULL, *sv_array = NULL;
+    i32 info;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ssssiiddOO|OOiOi", kwlist,
+                                     &fact_str, &side_str, &trans_str, &jobp_str,
+                                     &m_in, &n_in, &alpha, &rcond, &r_obj, &b_obj,
+                                     &q_obj, &sv_obj, &rank_in, &rp_obj, &ldwork)) {
+        return NULL;
+    }
+
+    char fact = fact_str[0];
+    char side = side_str[0];
+    char jobp = jobp_str[0];
+
+    bool nfct = (fact == 'N' || fact == 'n');
+    bool left = (side == 'L' || side == 'l');
+    bool pinv = (jobp == 'P' || jobp == 'p');
+    (void)rp_obj;
+
+    i32 l = left ? m_in : n_in;
+
+    if (m_in < 0) {
+        PyErr_SetString(PyExc_ValueError, "m must be non-negative");
+        return NULL;
+    }
+    if (n_in < 0) {
+        PyErr_SetString(PyExc_ValueError, "n must be non-negative");
+        return NULL;
+    }
+
+    r_array = (PyArrayObject*)PyArray_FROM_OTF(r_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (r_array == NULL) return NULL;
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(r_array);
+        return NULL;
+    }
+
+    i32 ldr = (i32)PyArray_DIM(r_array, 0);
+    i32 ldb = (i32)PyArray_DIM(b_array, 0);
+
+    f64* r_data = (f64*)PyArray_DATA(r_array);
+    f64* b_data = (f64*)PyArray_DATA(b_array);
+
+    f64* q_data = NULL;
+    f64* sv_data = NULL;
+    i32 ldq = l > 0 ? l : 1;
+
+    if (nfct) {
+        q_data = (f64*)calloc(l > 0 ? l * l : 1, sizeof(f64));
+        sv_data = (f64*)calloc(l > 0 ? l : 1, sizeof(f64));
+        if ((l > 0 && q_data == NULL) || (l > 0 && sv_data == NULL)) {
+            free(q_data);
+            free(sv_data);
+            Py_DECREF(r_array);
+            Py_DECREF(b_array);
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate Q or SV");
+            return NULL;
+        }
+    } else {
+        if (q_obj == NULL || sv_obj == NULL) {
+            Py_DECREF(r_array);
+            Py_DECREF(b_array);
+            PyErr_SetString(PyExc_ValueError, "q and sv are required when fact='F'");
+            return NULL;
+        }
+        q_array = (PyArrayObject*)PyArray_FROM_OTF(q_obj, NPY_DOUBLE,
+                                                   NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+        if (q_array == NULL) {
+            Py_DECREF(r_array);
+            Py_DECREF(b_array);
+            return NULL;
+        }
+        sv_array = (PyArrayObject*)PyArray_FROM_OTF(sv_obj, NPY_DOUBLE,
+                                                    NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+        if (sv_array == NULL) {
+            Py_DECREF(r_array);
+            Py_DECREF(b_array);
+            Py_DECREF(q_array);
+            return NULL;
+        }
+        q_data = (f64*)PyArray_DATA(q_array);
+        sv_data = (f64*)PyArray_DATA(sv_array);
+        ldq = (i32)PyArray_DIM(q_array, 0);
+    }
+
+    f64* rp_data = NULL;
+    i32 ldrp = 1;
+    if (pinv) {
+        ldrp = l > 0 ? l : 1;
+        rp_data = (f64*)calloc(ldrp * l > 0 ? ldrp * l : 1, sizeof(f64));
+        if (l > 0 && rp_data == NULL) {
+            if (nfct) { free(q_data); free(sv_data); }
+            else { Py_XDECREF(q_array); Py_XDECREF(sv_array); }
+            Py_DECREF(r_array);
+            Py_DECREF(b_array);
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate RP");
+            return NULL;
+        }
+    }
+
+    i32 minwrk = nfct ? (5 * l > 1 ? 5 * l : 1) : (l > 1 ? l : 1);
+    i32 mn = m_in * n_in;
+    i32 optwork = minwrk > mn ? minwrk : mn;
+    if (ldwork == 0) ldwork = optwork;
+    if (ldwork < minwrk) ldwork = minwrk;
+
+    f64* dwork = (f64*)calloc(ldwork > 0 ? ldwork : 1, sizeof(f64));
+    if (dwork == NULL) {
+        if (pinv) free(rp_data);
+        if (nfct) { free(q_data); free(sv_data); }
+        else { Py_XDECREF(q_array); Py_XDECREF(sv_array); }
+        Py_DECREF(r_array);
+        Py_DECREF(b_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        return NULL;
+    }
+
+    i32 rank = nfct ? 0 : rank_in;
+
+    mb02ud(fact_str, side_str, trans_str, jobp_str, m_in, n_in, alpha, rcond,
+           &rank, r_data, ldr, q_data, ldq, sv_data, b_data, ldb,
+           rp_data, ldrp, dwork, ldwork, &info);
+
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(r_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    if (!nfct) {
+        PyArray_ResolveWritebackIfCopy(q_array);
+        PyArray_ResolveWritebackIfCopy(sv_array);
+    }
+
+    if (info < 0) {
+        if (pinv) free(rp_data);
+        if (nfct) { free(q_data); free(sv_data); }
+        else { Py_XDECREF(q_array); Py_XDECREF(sv_array); }
+        Py_DECREF(r_array);
+        Py_DECREF(b_array);
+        PyErr_Format(PyExc_ValueError, "mb02ud: parameter %d is invalid", -info);
+        return NULL;
+    }
+
+    npy_intp q_dims[2] = {l, l};
+    npy_intp q_strides[2] = {sizeof(f64), l * sizeof(f64)};
+    PyObject* q_out;
+    if (nfct) {
+        q_out = PyArray_New(&PyArray_Type, 2, q_dims, NPY_DOUBLE,
+                            q_strides, q_data, 0, NPY_ARRAY_FARRAY, NULL);
+        if (q_out == NULL) {
+            free(q_data);
+            free(sv_data);
+            if (pinv) free(rp_data);
+            Py_DECREF(r_array);
+            Py_DECREF(b_array);
+            return NULL;
+        }
+        PyArray_ENABLEFLAGS((PyArrayObject*)q_out, NPY_ARRAY_OWNDATA);
+    } else {
+        q_out = (PyObject*)q_array;
+    }
+
+    npy_intp sv_dims[1] = {l};
+    PyObject* sv_out;
+    if (nfct) {
+        sv_out = PyArray_SimpleNewFromData(1, sv_dims, NPY_DOUBLE, sv_data);
+        if (sv_out == NULL) {
+            free(sv_data);
+            Py_DECREF(q_out);
+            if (pinv) free(rp_data);
+            Py_DECREF(r_array);
+            Py_DECREF(b_array);
+            return NULL;
+        }
+        PyArray_ENABLEFLAGS((PyArrayObject*)sv_out, NPY_ARRAY_OWNDATA);
+    } else {
+        sv_out = (PyObject*)sv_array;
+    }
+
+    PyObject* rp_out;
+    if (pinv && rank > 0) {
+        npy_intp rp_dims[2] = {l, l};
+        npy_intp rp_strides[2] = {sizeof(f64), l * sizeof(f64)};
+        rp_out = PyArray_New(&PyArray_Type, 2, rp_dims, NPY_DOUBLE,
+                             rp_strides, rp_data, 0, NPY_ARRAY_FARRAY, NULL);
+        if (rp_out == NULL) {
+            free(rp_data);
+            Py_DECREF(q_out);
+            Py_DECREF(sv_out);
+            Py_DECREF(r_array);
+            Py_DECREF(b_array);
+            return NULL;
+        }
+        PyArray_ENABLEFLAGS((PyArrayObject*)rp_out, NPY_ARRAY_OWNDATA);
+    } else {
+        if (pinv) free(rp_data);
+        Py_INCREF(Py_None);
+        rp_out = Py_None;
+    }
+
+    PyObject* result = Py_BuildValue("OOOiOi", b_array, q_out, sv_out, rank, rp_out, info);
+
+    Py_DECREF(r_array);
+    Py_DECREF(b_array);
+    Py_DECREF(q_out);
+    Py_DECREF(sv_out);
+    Py_DECREF(rp_out);
+
+    return result;
+}
+
 static PyObject* py_md03by(PyObject* self, PyObject* args, PyObject* kwargs) {
     static char* kwlist[] = {"cond", "n", "r", "ipvt", "diag", "qtb", "delta", "par", "rank", "tol", NULL};
 
@@ -3586,6 +3811,388 @@ static PyObject* py_ib01nd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for ib01qd */
+static PyObject* py_ib01qd(PyObject* self, PyObject* args) {
+    const char *jobx0_str, *job_str;
+    i32 n, m, l;
+    f64 tol;
+    PyObject *a_obj, *c_obj, *u_obj, *y_obj;
+    PyArrayObject *a_array, *c_array, *u_array, *y_array;
+    i32 iwarn, info;
+
+    if (!PyArg_ParseTuple(args, "ssiiiOOOOd",
+                          &jobx0_str, &job_str, &n, &m, &l,
+                          &a_obj, &c_obj, &u_obj, &y_obj, &tol)) {
+        return NULL;
+    }
+
+    char jobx0 = toupper((unsigned char)jobx0_str[0]);
+    char job = toupper((unsigned char)job_str[0]);
+
+    if (jobx0 != 'X' && jobx0 != 'N') {
+        PyErr_SetString(PyExc_ValueError, "JOBX0 must be 'X' or 'N'");
+        return NULL;
+    }
+    if (job != 'B' && job != 'D') {
+        PyErr_SetString(PyExc_ValueError, "JOB must be 'B' or 'D'");
+        return NULL;
+    }
+    if (n < 0) {
+        PyErr_SetString(PyExc_ValueError, "N must be non-negative");
+        return NULL;
+    }
+    if (m < 0) {
+        PyErr_SetString(PyExc_ValueError, "M must be non-negative");
+        return NULL;
+    }
+    if (l <= 0) {
+        PyErr_SetString(PyExc_ValueError, "L must be positive");
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    u_array = (PyArrayObject*)PyArray_FROM_OTF(u_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    y_array = (PyArrayObject*)PyArray_FROM_OTF(y_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+
+    if (!a_array || !c_array || !u_array || !y_array) {
+        Py_XDECREF(a_array);
+        Py_XDECREF(c_array);
+        Py_XDECREF(u_array);
+        Py_XDECREF(y_array);
+        return NULL;
+    }
+
+    npy_intp *u_dims = PyArray_DIMS(u_array);
+    npy_intp *y_dims = PyArray_DIMS(y_array);
+    i32 nsmp = (i32)u_dims[0];
+    i32 ldu = nsmp > 0 ? nsmp : 1;
+    i32 ldy = nsmp > 0 ? nsmp : 1;
+    i32 lda = n > 0 ? n : 1;
+    i32 ldc = l;
+    i32 ldb = (n > 0 && m > 0) ? n : 1;
+    i32 ldd = (m > 0 && job == 'D') ? l : 1;
+
+    bool withx0 = (jobx0 == 'X');
+    bool withd = (job == 'D');
+    i32 ncol = n * m + (withx0 ? n : 0);
+    i32 minsmp = ncol;
+    if (withd) {
+        minsmp += m;
+    } else if (!withx0) {
+        minsmp += 1;
+    }
+
+    if (nsmp < minsmp) {
+        Py_DECREF(a_array);
+        Py_DECREF(c_array);
+        Py_DECREF(u_array);
+        Py_DECREF(y_array);
+        PyErr_SetString(PyExc_ValueError, "NSMP too small for the problem dimensions");
+        return NULL;
+    }
+
+    const f64 *a_data = (const f64*)PyArray_DATA(a_array);
+    const f64 *c_data = (const f64*)PyArray_DATA(c_array);
+    f64 *u_data = (f64*)PyArray_DATA(u_array);
+    const f64 *y_data = (const f64*)PyArray_DATA(y_array);
+
+    npy_intp x0_dims[1] = {n};
+    PyArrayObject *x0_array = (PyArrayObject*)PyArray_SimpleNew(1, x0_dims, NPY_DOUBLE);
+
+    npy_intp b_dims[2] = {n > 0 ? n : 1, m > 0 ? m : 1};
+    npy_intp b_strides[2] = {sizeof(f64), ldb * sizeof(f64)};
+    f64 *b_data = NULL;
+    PyArrayObject *b_array = NULL;
+    if (n > 0 && m > 0) {
+        b_data = (f64*)calloc(n * m, sizeof(f64));
+        if (!b_data) {
+            Py_DECREF(a_array);
+            Py_DECREF(c_array);
+            Py_DECREF(u_array);
+            Py_DECREF(y_array);
+            Py_DECREF(x0_array);
+            return PyErr_NoMemory();
+        }
+        b_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, b_dims, NPY_DOUBLE,
+                                               b_strides, b_data, 0, NPY_ARRAY_FARRAY, NULL);
+        PyArray_ENABLEFLAGS(b_array, NPY_ARRAY_OWNDATA);
+    } else {
+        b_array = (PyArrayObject*)PyArray_SimpleNew(2, b_dims, NPY_DOUBLE);
+        b_data = (f64*)PyArray_DATA(b_array);
+    }
+
+    npy_intp d_dims[2] = {l, m > 0 ? m : 1};
+    npy_intp d_strides[2] = {sizeof(f64), ldd * sizeof(f64)};
+    f64 *d_data = NULL;
+    PyArrayObject *d_array = NULL;
+    if (m > 0 && withd) {
+        d_data = (f64*)calloc(l * m, sizeof(f64));
+        if (!d_data) {
+            Py_DECREF(a_array);
+            Py_DECREF(c_array);
+            Py_DECREF(u_array);
+            Py_DECREF(y_array);
+            Py_DECREF(x0_array);
+            Py_DECREF(b_array);
+            return PyErr_NoMemory();
+        }
+        d_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, d_dims, NPY_DOUBLE,
+                                               d_strides, d_data, 0, NPY_ARRAY_FARRAY, NULL);
+        PyArray_ENABLEFLAGS(d_array, NPY_ARRAY_OWNDATA);
+    } else {
+        d_array = (PyArrayObject*)PyArray_SimpleNew(2, d_dims, NPY_DOUBLE);
+        d_data = (f64*)PyArray_DATA(d_array);
+    }
+
+    if (!x0_array || !b_array || !d_array) {
+        Py_DECREF(a_array);
+        Py_DECREF(c_array);
+        Py_DECREF(u_array);
+        Py_DECREF(y_array);
+        Py_XDECREF(x0_array);
+        Py_XDECREF(b_array);
+        Py_XDECREF(d_array);
+        return NULL;
+    }
+
+    f64 *x0_data = (f64*)PyArray_DATA(x0_array);
+
+    i32 nsmpl = nsmp * l;
+    i32 iq = ncol + (withd ? m : (withx0 ? 0 : 1));
+    iq = iq * l;
+    i32 ncp1 = ncol + 1;
+    i32 isize = nsmpl * ncp1;
+
+    i32 ic = (n > 0 && withx0) ? (2 * n * n + n) : 0;
+    i32 minwls = ncol * ncp1;
+    if (withd) minwls += l * m * ncp1;
+
+    i32 ia;
+    if (m > 0 && withd) {
+        ia = m + (2 * ncol > m ? 2 * ncol : m);
+    } else {
+        ia = 2 * ncol;
+    }
+
+    i32 itau = n * n * m + (ic > ia ? ic : ia);
+    if (withx0) itau += l * n;
+
+    i32 ldw2 = isize + (n + (ic > ia ? ic : ia));
+    i32 t = 6 * ncol;
+    if (n + (ic > ia ? ic : ia) < t) ldw2 = isize + t;
+
+    i32 ldw3 = minwls + (iq * ncp1 + itau);
+    if (iq * ncp1 + itau < 6 * ncol) ldw3 = minwls + 6 * ncol;
+
+    if (m > 0 && withd) {
+        i32 t2 = isize + 2 * m * m + 6 * m;
+        if (t2 > ldw2) ldw2 = t2;
+        t2 = minwls + 2 * m * m + 6 * m;
+        if (t2 > ldw3) ldw3 = t2;
+    }
+
+    i32 ldwork = (ldw2 < ldw3) ? ldw2 : ldw3;
+    if (ldwork < 2) ldwork = 2;
+    if (m > 0 && withd && ldwork < 3) ldwork = 3;
+    ldwork = ldw2;
+
+    i32 liwork = n * m + (withx0 ? n : 0);
+    if (withd && m > liwork) liwork = m;
+    if (liwork < 1) liwork = 1;
+
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    i32 *iwork = (i32*)malloc(liwork * sizeof(i32));
+    if (!dwork || !iwork) {
+        free(dwork);
+        free(iwork);
+        Py_DECREF(a_array);
+        Py_DECREF(c_array);
+        Py_DECREF(u_array);
+        Py_DECREF(y_array);
+        Py_DECREF(x0_array);
+        Py_DECREF(b_array);
+        Py_DECREF(d_array);
+        return PyErr_NoMemory();
+    }
+
+    slicot_ib01qd(jobx0_str, job_str, n, m, l, nsmp,
+                  a_data, lda, c_data, ldc,
+                  u_data, ldu, y_data, ldy,
+                  x0_data, b_data, ldb, d_data, ldd,
+                  tol, iwork, dwork, ldwork, &iwarn, &info);
+
+    f64 rcond_w2 = dwork[1];
+    f64 rcond_u = (m > 0 && withd) ? dwork[2] : 1.0;
+
+    free(dwork);
+    free(iwork);
+
+    PyArray_ResolveWritebackIfCopy(u_array);
+    Py_DECREF(a_array);
+    Py_DECREF(c_array);
+    Py_DECREF(u_array);
+    Py_DECREF(y_array);
+
+    if (info < 0) {
+        Py_DECREF(x0_array);
+        Py_DECREF(b_array);
+        Py_DECREF(d_array);
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    PyObject *result = Py_BuildValue("OOOddii", x0_array, b_array, d_array,
+                                      rcond_w2, rcond_u, iwarn, info);
+    Py_DECREF(x0_array);
+    Py_DECREF(b_array);
+    Py_DECREF(d_array);
+    return result;
+}
+
+/* Python wrapper for ib01rd */
+static PyObject* py_ib01rd(PyObject* self, PyObject* args) {
+    const char *job_str;
+    i32 n, m, l, nsmp;
+    f64 tol;
+    PyObject *a_obj, *b_obj, *c_obj, *d_obj, *u_obj, *y_obj;
+    PyArrayObject *a_array, *b_array, *c_array, *d_array, *u_array, *y_array;
+    i32 iwarn, info;
+
+    if (!PyArg_ParseTuple(args, "siiiiOOOOOOd",
+                          &job_str, &n, &m, &l, &nsmp,
+                          &a_obj, &b_obj, &c_obj, &d_obj,
+                          &u_obj, &y_obj, &tol)) {
+        return NULL;
+    }
+
+    char job = toupper((unsigned char)job_str[0]);
+
+    if (job != 'Z' && job != 'N') {
+        PyErr_SetString(PyExc_ValueError, "JOB must be 'Z' or 'N'");
+        return NULL;
+    }
+    if (n < 0) {
+        PyErr_SetString(PyExc_ValueError, "N must be non-negative");
+        return NULL;
+    }
+    if (m < 0) {
+        PyErr_SetString(PyExc_ValueError, "M must be non-negative");
+        return NULL;
+    }
+    if (l <= 0) {
+        PyErr_SetString(PyExc_ValueError, "L must be positive");
+        return NULL;
+    }
+    if (nsmp < n) {
+        PyErr_SetString(PyExc_ValueError, "NSMP must be >= N");
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    d_array = (PyArrayObject*)PyArray_FROM_OTF(d_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    u_array = (PyArrayObject*)PyArray_FROM_OTF(u_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    y_array = (PyArrayObject*)PyArray_FROM_OTF(y_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+
+    if (!a_array || !b_array || !c_array || !d_array || !u_array || !y_array) {
+        Py_XDECREF(a_array);
+        Py_XDECREF(b_array);
+        Py_XDECREF(c_array);
+        Py_XDECREF(d_array);
+        Py_XDECREF(u_array);
+        Py_XDECREF(y_array);
+        return NULL;
+    }
+
+    i32 lda = n > 0 ? n : 1;
+    i32 ldb = (n > 0 && m > 0) ? n : 1;
+    i32 ldc = l;
+    bool withd = (job == 'N');
+    i32 ldd = (withd && m > 0) ? l : 1;
+    i32 ldu = (m > 0) ? nsmp : 1;
+    i32 ldy = nsmp > 0 ? nsmp : 1;
+
+    const f64 *a_data = (const f64*)PyArray_DATA(a_array);
+    const f64 *b_data = (const f64*)PyArray_DATA(b_array);
+    const f64 *c_data = (const f64*)PyArray_DATA(c_array);
+    const f64 *d_data = (const f64*)PyArray_DATA(d_array);
+    const f64 *u_data = (const f64*)PyArray_DATA(u_array);
+    const f64 *y_data = (const f64*)PyArray_DATA(y_array);
+
+    npy_intp x0_dims[1] = {n};
+    PyArrayObject *x0_array = (PyArrayObject*)PyArray_SimpleNew(1, x0_dims, NPY_DOUBLE);
+    if (!x0_array) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        Py_DECREF(u_array);
+        Py_DECREF(y_array);
+        return NULL;
+    }
+    f64 *x0_data = (f64*)PyArray_DATA(x0_array);
+
+    i32 nn = n * n;
+    i32 nsmpl = nsmp * l;
+    i32 iq = n * l;
+    i32 ncp1 = n + 1;
+    i32 isize = nsmpl * ncp1;
+    i32 ic = 2 * nn;
+    i32 minwls = n * ncp1;
+    i32 itau_calc = ic + l * n;
+    i32 ldw1 = isize + 2 * n + ((ic > 4 * n) ? ic : 4 * n);
+    i32 ldw2 = minwls + 2 * n + ((iq * ncp1 + itau_calc > 4 * n) ? (iq * ncp1 + itau_calc) : 4 * n);
+    i32 ldwork = (ldw1 > ldw2) ? ldw1 : ldw2;
+    if (ldwork < 2) ldwork = 2;
+
+    i32 liwork = (n > 0) ? n : 1;
+
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    i32 *iwork = (i32*)malloc(liwork * sizeof(i32));
+    if (!dwork || !iwork) {
+        free(dwork);
+        free(iwork);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        Py_DECREF(u_array);
+        Py_DECREF(y_array);
+        Py_DECREF(x0_array);
+        return PyErr_NoMemory();
+    }
+
+    char job_c[2] = {job, '\0'};
+    slicot_ib01rd(job_c, n, m, l, nsmp,
+                  a_data, lda, b_data, ldb, c_data, ldc, d_data, ldd,
+                  u_data, ldu, y_data, ldy,
+                  x0_data, tol, iwork, dwork, ldwork, &iwarn, &info);
+
+    f64 rcond = (n > 0) ? dwork[1] : 1.0;
+
+    free(dwork);
+    free(iwork);
+
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(d_array);
+    Py_DECREF(u_array);
+    Py_DECREF(y_array);
+
+    if (info < 0) {
+        Py_DECREF(x0_array);
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    PyObject *result = Py_BuildValue("Odii", x0_array, rcond, iwarn, info);
+    Py_DECREF(x0_array);
+    return result;
+}
+
 /* Python wrapper for sb02mt */
 static PyObject* py_sb02mt(PyObject* self, PyObject* args) {
     const char *jobg_str, *jobl_str, *fact_str, *uplo_str;
@@ -4034,6 +4641,57 @@ static PyObject* py_ib01oy(PyObject* self, PyObject* args) {
     return Py_BuildValue("ii", n, info);
 }
 
+/* Python wrapper for mb01sd */
+static PyObject* py_mb01sd(PyObject* self, PyObject* args) {
+    const char *jobs_str;
+    PyObject *a_obj, *r_obj, *c_obj;
+    PyArrayObject *a_array, *r_array, *c_array;
+
+    if (!PyArg_ParseTuple(args, "sOOO", &jobs_str, &a_obj, &r_obj, &c_obj)) {
+        return NULL;
+    }
+
+    char jobs = jobs_str[0];
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) {
+        return NULL;
+    }
+
+    r_array = (PyArrayObject*)PyArray_FROM_OTF(r_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    if (r_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    if (c_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(r_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    i32 m = (i32)a_dims[0];
+    i32 n = (i32)a_dims[1];
+    i32 lda = m;
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    const f64 *r_data = (const f64*)PyArray_DATA(r_array);
+    const f64 *c_data = (const f64*)PyArray_DATA(c_array);
+
+    mb01sd(jobs, m, n, a_data, lda, r_data, c_data);
+
+    Py_DECREF(r_array);
+    Py_DECREF(c_array);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+
+    PyObject *result = (PyObject*)a_array;
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"mb04od", py_mb04od, METH_VARARGS,
@@ -4369,6 +5027,29 @@ static PyMethodDef SlicotMethods[] = {
      "Returns:\n"
      "  (x, rank, info): Solution vector, estimated rank, exit code\n"},
 
+    {"mb02ud", (PyCFunction)py_mb02ud, METH_VARARGS | METH_KEYWORDS,
+     "Minimum norm least squares solution using SVD.\n\n"
+     "Solves op(R)*X = alpha*B (side='L') or X*op(R) = alpha*B (side='R')\n"
+     "where R is upper triangular, using singular value decomposition.\n\n"
+     "Parameters:\n"
+     "  fact (str): 'N' to compute SVD, 'F' if SVD already available\n"
+     "  side (str): 'L' for left, 'R' for right\n"
+     "  trans (str): 'N' for op(R)=R, 'T'/'C' for op(R)=R'\n"
+     "  jobp (str): 'P' to compute/use pseudoinverse, 'N' otherwise\n"
+     "  m (int): Number of rows of B\n"
+     "  n (int): Number of columns of B\n"
+     "  alpha (float): Scalar multiplier\n"
+     "  rcond (float): Rank threshold (not used if fact='F')\n"
+     "  r (ndarray): L-by-L upper triangular matrix R (F-order)\n"
+     "  b (ndarray): M-by-N matrix B (F-order)\n"
+     "  q (ndarray, optional): Q matrix (required if fact='F')\n"
+     "  sv (ndarray, optional): Singular values (required if fact='F')\n"
+     "  rank (int, optional): Rank (required if fact='F')\n"
+     "  rp (ndarray, optional): Pseudoinverse (if fact='F' and jobp='P')\n"
+     "  ldwork (int, optional): Workspace size\n\n"
+     "Returns:\n"
+     "  (x, q, sv, rank, rp, info): Solution, Q matrix, singular values, rank, pseudoinverse, exit code\n"},
+
     {"md03by", (PyCFunction)py_md03by, METH_VARARGS | METH_KEYWORDS,
      "Compute Levenberg-Marquardt parameter for trust region subproblem.\n\n"
      "Parameters:\n"
@@ -4551,6 +5232,57 @@ static PyMethodDef SlicotMethods[] = {
      "Returns:\n"
      "  (n, info): Validated order, exit code\n"},
 
+    {"ib01qd", (PyCFunction)py_ib01qd, METH_VARARGS,
+     "Estimate initial state and system matrices B, D.\n\n"
+     "Given (A, C) and input/output trajectories, estimates B, D, and x(0)\n"
+     "for: x(k+1) = A*x(k) + B*u(k), y(k) = C*x(k) + D*u(k).\n"
+     "Matrix A must be in real Schur form.\n\n"
+     "Parameters:\n"
+     "  jobx0 (str): 'X' to compute x(0), 'N' if x(0) known to be zero\n"
+     "  job (str): 'B' for B only (D=0), 'D' for B and D\n"
+     "  n (int): System order (n >= 0)\n"
+     "  m (int): Number of inputs (m >= 0)\n"
+     "  l (int): Number of outputs (l > 0)\n"
+     "  a (ndarray): N-by-N state matrix A in Schur form (F-order)\n"
+     "  c (ndarray): L-by-N output matrix C (F-order)\n"
+     "  u (ndarray): NSMP-by-M input data (F-order)\n"
+     "  y (ndarray): NSMP-by-L output data (F-order)\n"
+     "  tol (float): Tolerance for rank estimation (<= 0 uses machine eps)\n\n"
+     "Returns:\n"
+     "  (x0, b, d, rcond_w2, rcond_u, iwarn, info):\n"
+     "  - x0: Estimated initial state (n,)\n"
+     "  - b: Estimated input matrix B (n x m)\n"
+     "  - d: Estimated direct transmission D (l x m)\n"
+     "  - rcond_w2: Reciprocal condition of W2\n"
+     "  - rcond_u: Reciprocal condition of U (if JOB='D')\n"
+     "  - iwarn: Warning (4 = rank-deficient)\n"
+     "  - info: Exit code (0=success, 2=SVD failed)\n"},
+
+    {"ib01rd", (PyCFunction)py_ib01rd, METH_VARARGS,
+     "Estimate initial state for discrete-time LTI system.\n\n"
+     "Given (A,B,C,D) and input/output trajectories, estimates initial state x(0)\n"
+     "for: x(k+1) = A*x(k) + B*u(k), y(k) = C*x(k) + D*u(k).\n"
+     "Matrix A must be in real Schur form.\n\n"
+     "Parameters:\n"
+     "  job (str): 'Z' if D is zero, 'N' if D is not zero\n"
+     "  n (int): System order (n >= 0)\n"
+     "  m (int): Number of inputs (m >= 0)\n"
+     "  l (int): Number of outputs (l > 0)\n"
+     "  nsmp (int): Number of samples (nsmp >= n)\n"
+     "  a (ndarray): N-by-N state matrix A in Schur form (F-order)\n"
+     "  b (ndarray): N-by-M input matrix B (F-order)\n"
+     "  c (ndarray): L-by-N output matrix C (F-order)\n"
+     "  d (ndarray): L-by-M direct transmission D (F-order)\n"
+     "  u (ndarray): NSMP-by-M input data (F-order)\n"
+     "  y (ndarray): NSMP-by-L output data (F-order)\n"
+     "  tol (float): Tolerance for rank estimation (<= 0 uses machine eps)\n\n"
+     "Returns:\n"
+     "  (x0, rcond, iwarn, info):\n"
+     "  - x0: Estimated initial state (n,)\n"
+     "  - rcond: Reciprocal condition of triangular factor\n"
+     "  - iwarn: Warning (4 = rank-deficient)\n"
+     "  - info: Exit code (0=success, 2=SVD failed)\n"},
+
     {"sb02mt", (PyCFunction)py_sb02mt, METH_VARARGS,
      "Riccati preprocessing - convert coupling weight problems to standard form.\n\n"
      "Computes:\n"
@@ -4604,6 +5336,20 @@ static PyMethodDef SlicotMethods[] = {
      "  - oufact: Array [fact_type, x_fact_type]\n"
      "  - rcond: Reciprocal condition number\n"
      "  - info: Exit code (0=success, m+1=singular)\n"},
+
+    {"mb01sd", (PyCFunction)py_mb01sd, METH_VARARGS,
+     "Scale rows or columns of a matrix by a diagonal matrix.\n\n"
+     "Computes one of:\n"
+     "  A := diag(R) * A        (jobs='R', row scaling)\n"
+     "  A := A * diag(C)        (jobs='C', column scaling)\n"
+     "  A := diag(R) * A * diag(C)  (jobs='B', both)\n\n"
+     "Parameters:\n"
+     "  jobs (str): 'R' for row, 'C' for column, 'B' for both\n"
+     "  a (ndarray): M-by-N matrix A (F-order), modified in-place\n"
+     "  r (ndarray): Row scale factors, dimension M (not used if jobs='C')\n"
+     "  c (ndarray): Column scale factors, dimension N (not used if jobs='R')\n\n"
+     "Returns:\n"
+     "  a: The scaled matrix\n"},
 
     {NULL, NULL, 0, NULL}
 };

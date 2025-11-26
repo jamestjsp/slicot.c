@@ -214,6 +214,65 @@ void mb02yd(
 );
 
 /**
+ * @brief Minimum norm least squares solution using SVD.
+ *
+ * Computes the minimum norm least squares solution of one of:
+ *   op(R)*X = alpha*B     (SIDE='L')
+ *   X*op(R) = alpha*B     (SIDE='R')
+ *
+ * where alpha is a real scalar, op(R) is R or R', R is an L-by-L real
+ * upper triangular matrix, B is an M-by-N real matrix, and L = M for
+ * SIDE='L' or L = N for SIDE='R'. Uses singular value decomposition,
+ * R = Q*S*P', assuming R may be rank deficient.
+ *
+ * @param[in] fact 'N' to compute SVD, 'F' if SVD already factored
+ * @param[in] side 'L' for op(R)*X = alpha*B, 'R' for X*op(R) = alpha*B
+ * @param[in] trans 'N' for op(R)=R, 'T'/'C' for op(R)=R'
+ * @param[in] jobp 'P' to compute/use pinv(R), 'N' otherwise
+ * @param[in] m Number of rows of B (m >= 0)
+ * @param[in] n Number of columns of B (n >= 0)
+ * @param[in] alpha Scalar multiplier (if 0, X set to zero)
+ * @param[in] rcond Rank threshold: SV(i) <= RCOND*SV(1) treated as zero
+ *                  If RCOND <= 0, uses machine epsilon. Not used if FACT='F'.
+ * @param[in,out] rank Rank of R. Input if FACT='F', output if FACT='N'.
+ * @param[in,out] r DOUBLE PRECISION array, dimension (ldr,L)
+ *                  If FACT='N': In: upper triangular R
+ *                              Out: P' (scaled by inv(S) if JOBP='P')
+ *                  If FACT='F': In: P' from prior SVD
+ * @param[in] ldr Leading dimension of r (ldr >= max(1,L))
+ * @param[in,out] q DOUBLE PRECISION array, dimension (ldq,L)
+ *                  If FACT='N': Out: orthogonal matrix Q
+ *                  If FACT='F': In: orthogonal matrix Q from prior SVD
+ * @param[in] ldq Leading dimension of q (ldq >= max(1,L))
+ * @param[in,out] sv DOUBLE PRECISION array, dimension (L)
+ *                   If FACT='N': Out: first RANK entries are 1/SV(1:RANK),
+ *                                rest are SV(RANK+1:L) in descending order
+ *                   If FACT='F': In: reciprocal SVs and remaining SVs
+ * @param[in,out] b DOUBLE PRECISION array, dimension (ldb,n)
+ *                  In: matrix B (if alpha != 0)
+ *                  Out: solution X
+ * @param[in] ldb Leading dimension of b (ldb >= max(1,m))
+ * @param[out] rp DOUBLE PRECISION array, dimension (ldrp,L)
+ *                If JOBP='P' and RANK > 0: pinv(R)
+ *                Not referenced if JOBP='N'
+ * @param[in] ldrp Leading dimension of rp (ldrp >= L if JOBP='P', else >= 1)
+ * @param[out] dwork DOUBLE PRECISION array, dimension (ldwork)
+ *                   On exit: dwork[0] = optimal ldwork
+ * @param[in] ldwork Workspace size (>= max(1,L) if FACT='F', >= max(1,5*L) if FACT='N')
+ *                   Optimal: max(1,L,M*N) if FACT='F', max(1,5*L,M*N) if FACT='N'
+ *                   If ldwork=-1, workspace query
+ * @param[out] info Exit code (0=success, <0=invalid parameter,
+ *                  >0=SVD did not converge)
+ */
+void mb02ud(
+    const char* fact, const char* side, const char* trans, const char* jobp,
+    const i32 m, const i32 n, const f64 alpha, const f64 rcond,
+    i32* rank, f64* r, const i32 ldr, f64* q, const i32 ldq,
+    f64* sv, f64* b, const i32 ldb, f64* rp, const i32 ldrp,
+    f64* dwork, const i32 ldwork, i32* info
+);
+
+/**
  * @brief Matrix rank determination by incremental condition estimation during QR factorization.
  *
  * Computes a rank-revealing QR factorization of a real general M-by-N matrix A,
@@ -1692,6 +1751,111 @@ i32 SLC_IB01ND(char meth, char jobd, i32 nobr, i32 m, i32 l,
                i32 *iwarn, i32 *info);
 
 /**
+ * @brief Estimate initial state and system matrices B, D.
+ *
+ * Given (A, C) and input/output trajectories, estimates the system matrices
+ * B and D, and optionally the initial state x(0), for a discrete-time LTI
+ * system: x(k+1) = A*x(k) + B*u(k), y(k) = C*x(k) + D*u(k).
+ * Matrix A is assumed to be in real Schur form.
+ *
+ * @param[in] jobx0 'X' to compute initial state, 'N' if x(0) known to be zero
+ * @param[in] job 'B' to compute B only (D known zero), 'D' to compute B and D
+ * @param[in] n System order (n >= 0)
+ * @param[in] m Number of inputs (m >= 0)
+ * @param[in] l Number of outputs (l > 0)
+ * @param[in] nsmp Number of samples (rows of U and Y)
+ * @param[in] a N-by-N state matrix A in real Schur form, dimension (lda,n)
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in] c L-by-N output matrix C, dimension (ldc,n)
+ * @param[in] ldc Leading dimension of C (ldc >= l)
+ * @param[in,out] u NSMP-by-M input data, dimension (ldu,m)
+ *                  If JOB='D': on exit contains QR factorization details
+ * @param[in] ldu Leading dimension of U (ldu >= max(1,nsmp) if m>0, else >= 1)
+ * @param[in] y NSMP-by-L output data, dimension (ldy,l)
+ * @param[in] ldy Leading dimension of Y (ldy >= max(1,nsmp))
+ * @param[out] x0 Estimated initial state, dimension (n)
+ * @param[out] b Estimated N-by-M input matrix B, dimension (ldb,m)
+ * @param[in] ldb Leading dimension of B (ldb >= n if n>0 and m>0, else >= 1)
+ * @param[out] d Estimated L-by-M direct transmission matrix D, dimension (ldd,m)
+ * @param[in] ldd Leading dimension of D (ldd >= l if m>0 and JOB='D', else >= 1)
+ * @param[in] tol Tolerance for rank estimation (tol <= 0 uses machine precision)
+ * @param[out] iwork INTEGER workspace
+ * @param[out] dwork DOUBLE PRECISION workspace
+ *                   dwork[0] = optimal ldwork
+ *                   dwork[1] = rcond of W2 triangular factor
+ *                   dwork[2] = rcond of U triangular factor (if JOB='D' and m>0)
+ * @param[in] ldwork Workspace size
+ * @param[out] iwarn Warning indicator (4 = rank-deficient coefficient matrix)
+ * @param[out] info Exit code (0=success, -i=param i invalid, 2=SVD failed)
+ */
+void slicot_ib01qd(
+    const char* jobx0, const char* job,
+    i32 n, i32 m, i32 l, i32 nsmp,
+    const f64* a, i32 lda,
+    const f64* c, i32 ldc,
+    f64* u, i32 ldu,
+    const f64* y, i32 ldy,
+    f64* x0,
+    f64* b, i32 ldb,
+    f64* d, i32 ldd,
+    f64 tol,
+    i32* iwork, f64* dwork, i32 ldwork,
+    i32* iwarn, i32* info
+);
+
+/**
+ * @brief Estimate initial state for discrete-time LTI system.
+ *
+ * Given system matrices (A,B,C,D) and input/output trajectories, estimates
+ * the initial state x(0) of the discrete-time LTI system:
+ *   x(k+1) = A*x(k) + B*u(k)
+ *   y(k)   = C*x(k) + D*u(k)
+ *
+ * Matrix A is assumed to be in real Schur form.
+ *
+ * @param[in] job 'Z' if D matrix is zero, 'N' if D is not zero
+ * @param[in] n System order (n >= 0)
+ * @param[in] m Number of inputs (m >= 0)
+ * @param[in] l Number of outputs (l > 0)
+ * @param[in] nsmp Number of samples (nsmp >= n)
+ * @param[in] a N-by-N state matrix A in real Schur form, dimension (lda,n)
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in] b N-by-M input matrix B, dimension (ldb,m)
+ * @param[in] ldb Leading dimension of B (ldb >= n if n>0 and m>0, else >= 1)
+ * @param[in] c L-by-N output matrix C, dimension (ldc,n)
+ * @param[in] ldc Leading dimension of C (ldc >= l)
+ * @param[in] d L-by-M direct transmission matrix D, dimension (ldd,m)
+ * @param[in] ldd Leading dimension of D (ldd >= l if m>0 and job='N', else >= 1)
+ * @param[in] u NSMP-by-M input data U, dimension (ldu,m)
+ * @param[in] ldu Leading dimension of U (ldu >= max(1,nsmp) if m>0, else >= 1)
+ * @param[in] y NSMP-by-L output data Y, dimension (ldy,l)
+ * @param[in] ldy Leading dimension of Y (ldy >= max(1,nsmp))
+ * @param[out] x0 Estimated initial state, dimension (n)
+ * @param[in] tol Tolerance for rank estimation (tol <= 0 uses machine precision)
+ * @param[out] iwork INTEGER workspace, dimension (n)
+ * @param[out] dwork DOUBLE PRECISION workspace
+ *                   dwork[0] = optimal ldwork
+ *                   dwork[1] = reciprocal condition number of triangular factor
+ * @param[in] ldwork Workspace size
+ * @param[out] iwarn Warning indicator (4 = rank-deficient coefficient matrix)
+ * @param[out] info Exit code (0=success, -i=param i invalid, 2=SVD failed)
+ */
+void slicot_ib01rd(
+    const char* job,
+    i32 n, i32 m, i32 l, i32 nsmp,
+    const f64* a, i32 lda,
+    const f64* b, i32 ldb,
+    const f64* c, i32 ldc,
+    const f64* d, i32 ldd,
+    const f64* u, i32 ldu,
+    const f64* y, i32 ldy,
+    f64* x0,
+    f64 tol,
+    i32* iwork, f64* dwork, i32 ldwork,
+    i32* iwarn, i32* info
+);
+
+/**
  * @brief Block symmetric rank-k update (BLAS 3 version of MB01RX).
  *
  * Computes triangular part of matrix formula:
@@ -1721,6 +1885,25 @@ void mb01rb(const char* side, const char* uplo, const char* trans,
             const i32 m, const i32 n, const f64 alpha, const f64 beta,
             f64* r, const i32 ldr, const f64* a, const i32 lda,
             const f64* b, const i32 ldb, i32* info);
+
+/**
+ * @brief Scale rows or columns of a matrix by a diagonal matrix.
+ *
+ * Computes one of:
+ *   A := diag(R) * A        (jobs='R', row scaling)
+ *   A := A * diag(C)        (jobs='C', column scaling)
+ *   A := diag(R) * A * diag(C)  (jobs='B', both)
+ *
+ * @param[in] jobs Scaling operation: 'R'=row, 'C'=column, 'B'=both
+ * @param[in] m Number of rows of A (m >= 0)
+ * @param[in] n Number of columns of A (n >= 0)
+ * @param[in,out] a M-by-N matrix, dimension (lda,n), scaled on exit
+ * @param[in] lda Leading dimension of A (lda >= max(1,m))
+ * @param[in] r Row scale factors, dimension (m), not used if jobs='C'
+ * @param[in] c Column scale factors, dimension (n), not used if jobs='R'
+ */
+void mb01sd(const char jobs, const i32 m, const i32 n,
+            f64* a, const i32 lda, const f64* r, const f64* c);
 
 /**
  * @brief Product of upper quasi-triangular matrices B := A * B.

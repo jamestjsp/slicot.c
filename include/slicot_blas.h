@@ -316,6 +316,11 @@ void SLC_FC_FUNC(dbdsqr, DBDSQR)(const char* uplo, const int* n, const int* ncvt
                                   f64* vt, const int* ldvt, f64* u, const int* ldu,
                                   f64* c, const int* ldc, f64* work, int* info);
 
+void SLC_FC_FUNC(dgelss, DGELSS)(const int* m, const int* n, const int* nrhs,
+                                  f64* a, const int* lda, f64* b, const int* ldb,
+                                  f64* s, const f64* rcond, int* rank, f64* work,
+                                  const int* lwork, int* info);
+
 int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* opts,
                                 const int* n1, const int* n2, const int* n3, const int* n4);
 
@@ -382,6 +387,7 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DGEBRD   SLC_FC_FUNC(dgebrd, DGEBRD)
 #define SLC_DORGBR   SLC_FC_FUNC(dorgbr, DORGBR)
 #define SLC_DBDSQR   SLC_FC_FUNC(dbdsqr, DBDSQR)
+#define SLC_DGELSS   SLC_FC_FUNC(dgelss, DGELSS)
 #define SLC_DLANTR   SLC_FC_FUNC(dlantr, DLANTR)
 #define SLC_DTRCON   SLC_FC_FUNC(dtrcon, DTRCON)
 #define SLC_DPOTRS   SLC_FC_FUNC(dpotrs, DPOTRS)
