@@ -1723,6 +1723,28 @@ void mb01rb(const char* side, const char* uplo, const char* trans,
             const f64* b, const i32 ldb, i32* info);
 
 /**
+ * @brief Product of upper quasi-triangular matrices B := A * B.
+ *
+ * Computes the matrix product A * B, where A and B are upper quasi-triangular
+ * matrices (block upper triangular with 1-by-1 or 2-by-2 diagonal blocks)
+ * with the same structure. The result is returned in array B.
+ *
+ * @param[in] n Order of matrices A and B (n >= 0)
+ * @param[in] a N-by-N upper quasi-triangular matrix, dimension (lda,n)
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in,out] b N-by-N upper quasi-triangular matrix with same structure as A.
+ *                  On exit: contains the product A * B.
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,n))
+ * @param[out] dwork Workspace, dimension (n-1)
+ * @param[out] info Exit code: 0=success, <0=invalid parameter,
+ *                  1=A and B have different structures or are not quasi-triangular
+ *
+ * @note Useful for computing powers of real Schur form matrices.
+ */
+void mb01td(const i32 n, const f64* a, const i32 lda,
+            f64* b, const i32 ldb, f64* dwork, i32* info);
+
+/**
  * @brief QR factorization of structured block matrix.
  *
  * Calculates QR factorization of first block column and applies orthogonal

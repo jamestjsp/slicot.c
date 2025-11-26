@@ -8,6 +8,7 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <ctype.h>
 #include "slicot.h"
 
@@ -197,6 +198,64 @@ static PyObject* py_mb01rb(PyObject* self, PyObject* args) {
 
     PyObject *result = Py_BuildValue("Oi", r_array, info);
     Py_DECREF(r_array);
+    return result;
+}
+
+/* Python wrapper for mb01td */
+static PyObject* py_mb01td(PyObject* self, PyObject* args) {
+    i32 n, lda, ldb;
+    PyObject *a_obj, *b_obj;
+    PyArrayObject *a_array, *b_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "OO", &a_obj, &b_obj)) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY);
+    if (a_array == NULL) {
+        return NULL;
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+
+    n = (i32)a_dims[0];
+    lda = n > 1 ? n : 1;
+    ldb = n > 1 ? n : 1;
+
+    const f64 *a_data = (const f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+
+    f64 *dwork = NULL;
+    if (n > 1) {
+        dwork = (f64*)malloc((n - 1) * sizeof(f64));
+        if (dwork == NULL) {
+            Py_DECREF(a_array);
+            Py_DECREF(b_array);
+            return PyErr_NoMemory();
+        }
+    }
+
+    mb01td(n, a_data, lda, b_data, ldb, dwork, &info);
+
+    free(dwork);
+    Py_DECREF(a_array);
+
+    if (info < 0) {
+        Py_DECREF(b_array);
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    PyObject *result = Py_BuildValue("Oi", b_array, info);
+    Py_DECREF(b_array);
     return result;
 }
 
@@ -4228,6 +4287,17 @@ static PyMethodDef SlicotMethods[] = {
      "  b (ndarray): Matrix B (F-order)\n\n"
      "Returns:\n"
      "  (r, info): Updated R (triangle only) and exit code\n"},
+
+    {"mb01td", py_mb01td, METH_VARARGS,
+     "Product of upper quasi-triangular matrices B := A * B.\n\n"
+     "Computes A * B where A and B are upper quasi-triangular matrices\n"
+     "(block upper triangular with 1x1 or 2x2 diagonal blocks) with the\n"
+     "same structure. Result is returned in B.\n\n"
+     "Parameters:\n"
+     "  a (ndarray): N-by-N upper quasi-triangular matrix A (F-order)\n"
+     "  b (ndarray): N-by-N upper quasi-triangular matrix B (F-order)\n\n"
+     "Returns:\n"
+     "  (b, info): Product A*B in B, exit code (0=success, 1=structure mismatch)\n"},
 
     {"mb01rx", py_mb01rx, METH_VARARGS,
      "Triangular symmetric rank-k update.\n\n"

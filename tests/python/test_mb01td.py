@@ -132,17 +132,18 @@ def test_mb01td_structure_mismatch():
     """
     Test error handling when A and B have different structures.
 
-    A has 2x2 block at (1,2)-(2,2), B has no subdiagonal entry there.
+    A has NO 2x2 block (subdiag=0), but B has nonzero subdiag entry.
+    This is a structure mismatch.
     """
     a = np.array([
         [1., 2., 3.],
-        [0.5, 4., 5.],
+        [0., 4., 5.],
         [0., 0., 6.]
     ], order='F', dtype=float)
 
     b = np.array([
         [1., 2., 3.],
-        [0., 4., 5.],
+        [0.5, 4., 5.],
         [0., 0., 6.]
     ], order='F', dtype=float)
 
