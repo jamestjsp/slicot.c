@@ -1565,6 +1565,36 @@ void SLC_MB04OY(i32 m, i32 n, const f64* v, f64 tau,
                 f64* a, i32 lda, f64* b, i32 ldb, f64* dwork);
 
 /**
+ * @brief Apply Householder reflector H to matrix [A B] from the right.
+ *
+ * Applies elementary reflector H to m-by-(n+1) matrix C = [A B],
+ * where A has one column:
+ *
+ *     H = I - tau * u * u',  u = [1; v]
+ *
+ * Computes C := C * H.
+ *
+ * Uses inline code for order < 11, BLAS for larger orders.
+ *
+ * @param[in] m Number of rows of matrices A and B, m >= 0
+ * @param[in] n Number of columns of matrix B, n >= 0
+ * @param[in] v Householder vector v, dimension (1+(n-1)*abs(incv))
+ * @param[in] incv Increment between elements of v, incv != 0
+ * @param[in] tau Scalar factor tau (if tau=0, H is identity)
+ * @param[in,out] a On entry: m-by-1 matrix A
+ *                  On exit: updated first column of C*H
+ * @param[in] lda Leading dimension of A, lda >= max(1,m)
+ * @param[in,out] b On entry: m-by-n matrix B
+ *                  On exit: updated last n columns of C*H
+ * @param[in] ldb Leading dimension of B, ldb >= max(1,m)
+ * @param[out] dwork Workspace of dimension m (not referenced if n+1 < 11)
+ *
+ * @note Based on LAPACK's DLARFX and DLATZM with special structure optimization.
+ */
+void SLC_MB04NY(i32 m, i32 n, const f64* v, i32 incv, f64 tau,
+                f64* a, i32 lda, f64* b, i32 ldb, f64* dwork);
+
+/**
  * @brief Apply orthogonal transformations from MB04ID to matrix C.
  *
  * Overwrites real n-by-m matrix C with Q'*C, Q*C, C*Q', or C*Q, where
