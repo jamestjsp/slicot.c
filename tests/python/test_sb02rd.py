@@ -110,7 +110,6 @@ def test_sb02rd_continuous_basic():
                                err_msg="Riccati equation residual too large")
 
 
-@pytest.mark.skip(reason="Discrete-time HINV='D' needs further debugging - eigenvalue selection issue")
 def test_sb02rd_discrete_basic():
     """
     Test SB02RD discrete-time case with JOB='X' (solution only).
@@ -453,7 +452,7 @@ def test_sb02rd_error_invalid_dico():
         )
 
 
-@pytest.mark.skip(reason="Discrete-time HINV='I' needs further debugging - eigenvalue selection issue")
+@pytest.mark.skip(reason="SLICOT SB02RU bug: HINV='I' S12 transpose loop double-processes off-diagonals")
 def test_sb02rd_discrete_hinv_inverse():
     """
     Test SB02RD discrete-time with HINV='I' (inverse symplectic).

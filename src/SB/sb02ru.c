@@ -193,21 +193,21 @@ void sb02ru(
                           &s[n + j + (j + 1) * lds], &lds);
             }
 
-            SLC_DLASET("F", &n, &n, &zero, &one, &s[np1 * lds], &lds);
-            SLC_DGETRS(&trana, &n, &n, s, &lds, iwork, &s[np1 * lds], &lds, &info_loc);
+            SLC_DLASET("F", &n, &n, &zero, &one, &s[n + n * lds], &lds);
+            SLC_DGETRS(&trana, &n, &n, s, &lds, iwork, &s[n + n * lds], &lds, &info_loc);
 
-            SLC_DLACPY("F", &n, &n, g, &ldg, &s[(np1 - 1) * lds], &lds);
-            SLC_DGETRS(&trana, &n, &n, s, &lds, iwork, &s[(np1 - 1) * lds], &lds, &info_loc);
+            SLC_DLACPY("F", &n, &n, g, &ldg, &s[n * lds], &lds);
+            SLC_DGETRS(&trana, &n, &n, s, &lds, iwork, &s[n * lds], &lds, &info_loc);
 
-            SLC_DLACPY("F", &n, &n, &s[np1 * lds], &lds, s, &lds);
+            SLC_DLACPY("F", &n, &n, &s[n + n * lds], &lds, s, &lds);
 
             if (notrna) {
-                ma02ad("F", n, n, a, lda, &s[np1 * lds], lds);
+                ma02ad("F", n, n, a, lda, &s[n + n * lds], lds);
             } else {
-                SLC_DLACPY("F", &n, &n, a, &lda, &s[np1 * lds], &lds);
+                SLC_DLACPY("F", &n, &n, a, &lda, &s[n + n * lds], &lds);
             }
             SLC_DGEMM("N", "N", &n, &n, &n, &one, q, &ldq,
-                      &s[(np1 - 1) * lds], &lds, &one, &s[np1 * lds], &lds);
+                      &s[n * lds], &lds, &one, &s[n + n * lds], &lds);
         } else {
             for (i32 j = 0; j < n; j++) {
                 for (i32 i = n; i < n2; i++) {
@@ -215,13 +215,13 @@ void sb02ru(
                 }
             }
 
-            SLC_DLASET("F", &n, &n, &zero, &one, &s[(np1 - 1) * lds], &lds);
-            SLC_DGETRS(tranat, &n, &n, s, &lds, iwork, &s[np1 * lds], &lds, &info_loc);
+            SLC_DLASET("F", &n, &n, &zero, &one, &s[n + n * lds], &lds);
+            SLC_DGETRS(tranat, &n, &n, s, &lds, iwork, &s[n + n * lds], &lds, &info_loc);
 
-            SLC_DLACPY("F", &n, &n, g, &ldg, &s[(np1 - 1) * lds], &lds);
-            SLC_DGETRS(&trana, &n, &n, s, &lds, iwork, &s[(np1 - 1) * lds], &lds, &info_loc);
+            SLC_DLACPY("F", &n, &n, g, &ldg, &s[n * lds], &lds);
+            SLC_DGETRS(&trana, &n, &n, s, &lds, iwork, &s[n * lds], &lds, &info_loc);
 
-            for (i32 j = np1 - 1; j < n2; j++) {
+            for (i32 j = n; j < n2; j++) {
                 for (i32 i = 0; i < n; i++) {
                     f64 temp = -s[i + j * lds];
                     s[i + j * lds] = -s[j - n + (i + n) * lds];

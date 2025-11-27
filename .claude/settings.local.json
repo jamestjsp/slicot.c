@@ -17,7 +17,8 @@
       "Bash(git pull:*)",
       "Bash(python3:*)",
       "Bash(pip install:*)",
-      "Skill(slicot-knowledge)"
+      "Skill(slicot-knowledge)",
+      "Bash(ASAN_OPTIONS=detect_leaks=0 pytest:*)"
     ],
     "deny": [],
     "ask": []

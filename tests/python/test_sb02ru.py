@@ -127,7 +127,6 @@ def test_sb02ru_continuous_hamiltonian_eigenvalue_property():
     np.testing.assert_allclose(eigvals_sorted, negated, rtol=1e-10)
 
 
-@pytest.mark.xfail(reason="Known discrete-time bug in sb02ru - see eigenvalue selection issue")
 def test_sb02ru_discrete_basic():
     """
     Test SB02RU discrete-time symplectic construction with HINV='D'.
@@ -173,7 +172,7 @@ def test_sb02ru_discrete_basic():
     np.testing.assert_allclose(S22, S22_expected, rtol=1e-12)
 
 
-@pytest.mark.xfail(reason="Known discrete-time bug in sb02ru - see eigenvalue selection issue")
+@pytest.mark.xfail(reason="SLICOT bug: S12 transpose loop in HINV='I' branch double-processes off-diagonal pairs")
 def test_sb02ru_discrete_hinv_inverse():
     """
     Test SB02RU discrete-time with HINV='I' (inverse formula).
@@ -181,6 +180,10 @@ def test_sb02ru_discrete_hinv_inverse():
     For discrete-time with HINV='I':
     S = [ A + G*A'^{-1}*Q   -G*A'^{-1} ]
         [   -A'^{-1}*Q        A'^{-1}  ]
+
+    Note: SLICOT's SB02RU.f has a bug in the HINV='I' transpose loop (lines 466-474).
+    The nested DO loops process off-diagonal pairs twice, restoring original values
+    instead of transposing. S11, S21, S22 are computed correctly but S12 is wrong.
 
     Random seed: 111 (for reproducibility)
     """
@@ -217,7 +220,6 @@ def test_sb02ru_discrete_hinv_inverse():
     np.testing.assert_allclose(S22, S22_expected, rtol=1e-12)
 
 
-@pytest.mark.xfail(reason="Known discrete-time bug in sb02ru - see eigenvalue selection issue")
 def test_sb02ru_discrete_symplectic_property():
     """
     Validate symplectic eigenvalue property: eigenvalues come in (lambda, 1/lambda) pairs.
