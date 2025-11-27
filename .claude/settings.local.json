@@ -14,7 +14,10 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git checkout:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(python3:*)",
+      "Bash(pip install:*)",
+      "Skill(slicot-knowledge)"
     ],
     "deny": [],
     "ask": []
