@@ -1528,31 +1528,6 @@ i32 slicot_mb01rx(
 );
 
 /**
- * @brief Compute Householder reflection to zero trailing elements of a vector.
- *
- * Generates a real elementary reflector H of order m+1, such that
- *
- *     H * [ alpha ] = [ beta ]
- *         [   x   ]   [  0   ]
- *
- * where H = I - tau * [ 1 ] * [1, v'],  H' * H = I.
- *               [ v ]
- *
- * @param[in] m Order of vector x, m >= 0
- * @param[in,out] alpha On entry: scalar alpha
- *                      On exit: beta (r_11 from QR factorization)
- * @param[in,out] x On entry: m-vector x
- *                  On exit: Householder vector v
- * @param[in] incx Increment for array x (incx > 0)
- * @param[out] tau Scalar tau in Householder representation
- *                 tau = 0 if H is identity matrix
- * @return 0 on success
- *
- * @note Based on LAPACK's DLARFG with modifications for SLICOT.
- */
-void SLC_MB04KD(i32 m, f64* alpha, f64* x, i32 incx, f64* tau);
-
-/**
  * @brief Apply Householder reflector H to matrix [A; B] from the left.
  *
  * Applies elementary reflector H to (m+1)-by-n matrix C = [A; B],
