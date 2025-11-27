@@ -5563,6 +5563,200 @@ static PyObject* py_mb01sd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for sb02ru */
+static PyObject* py_sb02ru(PyObject* self, PyObject* args) {
+    const char *dico_str, *hinv_str, *trana_str, *uplo_str;
+    PyObject *a_obj, *g_obj, *q_obj;
+
+    if (!PyArg_ParseTuple(args, "ssssOOO", &dico_str, &hinv_str, &trana_str, &uplo_str,
+                         &a_obj, &g_obj, &q_obj)) {
+        return NULL;
+    }
+
+    PyArrayObject *a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                                             NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) return NULL;
+
+    PyArrayObject *g_array = (PyArrayObject*)PyArray_FROM_OTF(g_obj, NPY_DOUBLE,
+                                                             NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (g_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    PyArrayObject *q_array = (PyArrayObject*)PyArray_FROM_OTF(q_obj, NPY_DOUBLE,
+                                                             NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (q_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(g_array);
+        return NULL;
+    }
+
+    i32 n = (i32)PyArray_DIM(a_array, 0);
+    i32 n2 = 2 * n;
+    i32 lda = n > 0 ? n : 1;
+    i32 ldg = n > 0 ? n : 1;
+    i32 ldq = n > 0 ? n : 1;
+    i32 lds = n2 > 0 ? n2 : 1;
+
+    bool discr = (dico_str[0] == 'D' || dico_str[0] == 'd');
+    i32 ldwork = discr ? (6 * n > 2 ? 6 * n : 2) : 0;
+    i32 liwork = discr ? 2 * n : 0;
+
+    npy_intp s_dims[2] = {n2, n2};
+    PyArrayObject *s_array = (PyArrayObject*)PyArray_ZEROS(2, s_dims, NPY_DOUBLE, 1);
+    if (s_array == NULL) goto cleanup;
+
+    i32 *iwork = NULL;
+    f64 *dwork = NULL;
+    if (discr) {
+        iwork = (i32*)calloc(liwork > 0 ? liwork : 1, sizeof(i32));
+        dwork = (f64*)calloc(ldwork > 0 ? ldwork : 1, sizeof(f64));
+        if (iwork == NULL || dwork == NULL) {
+            PyErr_NoMemory();
+            free(iwork);
+            free(dwork);
+            Py_DECREF(s_array);
+            goto cleanup;
+        }
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *g_data = (f64*)PyArray_DATA(g_array);
+    f64 *q_data = (f64*)PyArray_DATA(q_array);
+    f64 *s_data = (f64*)PyArray_DATA(s_array);
+
+    i32 info;
+    sb02ru(dico_str, hinv_str, trana_str, uplo_str, n, a_data, lda,
+           g_data, ldg, q_data, ldq, s_data, lds, iwork, dwork, ldwork, &info);
+
+    f64 rcond = discr ? dwork[0] : 0.0;
+    f64 pivotg = discr ? dwork[1] : 0.0;
+
+    free(iwork);
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(g_array);
+    PyArray_ResolveWritebackIfCopy(q_array);
+
+    PyObject *result = Py_BuildValue("Oddi", s_array, rcond, pivotg, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(g_array);
+    Py_DECREF(q_array);
+    Py_DECREF(s_array);
+
+    return result;
+
+cleanup:
+    Py_DECREF(a_array);
+    Py_DECREF(g_array);
+    Py_DECREF(q_array);
+    return NULL;
+}
+
+/* Python wrapper for mb02pd */
+static PyObject* py_mb02pd(PyObject* self, PyObject* args) {
+    const char *fact_str, *trans_str;
+    PyObject *a_obj, *b_obj;
+
+    if (!PyArg_ParseTuple(args, "ssOO", &fact_str, &trans_str, &a_obj, &b_obj)) {
+        return NULL;
+    }
+
+    PyArrayObject *a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                                             NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) return NULL;
+
+    PyArrayObject *b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                                             NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    i32 n = (i32)PyArray_DIM(a_array, 0);
+    i32 nrhs = (i32)PyArray_DIM(b_array, 1);
+    i32 lda = n > 0 ? n : 1;
+    i32 ldaf = n > 0 ? n : 1;
+    i32 ldb = n > 0 ? n : 1;
+    i32 ldx = n > 0 ? n : 1;
+
+    npy_intp af_dims[2] = {n, n};
+    npy_intp x_dims[2] = {n, nrhs};
+    npy_intp vec_dims[1] = {n > 0 ? n : 1};
+    npy_intp rhs_dims[1] = {nrhs > 0 ? nrhs : 1};
+
+    PyArrayObject *af_array = (PyArrayObject*)PyArray_ZEROS(2, af_dims, NPY_DOUBLE, 1);
+    PyArrayObject *x_array = (PyArrayObject*)PyArray_ZEROS(2, x_dims, NPY_DOUBLE, 1);
+    PyArrayObject *ferr_array = (PyArrayObject*)PyArray_ZEROS(1, rhs_dims, NPY_DOUBLE, 0);
+    PyArrayObject *berr_array = (PyArrayObject*)PyArray_ZEROS(1, rhs_dims, NPY_DOUBLE, 0);
+
+    if (af_array == NULL || x_array == NULL || ferr_array == NULL || berr_array == NULL) {
+        Py_XDECREF(af_array);
+        Py_XDECREF(x_array);
+        Py_XDECREF(ferr_array);
+        Py_XDECREF(berr_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    i32 *ipiv = (i32*)calloc(n > 0 ? n : 1, sizeof(i32));
+    i32 *iwork = (i32*)calloc(n > 0 ? n : 1, sizeof(i32));
+    f64 *r = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+    f64 *c = (f64*)calloc(n > 0 ? n : 1, sizeof(f64));
+    f64 *dwork = (f64*)calloc(4 * n > 1 ? 4 * n : 1, sizeof(f64));
+
+    if (ipiv == NULL || iwork == NULL || r == NULL || c == NULL || dwork == NULL) {
+        PyErr_NoMemory();
+        free(ipiv); free(iwork); free(r); free(c); free(dwork);
+        Py_DECREF(af_array);
+        Py_DECREF(x_array);
+        Py_DECREF(ferr_array);
+        Py_DECREF(berr_array);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *af_data = (f64*)PyArray_DATA(af_array);
+    f64 *x_data = (f64*)PyArray_DATA(x_array);
+    f64 *ferr_data = (f64*)PyArray_DATA(ferr_array);
+    f64 *berr_data = (f64*)PyArray_DATA(berr_array);
+
+    f64 rcond;
+    i32 info;
+    char equed = 'N';
+
+    mb02pd(fact_str, trans_str, n, nrhs, a_data, lda, af_data, ldaf, ipiv,
+           &equed, r, c, b_data, ldb, x_data, ldx, &rcond, ferr_data, berr_data,
+           iwork, dwork, &info);
+
+    free(ipiv);
+    free(iwork);
+    free(r);
+    free(c);
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+
+    PyObject *result = Py_BuildValue("OOOdi", x_array, ferr_array, berr_array, rcond, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(af_array);
+    Py_DECREF(x_array);
+    Py_DECREF(ferr_array);
+    Py_DECREF(berr_array);
+
+    return result;
+}
+
 /* Python wrapper for sb03od */
 static PyObject* py_sb03od(PyObject* self, PyObject* args) {
     const char *dico_str, *fact_str, *trans_str;
@@ -6497,6 +6691,38 @@ static PyMethodDef SlicotMethods[] = {
      "  - wi: Imaginary parts of eigenvalues (n,)\n"
      "  - scale: Scale factor (scale <= 1)\n"
      "  - info: Exit code (0=success, 1=nearly singular, 2/3=unstable)\n"},
+
+    {"sb02ru", (PyCFunction)py_sb02ru, METH_VARARGS,
+     "Construct Hamiltonian or symplectic matrix for Riccati equation.\n\n"
+     "For continuous-time (DICO='C'), constructs Hamiltonian matrix:\n"
+     "    S = [ op(A)   -G    ]\n"
+     "        [  -Q   -op(A)' ]\n\n"
+     "For discrete-time (DICO='D'), constructs symplectic matrix.\n\n"
+     "Parameters:\n"
+     "  dico (str): 'C' continuous-time, 'D' discrete-time\n"
+     "  hinv (str): 'D' or 'I' for discrete formula variant\n"
+     "  trana (str): 'N' op(A)=A, 'T'/'C' op(A)=A'\n"
+     "  uplo (str): 'U' upper tri stored, 'L' lower tri stored\n"
+     "  a (ndarray): N-by-N state matrix A (F-order)\n"
+     "  g (ndarray): N-by-N symmetric G matrix (F-order)\n"
+     "  q (ndarray): N-by-N symmetric Q matrix (F-order)\n\n"
+     "Returns:\n"
+     "  (s, rcond, pivotg, info): 2N-by-2N Hamiltonian/symplectic matrix,\n"
+     "                           condition number (discrete only), pivot growth,\n"
+     "                           exit code (0=success)\n"},
+
+    {"mb02pd", (PyCFunction)py_mb02pd, METH_VARARGS,
+     "Solve linear system op(A)*X = B with LU factorization.\n\n"
+     "Uses LU factorization with optional equilibration and\n"
+     "iterative refinement for improved accuracy.\n\n"
+     "Parameters:\n"
+     "  fact (str): 'N' factor A, 'E' equilibrate+factor, 'F' factored\n"
+     "  trans (str): 'N' solve A*X=B, 'T'/'C' solve A'*X=B\n"
+     "  a (ndarray): N-by-N coefficient matrix A (F-order)\n"
+     "  b (ndarray): N-by-NRHS right-hand side B (F-order)\n\n"
+     "Returns:\n"
+     "  (x, ferr, berr, rcond, info): Solution X, forward/backward error,\n"
+     "                                condition number, exit code\n"},
 
     {NULL, NULL, 0, NULL}
 };
