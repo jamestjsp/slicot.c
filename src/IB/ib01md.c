@@ -507,7 +507,8 @@ void ib01md(const char *meth_str, const char *alg_str, const char *batch_str,
             goto label_370;
         }
     } else if (fqralg) {
-        *info = 1;
+        ib01my(meth_str, batch_str, conct_str, nobr, m, l, nsmp,
+               u, ldu, y, ldy, r, ldr, iwork, dwork, ldwork, iwarn, info);
         return;
     }
 

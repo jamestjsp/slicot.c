@@ -1,5 +1,6 @@
 set(SLICOT_SOURCES
     IB/ib01md.c
+    IB/ib01my.c
     IB/ib01nd.c
     IB/ib01od.c
     IB/ib01oy.c

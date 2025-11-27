@@ -1929,6 +1929,39 @@ void ib01md(const char *meth, const char *alg, const char *batch,
             i32 *iwarn, i32 *info);
 
 /**
+ * @brief Fast QR factorization for block Hankel matrices.
+ *
+ * Constructs the upper triangular factor R of concatenated block Hankel
+ * matrices using input-output data via fast QR based on displacement rank.
+ * This is a helper routine called by IB01MD when ALG='F'.
+ *
+ * @param[in] meth Method: 'M' = MOESP, 'N' = N4SID
+ * @param[in] batch Processing mode: 'F' = first, 'I' = intermediate,
+ *                  'L' = last, 'O' = one block only
+ * @param[in] conct Connection: 'C' = connected blocks, 'N' = not connected
+ * @param[in] nobr Number of block rows s in Hankel matrices (nobr > 0)
+ * @param[in] m Number of system inputs (m >= 0)
+ * @param[in] l Number of system outputs (l > 0)
+ * @param[in] nsmp Number of samples
+ * @param[in] u NSMP-by-M input data, dimension (ldu,m)
+ * @param[in] ldu Leading dimension of U
+ * @param[in] y NSMP-by-L output data, dimension (ldy,l)
+ * @param[in] ldy Leading dimension of Y
+ * @param[out] r Upper triangular R factor, dimension (ldr,2*(m+l)*nobr)
+ * @param[in] ldr Leading dimension of R (ldr >= 2*(m+l)*nobr)
+ * @param[in,out] iwork INTEGER workspace
+ * @param[out] dwork DOUBLE PRECISION workspace
+ * @param[in] ldwork Workspace size (use -1 for query)
+ * @param[out] iwarn Warning indicator
+ * @param[out] info Exit code: 0=success, -i=param i invalid, 1=H'H not pos def
+ */
+void ib01my(const char *meth, const char *batch, const char *conct,
+            i32 nobr, i32 m, i32 l, i32 nsmp,
+            const f64 *u, i32 ldu, const f64 *y, i32 ldy,
+            f64 *r, i32 ldr, i32 *iwork, f64 *dwork, i32 ldwork,
+            i32 *iwarn, i32 *info);
+
+/**
  * @brief Estimate system matrices from R factor (subspace identification).
  *
  * Estimates state-space matrices A, C, B, D from the R factor produced by
