@@ -18,19 +18,19 @@
 #include <ctype.h>
 #include <math.h>
 
-static bool sb02mv(const f64* reig, const f64* ieig) {
+static int sb02mv(const f64* reig, const f64* ieig) {
     return *reig < 0.0;
 }
 
-static bool sb02mr(const f64* reig, const f64* ieig) {
+static int sb02mr(const f64* reig, const f64* ieig) {
     return *reig >= 0.0;
 }
 
-static bool sb02mw(const f64* reig, const f64* ieig) {
+static int sb02mw(const f64* reig, const f64* ieig) {
     return SLC_DLAPY2(reig, ieig) < 1.0;
 }
 
-static bool sb02ms(const f64* reig, const f64* ieig) {
+static int sb02ms(const f64* reig, const f64* ieig) {
     return SLC_DLAPY2(reig, ieig) >= 1.0;
 }
 
@@ -215,7 +215,7 @@ void sb02rd(
         i32 ldw = ldwork - iw + 1;
         i32 nrot;
 
-        bool (*select_func)(const f64*, const f64*);
+        int (*select_func)(const f64*, const f64*);
         if (!discr) {
             select_func = lsort ? sb02mv : sb02mr;
         } else {

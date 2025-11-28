@@ -232,7 +232,7 @@ You are an elite Fortran-to-C translation specialist with deep expertise in nume
 ### Phase 2: GREEN (Minimal Implementation)
 
 1. **Create C Implementation** (`src/[XX]/[routine].c`):
-   - Use `i32` for INTEGER, `f64` for DOUBLE PRECISION, `bool` for LOGICAL
+   - Use `i32` for INTEGER, `f64` for DOUBLE PRECISION, `bool` for LOGICAL (except callbacks - see below)
    - Column-major indexing: `a[i + j*lda]` for element (i,j)
    - Pass scalars to BLAS/LAPACK by pointer
    - Critical pattern for index conversion:
@@ -352,6 +352,31 @@ See `fortran_diag/README.md` for complete steps. Summary:
 **Time investment**: ~30 min to add new routine, saves hours of blind debugging
 
 ## Critical Safety Patterns
+
+### FORTRAN Callback ABI Issue (CRITICAL)
+
+When implementing callback functions passed to LAPACK routines (DGEES, DGGES), MUST use `int` return type, NOT `bool`.
+
+**Why:** FORTRAN LOGICAL is 4 bytes (int), C bool is 1 byte. Using bool causes ABI mismatch that works on ARM64 but fails on x86-64.
+
+**WRONG:**
+```c
+static bool select_stable(const f64* reig, const f64* ieig) {
+    return *reig < 0.0;  // WRONG - bool return causes ABI mismatch
+}
+```
+
+**CORRECT:**
+```c
+static int select_stable(const f64* reig, const f64* ieig) {
+    return *reig < 0.0;  // CORRECT - int return (comparison yields 0/1)
+}
+```
+
+**Affected LAPACK routines:**
+- DGEES (Schur decomposition with eigenvalue selection)
+- DGGES (Generalized Schur decomposition)
+- Any routine with SELECT/SELCTG callback parameter
 
 ### Array Indexing
 ```c

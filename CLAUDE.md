@@ -78,6 +78,7 @@ tools/extract_dependencies.py  # Dependency analyzer
 
 ### Types
 - `INTEGER` → `i32`, `DOUBLE PRECISION` → `f64`, `LOGICAL` → `bool`
+- **Exception:** LAPACK callbacks (DGEES/DGGES SELECT) MUST use `int`, not `bool` (ABI: FORTRAN LOGICAL=4 bytes, C bool=1 byte)
 
 ### Column-Major Arrays
 ```c

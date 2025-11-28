@@ -322,7 +322,7 @@ void SLC_FC_FUNC(dgges, DGGES)(const char* jobvsl, const char* jobvsr,
                                 int* bwork, int* info);
 
 void SLC_FC_FUNC(dgees, DGEES)(const char* jobvs, const char* sort,
-                                bool (*select)(const f64*, const f64*),
+                                int (*select)(const f64*, const f64*),
                                 const int* n, f64* a, const int* lda,
                                 int* sdim, f64* wr, f64* wi,
                                 f64* vs, const int* ldvs, f64* work,
