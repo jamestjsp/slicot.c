@@ -2335,6 +2335,218 @@ void sb02nd(
     i32* info);
 
 /**
+ * @brief Solve algebraic Riccati equation using Schur vector method.
+ *
+ * Solves continuous-time algebraic Riccati equation:
+ *     Q + op(A)'*X + X*op(A) - X*G*X = 0                   (DICO='C')
+ *
+ * or discrete-time algebraic Riccati equation:
+ *     Q + op(A)'*X*(I_n + G*X)^(-1)*op(A) - X = 0         (DICO='D')
+ *
+ * where op(M) = M or M' (transpose), A, G, Q are N-by-N matrices,
+ * G and Q are symmetric, and X is the symmetric solution.
+ *
+ * The matrix G = op(B)*R^(-1)*op(B)' must be provided instead of B and R.
+ * Use SB02MT to compute G from B and R.
+ *
+ * @param[in] job Computation to perform:
+ *                'X' = compute solution only
+ *                'C' = compute reciprocal condition number only
+ *                'E' = compute error bound only
+ *                'A' = compute all (solution, condition, error bound)
+ * @param[in] dico Problem type:
+ *                 'C' = continuous-time
+ *                 'D' = discrete-time
+ * @param[in] hinv For discrete-time (DICO='D') with JOB='X'/'A':
+ *                 'D' = construct symplectic matrix H
+ *                 'I' = construct inverse of H
+ * @param[in] trana Form of op(A):
+ *                  'N' = op(A) = A
+ *                  'T'/'C' = op(A) = A'
+ * @param[in] uplo Triangle stored for G and Q:
+ *                 'U' = upper triangle
+ *                 'L' = lower triangle
+ * @param[in] scal Scaling strategy (for JOB='X'/'A'):
+ *                 'G' = general scaling
+ *                 'N' = no scaling
+ * @param[in] sort Eigenvalue ordering (for JOB='X'/'A'):
+ *                 'S' = stable eigenvalues first
+ *                 'U' = unstable eigenvalues first
+ * @param[in] fact Schur factorization (for JOB!='X'):
+ *                 'F' = T,V contain Schur factors
+ *                 'N' = compute Schur factors
+ * @param[in] lyapun Lyapunov equation form (for JOB!='X'):
+ *                   'O' = original equations
+ *                   'R' = reduced equations
+ * @param[in] n Order of matrices A, Q, G, X (n >= 0)
+ * @param[in] a N-by-N matrix A, dimension (lda,n)
+ * @param[in] lda Leading dimension of A
+ * @param[in,out] t N-by-N Schur form matrix (for JOB!='X'), dimension (ldt,n)
+ * @param[in] ldt Leading dimension of T
+ * @param[in,out] v N-by-N orthogonal Schur matrix (for JOB!='X'), dimension (ldv,n)
+ * @param[in] ldv Leading dimension of V
+ * @param[in,out] g N-by-N symmetric matrix G, dimension (ldg,n)
+ * @param[in] ldg Leading dimension of G
+ * @param[in,out] q N-by-N symmetric matrix Q, dimension (ldq,n)
+ * @param[in] ldq Leading dimension of Q
+ * @param[out] x N-by-N symmetric solution X, dimension (ldx,n)
+ * @param[in] ldx Leading dimension of X
+ * @param[out] sep Separation or scaling factor
+ * @param[out] rcond Reciprocal condition number (for JOB='C'/'A')
+ * @param[out] ferr Forward error bound (for JOB='E'/'A')
+ * @param[out] wr Real parts of eigenvalues, dimension (2*n)
+ * @param[out] wi Imaginary parts of eigenvalues, dimension (2*n)
+ * @param[out] s 2N-by-2N ordered Schur form, dimension (lds,2*n)
+ * @param[in] lds Leading dimension of S
+ * @param[out] iwork Integer workspace
+ * @param[out] dwork Double workspace
+ * @param[in] ldwork Workspace size (>= 5+max(1,4*n*n+8*n) for JOB='X'/'A')
+ * @param[out] bwork Logical workspace, dimension (2*n)
+ * @param[out] info 0=success, 1=A singular, 2=Schur failed, 3=ordering failed,
+ *                  4=not enough stable eigenvalues, 5=linear system singular,
+ *                  6=Ac Schur failed, 7=near-equal eigenvalues (warning)
+ */
+void sb02rd(
+    const char* job,
+    const char* dico,
+    const char* hinv,
+    const char* trana,
+    const char* uplo,
+    const char* scal,
+    const char* sort,
+    const char* fact,
+    const char* lyapun,
+    const i32 n,
+    f64* a,
+    const i32 lda,
+    f64* t,
+    const i32 ldt,
+    f64* v,
+    const i32 ldv,
+    f64* g,
+    const i32 ldg,
+    f64* q,
+    const i32 ldq,
+    f64* x,
+    const i32 ldx,
+    f64* sep,
+    f64* rcond,
+    f64* ferr,
+    f64* wr,
+    f64* wi,
+    f64* s,
+    const i32 lds,
+    i32* iwork,
+    f64* dwork,
+    const i32 ldwork,
+    i32* bwork,
+    i32* info);
+
+/**
+ * @brief Construct Hamiltonian or symplectic matrix for Riccati equation.
+ *
+ * For continuous-time (DICO='C'):
+ *         ( op(A)   -G    )
+ *     S = (               )
+ *         (  -Q   -op(A)' )
+ *
+ * For discrete-time (DICO='D'):
+ *                 -1              -1
+ *         (  op(A)           op(A)  *G       )
+ *     S = (        -1                   -1   )  if HINV='D'
+ *         ( Q*op(A)     op(A)' + Q*op(A)  *G )
+ *
+ * @param[in] dico Problem type: 'C'=continuous, 'D'=discrete
+ * @param[in] hinv For DICO='D': 'D'=direct, 'I'=inverse
+ * @param[in] trana Form of op(A): 'N'=A, 'T'/'C'=A'
+ * @param[in] uplo Triangle stored: 'U'=upper, 'L'=lower
+ * @param[in] n Order of A, G, Q (n >= 0)
+ * @param[in] a N-by-N matrix A, dimension (lda,n)
+ * @param[in] lda Leading dimension of A
+ * @param[in,out] g N-by-N symmetric matrix G, dimension (ldg,n)
+ * @param[in] ldg Leading dimension of G
+ * @param[in,out] q N-by-N symmetric matrix Q, dimension (ldq,n)
+ * @param[in] ldq Leading dimension of Q
+ * @param[out] s 2N-by-2N Hamiltonian/symplectic matrix, dimension (lds,2*n)
+ * @param[in] lds Leading dimension of S
+ * @param[out] iwork Integer workspace (2*n for discrete)
+ * @param[out] dwork Double workspace (6*n for discrete)
+ * @param[in] ldwork Workspace size
+ * @param[out] info 0=success, 1..n=singular A, n+1=numerically singular A
+ */
+void sb02ru(
+    const char* dico,
+    const char* hinv,
+    const char* trana,
+    const char* uplo,
+    const i32 n,
+    f64* a,
+    const i32 lda,
+    f64* g,
+    const i32 ldg,
+    f64* q,
+    const i32 ldq,
+    f64* s,
+    const i32 lds,
+    i32* iwork,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info);
+
+/**
+ * @brief Solve linear equations with LU factorization and iterative refinement.
+ *
+ * Solves op(A)*X = B using LU factorization with optional equilibration
+ * and iterative refinement.
+ *
+ * @param[in] fact Factorization: 'F'=factored, 'N'=factor A, 'E'=equilibrate+factor
+ * @param[in] trans Form: 'N'=A*X=B, 'T'/'C'=A'*X=B
+ * @param[in] n Order of A (n >= 0)
+ * @param[in] nrhs Number of right-hand sides (nrhs >= 0)
+ * @param[in,out] a N-by-N matrix A, dimension (lda,n)
+ * @param[in] lda Leading dimension of A
+ * @param[in,out] af N-by-N LU factors, dimension (ldaf,n)
+ * @param[in] ldaf Leading dimension of AF
+ * @param[in,out] ipiv Pivot indices, dimension (n)
+ * @param[in,out] equed Equilibration type: 'N','R','C','B'
+ * @param[in,out] r Row scale factors, dimension (n)
+ * @param[in,out] c Column scale factors, dimension (n)
+ * @param[in,out] b N-by-NRHS right-hand side B, dimension (ldb,nrhs)
+ * @param[in] ldb Leading dimension of B
+ * @param[out] x N-by-NRHS solution X, dimension (ldx,nrhs)
+ * @param[in] ldx Leading dimension of X
+ * @param[out] rcond Reciprocal condition number estimate
+ * @param[out] ferr Forward error bounds, dimension (nrhs)
+ * @param[out] berr Backward error bounds, dimension (nrhs)
+ * @param[out] iwork Integer workspace, dimension (n)
+ * @param[out] dwork Double workspace, dimension (4*n)
+ * @param[out] info 0=success, <0=invalid param, >0=singular
+ */
+void mb02pd(
+    const char* fact,
+    const char* trans,
+    const i32 n,
+    const i32 nrhs,
+    f64* a,
+    const i32 lda,
+    f64* af,
+    const i32 ldaf,
+    i32* ipiv,
+    char* equed,
+    f64* r,
+    f64* c,
+    f64* b,
+    const i32 ldb,
+    f64* x,
+    const i32 ldx,
+    f64* rcond,
+    f64* ferr,
+    f64* berr,
+    i32* iwork,
+    f64* dwork,
+    i32* info);
+
+/**
  * @brief Solve Lyapunov equation for Cholesky factor of solution.
  *
  * Solves for X = op(U)'*op(U) either the stable continuous-time Lyapunov equation:

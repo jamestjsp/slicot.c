@@ -149,6 +149,18 @@ void SLC_FC_FUNC(dlaset, DLASET)(const char* uplo, const int* m, const int* n,
 void SLC_FC_FUNC(dgetrf, DGETRF)(const int* m, const int* n, f64* a,
                                   const int* lda, int* ipiv, int* info);
 
+void SLC_FC_FUNC(dgetrs, DGETRS)(const char* trans, const int* n, const int* nrhs,
+                                  const f64* a, const int* lda, const int* ipiv,
+                                  f64* b, const int* ldb, int* info);
+
+void SLC_FC_FUNC(dgesv, DGESV)(const int* n, const int* nrhs, f64* a,
+                                const int* lda, int* ipiv, f64* b,
+                                const int* ldb, int* info);
+
+void SLC_FC_FUNC(dgecon, DGECON)(const char* norm, const int* n, const f64* a,
+                                  const int* lda, const f64* anorm, f64* rcond,
+                                  f64* work, int* iwork, int* info);
+
 void SLC_FC_FUNC(dpotrf, DPOTRF)(const char* uplo, const int* n, f64* a,
                                   const int* lda, int* info);
 
@@ -310,7 +322,7 @@ void SLC_FC_FUNC(dgges, DGGES)(const char* jobvsl, const char* jobvsr,
                                 int* bwork, int* info);
 
 void SLC_FC_FUNC(dgees, DGEES)(const char* jobvs, const char* sort,
-                                bool (*select)(const f64*, const f64*),
+                                int (*select)(const f64*, const f64*),
                                 const int* n, f64* a, const int* lda,
                                 int* sdim, f64* wr, f64* wi,
                                 f64* vs, const int* ldvs, f64* work,
@@ -381,6 +393,9 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DLARNV   SLC_FC_FUNC(dlarnv, DLARNV)
 #define SLC_DLASET   SLC_FC_FUNC(dlaset, DLASET)
 #define SLC_DGETRF   SLC_FC_FUNC(dgetrf, DGETRF)
+#define SLC_DGETRS   SLC_FC_FUNC(dgetrs, DGETRS)
+#define SLC_DGESV    SLC_FC_FUNC(dgesv, DGESV)
+#define SLC_DGECON   SLC_FC_FUNC(dgecon, DGECON)
 #define SLC_DPOTRF   SLC_FC_FUNC(dpotrf, DPOTRF)
 #define SLC_DSYTRF   SLC_FC_FUNC(dsytrf, DSYTRF)
 #define SLC_DPOCON   SLC_FC_FUNC(dpocon, DPOCON)

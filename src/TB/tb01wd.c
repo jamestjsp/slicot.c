@@ -19,8 +19,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-static bool dummy_select(const f64* wr, const f64* wi) {
-    return false;
+static int dummy_select(const f64* wr, const f64* wi) {
+    return 0;
 }
 
 void tb01wd(

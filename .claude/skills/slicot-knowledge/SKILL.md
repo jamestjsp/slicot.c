@@ -259,9 +259,33 @@ B = np.array([
 | `INTEGER` (ILP64) | `i64` | typedef for int64_t with -Dilp64 |
 | `DOUBLE PRECISION` | `f64` | typedef for double |
 | `COMPLEX*16` | `c128` | typedef for complex double |
+| `LOGICAL` | `bool` | For variables; see warning for callbacks below |
 | `DOUBLE PRECISION array(N)` | `f64*` | Pointer to array |
 | `DOUBLE PRECISION array(LDA,*)` | `f64*` | Pointer to 2D array (column-major) |
 | `INFO` parameter | `i32* info` | Last parameter, by pointer |
+
+### CRITICAL: FORTRAN LOGICAL Callback ABI Mismatch
+
+**FORTRAN LOGICAL functions passed as callbacks to LAPACK MUST use `int`, NOT `bool`.**
+
+FORTRAN LOGICAL is 4 bytes (same as int), but C bool is 1 byte. This ABI mismatch causes:
+- Works on ARM64 (macOS M1/M2)
+- Fails on x86-64 (Linux, Intel Mac)
+
+**Example - SELECT callback for DGEES/DGGES:**
+```c
+// WRONG - causes segfault on x86-64
+static bool select_stable(const f64* reig, const f64* ieig) {
+    return *reig < 0.0;
+}
+
+// CORRECT - ABI compatible with FORTRAN LOGICAL
+static int select_stable(const f64* reig, const f64* ieig) {
+    return *reig < 0.0;  // Comparison yields 0 or 1
+}
+```
+
+**Affected routines:** DGEES, DGGES, any LAPACK routine with SELECT/SELCTG parameter
 
 ### Common Mode Parameters
 

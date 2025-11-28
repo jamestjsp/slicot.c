@@ -25,9 +25,9 @@ static bool lsame(const char* ca, const char* cb) {
     return a == b;
 }
 
-static bool select_dummy(const f64* wr, const f64* wi) {
+static int select_dummy(const f64* wr, const f64* wi) {
     (void)wr; (void)wi;
-    return false;
+    return 0;
 }
 
 static bool ma02hd_is_identity(i32 n, f64 diag, const f64* a, i32 lda) {
