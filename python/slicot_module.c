@@ -2203,6 +2203,142 @@ static PyObject* py_sg03bd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for tb01vd */
+static PyObject* py_tb01vd(PyObject* self, PyObject* args, PyObject* kwargs) {
+    i32 n, m, l;
+    const char *apply = "N";
+    PyObject *a_obj, *b_obj, *c_obj, *d_obj, *x0_obj;
+    PyArrayObject *a_array, *b_array, *c_array, *d_array, *x0_array;
+
+    static char *kwlist[] = {"n", "m", "l", "a", "b", "c", "d", "x0", "apply", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iiiOOOOO|s", kwlist,
+                                     &n, &m, &l, &a_obj, &b_obj, &c_obj, &d_obj, &x0_obj, &apply)) {
+        return NULL;
+    }
+
+    if (n < 0 || m < 0 || l < 0) {
+        PyErr_Format(PyExc_ValueError, "Dimensions must be non-negative (n=%d, m=%d, l=%d)", n, m, l);
+        return NULL;
+    }
+
+    if (!(apply[0] == 'A' || apply[0] == 'a' || apply[0] == 'N' || apply[0] == 'n')) {
+        PyErr_Format(PyExc_ValueError, "apply must be 'A' or 'N', got '%s'", apply);
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) return NULL;
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (c_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    d_array = (PyArrayObject*)PyArray_FROM_OTF(d_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_IN_FARRAY);
+    if (d_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        return NULL;
+    }
+
+    x0_array = (PyArrayObject*)PyArray_FROM_OTF(x0_obj, NPY_DOUBLE,
+                                                NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (x0_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        return NULL;
+    }
+
+    i32 lda = n > 0 ? n : 1;
+    i32 ldb = n > 0 ? n : 1;
+    i32 ldc = l > 0 ? l : 1;
+    i32 ldd = l > 0 ? l : 1;
+    i32 ltheta = n * (l + m + 1) + l * m;
+
+    i32 ldwork_min1 = n * n * l + n * l + n;
+    i32 max_nl = n > l ? n : l;
+    i32 inner1 = n * n + n * max_nl + 6 * n + (n < l ? n : l);
+    i32 inner2 = n * m;
+    i32 inner_max = inner1 > inner2 ? inner1 : inner2;
+    i32 ldwork_min2 = n * n + inner_max;
+    i32 ldwork = ldwork_min1 > ldwork_min2 ? ldwork_min1 : ldwork_min2;
+    if (ldwork < 1) ldwork = 1;
+
+    f64 *theta_data = (f64*)calloc(ltheta > 0 ? ltheta : 1, sizeof(f64));
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+
+    if (theta_data == NULL || dwork == NULL) {
+        free(theta_data);
+        free(dwork);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        Py_DECREF(x0_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate memory");
+        return NULL;
+    }
+
+    i32 info;
+    f64 scale = 0.0;
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+    f64 *d_data = (f64*)PyArray_DATA(d_array);
+    f64 *x0_data = (f64*)PyArray_DATA(x0_array);
+
+    tb01vd(apply, n, m, l, a_data, lda, b_data, ldb, c_data, ldc,
+           d_data, ldd, x0_data, theta_data, ltheta, &scale,
+           dwork, ldwork, &info);
+
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    PyArray_ResolveWritebackIfCopy(c_array);
+    PyArray_ResolveWritebackIfCopy(x0_array);
+
+    npy_intp theta_dims[1] = {ltheta};
+    PyObject *theta_array = PyArray_SimpleNewFromData(1, theta_dims, NPY_DOUBLE, theta_data);
+    if (theta_array == NULL) {
+        free(theta_data);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        Py_DECREF(x0_array);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)theta_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *result = Py_BuildValue("OOOOdi", theta_array, a_array, b_array, c_array, scale, info);
+
+    Py_DECREF(theta_array);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(d_array);
+    Py_DECREF(x0_array);
+
+    return result;
+}
+
 /* Python wrapper for tb01vy */
 static PyObject* py_tb01vy(PyObject* self, PyObject* args, PyObject* kwargs) {
     i32 n, m, l, ltheta;
@@ -5985,6 +6121,24 @@ static PyMethodDef SlicotMethods[] = {
      "  tol (float): Tolerance for rank determination\n\n"
      "Returns:\n"
      "  (b, ranks, info): Solution x, ranks, exit code\n"},
+
+    {"tb01vd", (PyCFunction)py_tb01vd, METH_VARARGS | METH_KEYWORDS,
+     "Convert discrete-time system to output normal form.\n\n"
+     "Converts a stable discrete-time system (A, B, C, D) with initial state x0\n"
+     "into the output normal form, producing parameter vector THETA.\n\n"
+     "Parameters:\n"
+     "  n (int): System order\n"
+     "  m (int): Number of inputs\n"
+     "  l (int): Number of outputs\n"
+     "  a (ndarray): State matrix (n x n, F-order), modified on exit\n"
+     "  b (ndarray): Input matrix (n x m, F-order), modified on exit\n"
+     "  c (ndarray): Output matrix (l x n, F-order), modified on exit\n"
+     "  d (ndarray): Feedthrough matrix (l x m, F-order), not modified\n"
+     "  x0 (ndarray): Initial state (n,), modified on exit\n"
+     "  apply (str, optional): 'A' = apply bijective mapping, 'N' = no mapping (default)\n\n"
+     "Returns:\n"
+     "  (theta, a, b, c, scale, info): Parameter vector, transformed matrices, scale factor, exit code\n"
+     "  info=0: success, info=1: Lyapunov scale=0, info=2: unstable A, info=3: QR failed\n"},
 
     {"tb01vy", (PyCFunction)py_tb01vy, METH_VARARGS | METH_KEYWORDS,
      "Convert output normal form to state-space representation.\n\n"

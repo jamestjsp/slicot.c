@@ -1261,6 +1261,64 @@ void tb01wd(
 );
 
 /**
+ * @brief Convert discrete-time system to output normal form.
+ *
+ * Converts a stable discrete-time system (A, B, C, D) with initial state x0
+ * into the output normal form, producing parameter vector THETA.
+ *
+ * The parameter vector THETA contains:
+ * - THETA[0:N*L-1]: parameters for A and C matrices
+ * - THETA[N*L:N*(L+M)-1]: parameters for B matrix
+ * - THETA[N*(L+M):N*(L+M)+L*M-1]: parameters for D matrix
+ * - THETA[N*(L+M)+L*M:N*(L+M+1)+L*M-1]: initial state x0
+ *
+ * Algorithm:
+ * 1. Solve Lyapunov equation A'*Q*A - Q = -scale^2*C'*C in Cholesky factor T
+ * 2. Transform system using T
+ * 3. QR factorization of transposed observability matrix
+ * 4. Extract parameters via N orthogonal transformations
+ *
+ * @param[in] apply Bijective mapping mode:
+ *                  'A' = apply bijective mapping to remove norm(THETA_i) < 1 constraint
+ *                  'N' = no bijective mapping
+ * @param[in] n System order (N >= 0)
+ * @param[in] m Number of inputs (M >= 0)
+ * @param[in] l Number of outputs (L >= 0)
+ * @param[in,out] a State matrix, dimension (LDA,N), column-major.
+ *                  On entry: original system matrix (must be stable).
+ *                  On exit: transformed system matrix.
+ * @param[in] lda Leading dimension of A (>= max(1,N))
+ * @param[in,out] b Input matrix, dimension (LDB,M), column-major.
+ *                  On entry: original input matrix.
+ *                  On exit: transformed input matrix.
+ * @param[in] ldb Leading dimension of B (>= max(1,N))
+ * @param[in,out] c Output matrix, dimension (LDC,N), column-major.
+ *                  On entry: original output matrix.
+ *                  On exit: transformed output matrix.
+ * @param[in] ldc Leading dimension of C (>= max(1,L))
+ * @param[in] d Feedthrough matrix, dimension (LDD,M), column-major (read-only)
+ * @param[in] ldd Leading dimension of D (>= max(1,L))
+ * @param[in,out] x0 Initial state vector, dimension (N).
+ *                   On entry: original initial state.
+ *                   On exit: transformed initial state.
+ * @param[out] theta Parameter vector, dimension (LTHETA)
+ * @param[in] ltheta Length of THETA array (>= N*(L+M+1)+L*M)
+ * @param[out] scale Scale factor from Lyapunov equation solver
+ * @param[out] dwork Workspace array, dimension (LDWORK)
+ * @param[in] ldwork Length of DWORK
+ * @param[out] info Exit code:
+ *                  = 0: success
+ *                  < 0: if INFO = -i, the i-th argument had an illegal value
+ *                  = 1: Lyapunov equation could only be solved with scale = 0
+ *                  = 2: matrix A is not discrete-time stable
+ *                  = 3: QR algorithm failed to converge for matrix A
+ */
+void tb01vd(const char* apply, i32 n, i32 m, i32 l, f64* a, i32 lda,
+            f64* b, i32 ldb, f64* c, i32 ldc, const f64* d, i32 ldd,
+            f64* x0, f64* theta, i32 ltheta, f64* scale,
+            f64* dwork, i32 ldwork, i32* info);
+
+/**
  * @brief Convert output normal form to state-space representation.
  *
  * Converts a discrete-time system from output normal form (parameter vector THETA)
