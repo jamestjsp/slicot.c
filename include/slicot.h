@@ -2117,6 +2117,78 @@ void slicot_ib01rd(
 );
 
 /**
+ * @brief Estimate initial state and system matrices B, D (driver routine).
+ *
+ * Estimates initial state x(0) and optionally B and D for discrete-time LTI:
+ *   x(k+1) = A*x(k) + B*u(k)
+ *   y(k)   = C*x(k) + D*u(k)
+ *
+ * Driver routine that:
+ * 1. Transforms A to real Schur form via TB01WD (A = V*At*V')
+ * 2. Calls IB01QD (COMUSE='C') or IB01RD for estimation
+ * 3. Back-transforms results to original coordinates
+ *
+ * @param[in] jobx0 Initial state computation:
+ *                  'X' = compute initial state x(0)
+ *                  'N' = do not compute x(0), set to zero
+ * @param[in] comuse How to handle B and D matrices:
+ *                   'C' = compute B (and D if JOB='D')
+ *                   'U' = use given B (and D if JOB='D')
+ *                   'N' = do not compute/use B and D
+ * @param[in] job Matrix computation extent:
+ *                'B' = compute B only (D is zero)
+ *                'D' = compute B and D
+ * @param[in] n System order (n >= 0)
+ * @param[in] m Number of inputs (m >= 0)
+ * @param[in] l Number of outputs (l > 0)
+ * @param[in] nsmp Number of samples
+ * @param[in] a N-by-N state matrix A, dimension (lda,n)
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in,out] b N-by-M input matrix B, dimension (ldb,m)
+ *                  If COMUSE='U': on entry, given B matrix
+ *                  If COMUSE='C': on exit, estimated B matrix
+ * @param[in] ldb Leading dimension of B (ldb >= n if m>0, else >= 1)
+ * @param[in] c L-by-N output matrix C, dimension (ldc,n)
+ * @param[in] ldc Leading dimension of C (ldc >= l)
+ * @param[in,out] d L-by-M feedthrough matrix D, dimension (ldd,m)
+ *                  If COMUSE='U' and JOB='D': on entry, given D matrix
+ *                  If COMUSE='C' and JOB='D': on exit, estimated D matrix
+ * @param[in] ldd Leading dimension of D (ldd >= l if m>0 and JOB='D', else >= 1)
+ * @param[in] u NSMP-by-M input data U, dimension (ldu,m)
+ * @param[in] ldu Leading dimension of U (ldu >= nsmp if m>0, else >= 1)
+ * @param[in] y NSMP-by-L output data Y, dimension (ldy,l)
+ * @param[in] ldy Leading dimension of Y (ldy >= nsmp)
+ * @param[out] x0 Estimated initial state, dimension (n)
+ * @param[out] v N-by-N orthogonal transformation matrix, dimension (ldv,n)
+ *               Satisfies A = V * At * V', where At is in Schur form
+ * @param[in] ldv Leading dimension of V (ldv >= max(1,n))
+ * @param[in] tol Tolerance for rank estimation (tol <= 0 uses default)
+ * @param[out] iwork INTEGER workspace
+ * @param[out] dwork DOUBLE PRECISION workspace
+ *                   dwork[0] = optimal workspace
+ *                   dwork[1] = reciprocal condition number
+ *                   dwork[2] = rcond of U (if COMUSE='C', JOB='D', M>0)
+ * @param[in] ldwork Workspace size
+ * @param[out] iwarn Warning: 0=none, 4=rank-deficient, 6=A not stable
+ * @param[out] info Exit code: 0=success, 1=Schur failed, -i=param i invalid
+ */
+void slicot_ib01cd(
+    const char* jobx0, const char* comuse, const char* job,
+    i32 n, i32 m, i32 l, i32 nsmp,
+    const f64* a, i32 lda,
+    f64* b, i32 ldb,
+    const f64* c, i32 ldc,
+    f64* d, i32 ldd,
+    f64* u, i32 ldu,
+    const f64* y, i32 ldy,
+    f64* x0,
+    f64* v, i32 ldv,
+    f64 tol,
+    i32* iwork, f64* dwork, i32 ldwork,
+    i32* iwarn, i32* info
+);
+
+/**
  * @brief Block symmetric rank-k update (BLAS 3 version of MB01RX).
  *
  * Computes triangular part of matrix formula:
