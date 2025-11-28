@@ -452,7 +452,7 @@ def test_sb02rd_error_invalid_dico():
         )
 
 
-@pytest.mark.skip(reason="SLICOT SB02RU bug: HINV='I' S12 transpose loop double-processes off-diagonals")
+# @pytest.mark.skip(reason="SLICOT SB02RU bug: HINV='I' S12 transpose loop double-processes off-diagonals")
 def test_sb02rd_discrete_hinv_inverse():
     """
     Test SB02RD discrete-time with HINV='I' (inverse symplectic).

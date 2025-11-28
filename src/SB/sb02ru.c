@@ -222,7 +222,7 @@ void sb02ru(
             SLC_DGETRS(&trana, &n, &n, s, &lds, iwork, &s[n * lds], &lds, &info_loc);
 
             for (i32 j = n; j < n2; j++) {
-                for (i32 i = 0; i < n; i++) {
+                for (i32 i = 0; i <= j - n; i++) {
                     f64 temp = -s[i + j * lds];
                     s[i + j * lds] = -s[j - n + (i + n) * lds];
                     s[j - n + (i + n) * lds] = temp;
