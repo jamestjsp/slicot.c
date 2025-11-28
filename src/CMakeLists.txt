@@ -1,4 +1,5 @@
 set(SLICOT_SOURCES
+    IB/ib01cd.c
     IB/ib01md.c
     IB/ib01my.c
     IB/ib01nd.c
@@ -65,6 +66,7 @@ set(SLICOT_SOURCES
     SG/sg03bv.c
     SG/sg03bw.c
     SG/sg03bx.c
+    TB/tb01vd.c
     TB/tb01vy.c
     TB/tb01wd.c
     TF/tf01mx.c
