@@ -4546,6 +4546,174 @@ static PyObject* py_ib01bd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for ib03bd - Wiener system identification */
+static PyObject* py_ib03bd(PyObject* self, PyObject* args, PyObject* kwargs) {
+    const char *init_str;
+    i32 nobr, m, l, nsmp, n, nn, itmax1, itmax2, nprint;
+    f64 tol1, tol2;
+    PyObject *u_obj, *y_obj;
+    PyObject *dwork_seed_obj = Py_None;
+    PyObject *x_init_obj = Py_None;
+    PyArrayObject *u_array = NULL, *y_array = NULL;
+    PyArrayObject *dwork_seed_array = NULL, *x_init_array = NULL;
+    i32 iwarn, info;
+
+    static char *kwlist[] = {"init", "nobr", "m", "l", "nsmp", "n", "nn",
+                             "itmax1", "itmax2", "u", "y", "tol1", "tol2",
+                             "dwork_seed", "x_init", "nprint", NULL};
+
+    nprint = 0;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "siiiiiiiiOOdd|OOi", kwlist,
+                                      &init_str, &nobr, &m, &l, &nsmp, &n, &nn,
+                                      &itmax1, &itmax2, &u_obj, &y_obj,
+                                      &tol1, &tol2, &dwork_seed_obj, &x_init_obj,
+                                      &nprint)) {
+        return NULL;
+    }
+
+    char init = toupper((unsigned char)init_str[0]);
+
+    if (init != 'L' && init != 'S' && init != 'B' && init != 'N') {
+        PyErr_SetString(PyExc_ValueError, "INIT must be 'L', 'S', 'B', or 'N'");
+        return NULL;
+    }
+
+    u_array = (PyArrayObject*)PyArray_FROM_OTF(u_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    y_array = (PyArrayObject*)PyArray_FROM_OTF(y_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+
+    if (!u_array || !y_array) {
+        Py_XDECREF(u_array);
+        Py_XDECREF(y_array);
+        return NULL;
+    }
+
+    i32 ldu = (i32)PyArray_DIM(u_array, 0);
+    i32 ldy = (i32)PyArray_DIM(y_array, 0);
+    f64 *u_data = (f64*)PyArray_DATA(u_array);
+    f64 *y_data = (f64*)PyArray_DATA(y_array);
+
+    i32 ml = m + l;
+    i32 bsn = nn * (l + 2) + 1;
+    i32 nths = bsn * l;
+    i32 lths = n * (ml + 1) + l * m;
+    i32 nx = nths + lths;
+    i32 lx = nx;
+
+    f64 *x = (f64*)calloc(nx, sizeof(f64));
+    if (!x) {
+        Py_DECREF(u_array);
+        Py_DECREF(y_array);
+        return PyErr_NoMemory();
+    }
+
+    if (x_init_obj != Py_None) {
+        x_init_array = (PyArrayObject*)PyArray_FROM_OTF(x_init_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+        if (!x_init_array) {
+            free(x);
+            Py_DECREF(u_array);
+            Py_DECREF(y_array);
+            return NULL;
+        }
+        i32 x_init_len = (i32)PyArray_SIZE(x_init_array);
+        f64 *x_init_data = (f64*)PyArray_DATA(x_init_array);
+        i32 copy_len = x_init_len < nx ? x_init_len : nx;
+        for (i32 i = 0; i < copy_len; i++) {
+            x[i] = x_init_data[i];
+        }
+        Py_DECREF(x_init_array);
+    }
+
+    i32 nsml = nsmp * l;
+    i32 ldac = (n > 0) ? n + l : 1;
+    i32 isad = (n > 0) ? ldac * (n + m) : 0;
+
+    i32 ldwork = 50000;
+
+    if (init == 'L' || init == 'B') {
+        i32 iw = 2 * ml * nobr * (2 * ml * (nobr + 1) + 3) + l * nobr;
+        if (iw > ldwork) ldwork = iw;
+        i32 two_ml_nobr_sq = (2 * ml * nobr) * (2 * ml * nobr);
+        iw = two_ml_nobr_sq + isad + n * n + 8 * n + 100;
+        if (iw > ldwork) ldwork = iw;
+        iw = nsml + isad + ldac + 2 * n + m + 100;
+        if (iw > ldwork) ldwork = iw;
+    }
+
+    if (init == 'S' || init == 'B') {
+        i32 iw = nsml + bsn * bsn + bsn + nsmp + 2 * nn + 100;
+        if (iw > ldwork) ldwork = iw;
+    }
+
+    i32 iw = nsml + nx + nsml * (bsn + lths) + nx * (bsn + lths) + 2 * nx + 100;
+    if (iw > ldwork) ldwork = iw;
+
+    ldwork *= 2;
+
+    i32 liwork = nx + l + 10;
+    if (m * nobr + n > liwork) liwork = m * nobr + n;
+    if (m * (n + l) > liwork) liwork = m * (n + l);
+    if (nn * (l + 2) + 2 > liwork) liwork = nn * (l + 2) + 2;
+
+    i32 *iwork = (i32*)calloc(liwork, sizeof(i32));
+    f64 *dwork = (f64*)calloc(ldwork, sizeof(f64));
+
+    if (!iwork || !dwork) {
+        free(x);
+        free(iwork);
+        free(dwork);
+        Py_DECREF(u_array);
+        Py_DECREF(y_array);
+        return PyErr_NoMemory();
+    }
+
+    if (dwork_seed_obj != Py_None) {
+        dwork_seed_array = (PyArrayObject*)PyArray_FROM_OTF(dwork_seed_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+        if (dwork_seed_array && PyArray_SIZE(dwork_seed_array) >= 4) {
+            f64 *seed_data = (f64*)PyArray_DATA(dwork_seed_array);
+            for (i32 i = 0; i < 4; i++) {
+                dwork[i] = seed_data[i];
+            }
+        }
+        Py_XDECREF(dwork_seed_array);
+    }
+
+    i32 n_local = n;
+
+    ib03bd(init_str, nobr, m, l, nsmp, &n_local, nn, itmax1, itmax2, nprint,
+           u_data, ldu, y_data, ldy, x, &lx, tol1, tol2,
+           iwork, dwork, ldwork, &iwarn, &info);
+
+    Py_DECREF(u_array);
+    Py_DECREF(y_array);
+
+    if (info < 0) {
+        free(x);
+        free(iwork);
+        free(dwork);
+        PyErr_Format(PyExc_ValueError, "IB03BD error: INFO = %d", info);
+        return NULL;
+    }
+
+    npy_intp x_dims[1] = {nx};
+    PyObject *x_out = PyArray_New(&PyArray_Type, 1, x_dims, NPY_DOUBLE, NULL, x, 0, 0, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)x_out, NPY_ARRAY_OWNDATA);
+
+    npy_intp dwork_dims[1] = {8};
+    f64 *dwork_out_data = (f64*)malloc(8 * sizeof(f64));
+    for (i32 i = 0; i < 8 && i < ldwork; i++) {
+        dwork_out_data[i] = dwork[i];
+    }
+    PyObject *dwork_out = PyArray_New(&PyArray_Type, 1, dwork_dims, NPY_DOUBLE, NULL, dwork_out_data, 0, 0, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)dwork_out, NPY_ARRAY_OWNDATA);
+
+    free(iwork);
+    free(dwork);
+
+    PyObject *result = Py_BuildValue("NiiN", x_out, iwarn, info, dwork_out);
+    return result;
+}
+
 /* Python wrapper for ib01md */
 static PyObject* py_ib01md(PyObject* self, PyObject* args, PyObject* kwargs) {
     const char *meth_str, *alg_str, *batch_str, *conct_str;
@@ -7327,6 +7495,33 @@ static PyMethodDef SlicotMethods[] = {
      "  tol (float): Tolerance for rank estimation\n\n"
      "Returns:\n"
      "  (A, C, B, D, Q, Ry, S, K, iwarn, info): Matrices, covariances, gain, status\n"},
+
+    {"ib03bd", (PyCFunction)py_ib03bd, METH_VARARGS | METH_KEYWORDS,
+     "Wiener system identification using Levenberg-Marquardt algorithm.\n\n"
+     "Computes parameters for approximating a Wiener system consisting of a\n"
+     "linear state-space part and a static nonlinearity (neural network):\n"
+     "  x(t+1) = A*x(t) + B*u(t)       (linear state-space)\n"
+     "  z(t)   = C*x(t) + D*u(t)\n"
+     "  y(t)   = f(z(t), wb(1:L))      (nonlinear function)\n\n"
+     "Parameters:\n"
+     "  init (str): 'L' init linear, 'S' init nonlinear, 'B' init both, 'N' no init\n"
+     "  nobr (int): Block rows for MOESP/N4SID (used if init='L' or 'B')\n"
+     "  m (int): Number of inputs (m >= 0)\n"
+     "  l (int): Number of outputs (l >= 0, l > 0 if init='L' or 'B')\n"
+     "  nsmp (int): Number of input/output samples\n"
+     "  n (int): System order (n < nobr if init='L' or 'B')\n"
+     "  nn (int): Number of neurons (nn >= 0)\n"
+     "  itmax1 (int): Max iterations for nonlinear init\n"
+     "  itmax2 (int): Max iterations for whole optimization\n"
+     "  u (ndarray): Input samples (nsmp x m, F-order)\n"
+     "  y (ndarray): Output samples (nsmp x l, F-order)\n"
+     "  tol1 (float): Tolerance for nonlinear init (< 0 uses sqrt(eps))\n"
+     "  tol2 (float): Tolerance for whole optimization (< 0 uses sqrt(eps))\n"
+     "  dwork_seed (ndarray, optional): Seed for random init (4 values)\n"
+     "  x_init (ndarray, optional): Initial parameters\n"
+     "  nprint (int, optional): Print control (default 0)\n\n"
+     "Returns:\n"
+     "  (x, iwarn, info, dwork): Parameters, warning, status, workspace info\n"},
 
     {"ib01nd", (PyCFunction)py_ib01nd, METH_VARARGS,
      "SVD system order via block Hankel.\n\n"
