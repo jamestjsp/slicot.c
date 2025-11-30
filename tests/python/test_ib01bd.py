@@ -400,9 +400,6 @@ def test_ib01bd_covariance_symmetry():
 
     Q = Q^T and Ry = Ry^T
     Random seed: 789 (for reproducibility)
-
-    NOTE: Covariance computation with JOBCK='C' is not fully implemented.
-    This test uses JOBCK='N' to test basic matrix estimation.
     """
     np.random.seed(789)
     nobr = 5
@@ -414,22 +411,24 @@ def test_ib01bd_covariance_symmetry():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad('N', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
     assert info_ad == 0
 
-    A, C, _B, _D, _Q, _Ry, _S, _K, _iwarn, info = ib01bd('N', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
+    A, C, _B, _D, Q, Ry, _S, _K, _iwarn, info = ib01bd('M', 'A', 'C', nobr, n, m, l, nsmp, r, 0.0)
 
     assert info == 0
     assert A.shape == (n, n)
     assert C.shape == (l, n)
+    assert Q.shape == (n, n)
+    assert Ry.shape == (l, l)
+    # Verify symmetry
+    np.testing.assert_allclose(Q, Q.T, rtol=1e-10)
+    np.testing.assert_allclose(Ry, Ry.T, rtol=1e-10)
 
 
 def test_ib01bd_with_kalman_gain():
     """
     Test JOBCK='K': compute covariances and Kalman gain.
-
-    NOTE: Kalman gain computation with JOBCK='K' is not fully implemented.
-    This test uses JOBCK='N' to test basic matrix estimation.
 
     Random seed: 111 (for reproducibility)
     """
@@ -443,14 +442,21 @@ def test_ib01bd_with_kalman_gain():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad('N', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
     assert info_ad == 0
 
-    A, _C, B, _D, _Q, _Ry, _S, _K, _iwarn, info = ib01bd('N', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
+    A, _C, B, _D, Q, Ry, S, K, _iwarn, info = ib01bd('M', 'A', 'K', nobr, n, m, l, nsmp, r, 0.0)
 
     assert info == 0
     assert A.shape == (n, n)
     assert B.shape == (n, m)
+    assert Q.shape == (n, n)
+    assert Ry.shape == (l, l)
+    assert S.shape == (n, l)
+    assert K.shape == (n, l)
+    # Verify covariance symmetry
+    np.testing.assert_allclose(Q, Q.T, rtol=1e-10)
+    np.testing.assert_allclose(Ry, Ry.T, rtol=1e-10)
 
 
 def test_ib01bd_larger_system():
