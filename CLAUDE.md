@@ -24,13 +24,20 @@ rm -rf build/linux-x64-debug && cmake --preset linux-x64-debug && cmake --build 
 cmake --preset linux-x64-debug-sanitizers
 cmake --build --preset linux-x64-debug-sanitizers-build
 pip install -e . --force-reinstall --no-deps
-LD_PRELOAD=$(gcc -print-file-name=libasan.so) ASAN_OPTIONS=detect_leaks=0 pytest tests/python/ -v
+# NOTE: Command substitution doesn't work in Claude Code - use explicit path
+# Linux devcontainer (aarch64): /usr/lib/gcc/aarch64-linux-gnu/13/libasan.so
+# Find path with: gcc -print-file-name=libasan.so
+LD_PRELOAD=/usr/lib/gcc/aarch64-linux-gnu/13/libasan.so ASAN_OPTIONS=detect_leaks=0 pytest tests/python/ -v
 
-# Valgrind (alternative memory checker)
+# Valgrind (alternative memory checker - SLOW, ~50x overhead)
+# Use for specific tests, not full suite. Focus on "definitely lost" = 0
 cmake --preset linux-x64-debug
 cmake --build --preset linux-x64-debug-build
-pip install -e .
-valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --suppressions=python.supp python -m pytest tests/python/test_specific.py -v
+pip install -e . --force-reinstall --no-deps
+# Quick single-file test (recommended):
+timeout 120 valgrind --leak-check=full --suppressions=python.supp python -m pytest tests/python/test_specific.py -v
+# Or quick inline test:
+timeout 60 valgrind --leak-check=full --suppressions=python.supp python -c "import slicot; print('ok')"
 
 # Debug C vs Fortran
 cmake --preset linux-x64-debug -DBUILD_FORTRAN_DIAG=ON
@@ -46,13 +53,15 @@ grep -A3 "OUTPUT" build/linux-x64-debug/fortran_diag/*_trace.txt
 - Use for CI/CD and regular development
 - Best for: buffer overflows, use-after-free, undefined behavior
 - Overhead: ~2x slowdown
+- **Required before PR:** Run full test suite with ASAN
 
 **Valgrind:** Comprehensive, slower but more thorough
-- Use for deep investigation and before major releases
+- Use for specific test files only (too slow for full suite)
 - Best for: memory leaks, uninitialized reads, invalid frees
-- Overhead: ~20-50x slowdown
+- Overhead: ~20-50x slowdown (use `timeout` to avoid hanging)
 - Suppressions file: `python.supp` filters Python false positives
-- **Focus on:** "definitely lost" bytes (should be 0)
+- **Focus on:** "definitely lost" bytes (must be 0)
+- **Ignore:** "possibly lost" and "still reachable" (Python internals)
 
 ## Directory Structure
 
