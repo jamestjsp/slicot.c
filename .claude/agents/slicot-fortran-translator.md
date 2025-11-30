@@ -41,6 +41,19 @@ You are an elite Fortran-to-C translation specialist with deep expertise in nume
 
    **CRITICAL - Test Dependencies**: Tests must NOT depend on control, scipy, or other external packages (except NumPy).
 
+   **Test Data Storage Strategy** (threshold: ≥50 values or >10 lines):
+   | Data Size | Storage | Example |
+   |-----------|---------|---------|
+   | Small (<50 values) | Inline `np.array([...])` | 3x3 matrix |
+   | Large (≥50 values) | NPZ file `tests/python/data/` | 1000-sample time series |
+   | Shared between tests | ALWAYS NPZ | IB01AD/IB01BD share I/O data |
+
+   **Goal**: Test files <400 lines. If embedded data makes file >500 lines, extract to NPZ:
+   ```python
+   # Save (one-time): np.savez('tests/python/data/routine_test_data.npz', u=u, y=y)
+   # Load: data = np.load(os.path.join(os.path.dirname(__file__), 'data', 'routine_test_data.npz'))
+   ```
+
    **Using Python Control/SciPy for Data Generation**: When authoritative examples unavailable, use temporary Python script to generate test data, then hardcode values in tests:
 
    **Step 1 - Create temporary generation script** (e.g., `temp_gen_[routine]_data.py`):

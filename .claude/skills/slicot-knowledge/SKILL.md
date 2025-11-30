@@ -98,6 +98,31 @@ Each HTML file contains these sections in order:
 3. Read **Program Results** to extract expected outputs
 4. Parse data according to Fortran column-major convention
 5. Write Python test with appropriate numerical tolerances (rtol=1e-14 for tight validation, or 1e-3 to 5e-3 for looser comparison)
+6. **Choose test data storage strategy** (see below)
+
+#### Test Data Storage Strategy
+
+**Threshold rule**: Use NPZ files for datasets with ≥50 values or >10 lines of data.
+
+| Data Size | Storage | Rationale |
+|-----------|---------|-----------|
+| Small (<50 values) | Inline `np.array([...])` | Self-documenting, easy to review |
+| Large (≥50 values) | NPZ file in `tests/python/data/` | Keeps tests readable |
+| Shared between tests | ALWAYS NPZ | Prevents duplication (e.g., IB01AD/IB01BD share I/O data) |
+
+**NPZ file pattern:**
+```python
+# Save test data (one-time, during test development)
+np.savez('tests/python/data/routine_test_data.npz', u=u, y=y, expected_a=a)
+
+# Load in test file
+def load_test_data():
+    data_path = os.path.join(os.path.dirname(__file__), 'data', 'routine_test_data.npz')
+    data = np.load(data_path)
+    return data['u'], data['y'], data['expected_a']
+```
+
+**Goal**: Test files should be <400 lines. If embedded data makes file >500 lines, extract to NPZ.
 
 ### Key Information Locations
 
