@@ -3179,6 +3179,54 @@ void sb04px(
     f64* xnorm,
     i32* info);
 
+/**
+ * @brief Balance system matrices (A,B,C) using diagonal similarity transformation.
+ *
+ * Reduces the 1-norm of the system matrix S = [A B; C 0] by balancing.
+ * Applies diagonal similarity transformation inv(D)*A*D iteratively
+ * to make rows and columns of diag(D,I)^{-1} * S * diag(D,I) as close
+ * in norm as possible.
+ *
+ * The balancing can be performed on:
+ *   - S = [A B; C 0] (JOB='A')
+ *   - S = [A B]      (JOB='B')
+ *   - S = [A; C]     (JOB='C')
+ *   - S = A          (JOB='N')
+ *
+ * @param[in] job Specifies which matrices are involved:
+ *                'A' = All matrices (A, B, C)
+ *                'B' = B and A matrices only
+ *                'C' = C and A matrices only
+ *                'N' = A matrix only (B and C not involved)
+ * @param[in] n Order of A, rows of B, columns of C (n >= 0)
+ * @param[in] m Number of columns of B (m >= 0)
+ * @param[in] p Number of rows of C (p >= 0)
+ * @param[in,out] maxred On entry: maximum allowed reduction in 1-norm if zero
+ *                       rows/columns encountered. If maxred > 0, must be > 1.
+ *                       If maxred <= 0, default value 10.0 is used.
+ *                       On exit: ratio of original to balanced matrix 1-norm.
+ * @param[in,out] a State matrix, dimension (lda,n)
+ *                  In: N-by-N matrix A
+ *                  Out: Balanced matrix inv(D)*A*D
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in,out] b Input matrix, dimension (ldb,m)
+ *                  In: N-by-M matrix B (if m > 0)
+ *                  Out: Balanced matrix inv(D)*B
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,n) if m > 0, else >= 1)
+ * @param[in,out] c Output matrix, dimension (ldc,n)
+ *                  In: P-by-N matrix C (if p > 0)
+ *                  Out: Balanced matrix C*D
+ * @param[in] ldc Leading dimension of C (ldc >= max(1,p))
+ * @param[out] scale Scaling factors, dimension (n)
+ *                   scale[j] = D(j,j) for j = 0,...,n-1
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  -i = i-th parameter had illegal value
+ */
+void tb01id(const char* job, i32 n, i32 m, i32 p, f64* maxred,
+            f64* a, i32 lda, f64* b, i32 ldb, f64* c, i32 ldc,
+            f64* scale, i32* info);
+
 #ifdef __cplusplus
 }
 #endif

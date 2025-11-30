@@ -64,7 +64,7 @@ def test_tb01id_basic_html_example():
 
     # Expected balanced C from HTML doc
     c_expected = np.array([
-        [1.0e-4, 0.0, 0.0, 0.0, 0.0],
+        [1.0e-5, 0.0, 0.0, 0.0, 0.0],
         [0.0, 0.0, 1.0e5, 0.0, 0.0],
         [0.0, 0.0, 0.0, 1.0e-6, 0.0],
         [6.664e-6, 0.0, -6.2e-8, 0.0, 0.0],

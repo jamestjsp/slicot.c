@@ -20,7 +20,9 @@
       "Skill(slicot-knowledge)",
       "Bash(ASAN_OPTIONS=detect_leaks=0 pytest:*)",
       "Bash(python -c:*)",
-      "Bash(timeout 120 pytest:*)"
+      "Bash(timeout 120 pytest:*)",
+      "Bash(gh issue create:*)",
+      "Bash(gh issue edit:*)"
     ],
     "deny": [],
     "ask": []
