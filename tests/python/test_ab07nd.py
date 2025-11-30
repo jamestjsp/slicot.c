@@ -271,6 +271,7 @@ def test_ab07nd_n_zero():
     c = np.array([], order='F', dtype=float).reshape(m, 0)
     d = np.array([[2.0, 0.0],
                   [0.0, 4.0]], order='F', dtype=float)
+    d_orig = d.copy()
 
     ai, bi, ci, di, rcond, info = ab07nd(a, b, c, d)
     assert info == 0
@@ -278,7 +279,7 @@ def test_ab07nd_n_zero():
     assert ai.shape == (0, 0)
     assert bi.shape == (0, m)
     assert ci.shape == (m, 0)
-    assert_allclose(di, np.linalg.inv(d), rtol=1e-14)
+    assert_allclose(di, np.linalg.inv(d_orig), rtol=1e-14)
 
 
 def test_ab07nd_m_zero():
