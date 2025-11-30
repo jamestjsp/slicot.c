@@ -6898,6 +6898,94 @@ cleanup:
     return NULL;
 }
 
+/* Python wrapper for tb01id */
+static PyObject* py_tb01id(PyObject* self, PyObject* args) {
+    const char *job_str;
+    PyObject *a_obj, *b_obj, *c_obj;
+    f64 maxred_in;
+
+    if (!PyArg_ParseTuple(args, "sOOOd", &job_str, &a_obj, &b_obj, &c_obj, &maxred_in)) {
+        return NULL;
+    }
+
+    char job = (char)toupper((unsigned char)job_str[0]);
+    if (job != 'A' && job != 'B' && job != 'C' && job != 'N') {
+        PyErr_SetString(PyExc_ValueError, "job must be 'A', 'B', 'C', or 'N'");
+        return NULL;
+    }
+
+    PyArrayObject *a_array = (PyArrayObject*)PyArray_FROM_OTF(
+        a_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!a_array) return NULL;
+
+    PyArrayObject *b_array = (PyArrayObject*)PyArray_FROM_OTF(
+        b_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!b_array) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    PyArrayObject *c_array = (PyArrayObject*)PyArray_FROM_OTF(
+        c_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!c_array) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *b_dims = PyArray_DIMS(b_array);
+    npy_intp *c_dims = PyArray_DIMS(c_array);
+
+    i32 n = (i32)a_dims[0];
+    i32 m = PyArray_NDIM(b_array) >= 2 ? (i32)b_dims[1] : 0;
+    i32 p = PyArray_NDIM(c_array) >= 1 ? (i32)c_dims[0] : 0;
+    i32 lda = n > 0 ? n : 1;
+    i32 ldb = (m > 0 && n > 0) ? n : 1;
+    i32 ldc = p > 0 ? p : 1;
+
+    f64 *scale = (f64*)malloc((n > 0 ? n : 1) * sizeof(f64));
+    if (!scale) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+
+    f64 maxred = maxred_in;
+    i32 info = 0;
+
+    tb01id(&job, n, m, p, &maxred, a_data, lda, b_data, ldb, c_data, ldc, scale, &info);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    PyArray_ResolveWritebackIfCopy(c_array);
+
+    npy_intp scale_dims[1] = {n};
+    PyObject *scale_array = PyArray_SimpleNewFromData(1, scale_dims, NPY_DOUBLE, scale);
+    if (!scale_array) {
+        free(scale);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)scale_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *result = Py_BuildValue("OOOdOi", a_array, b_array, c_array, maxred, scale_array, info);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(scale_array);
+
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"mb04od", py_mb04od, METH_VARARGS,
@@ -7839,6 +7927,19 @@ static PyMethodDef SlicotMethods[] = {
      "Returns:\n"
      "  (x, ferr, berr, rcond, info): Solution X, forward/backward error,\n"
      "                                condition number, exit code\n"},
+
+    {"tb01id", py_tb01id, METH_VARARGS,
+     "Balance system matrices (A,B,C) using diagonal similarity.\n\n"
+     "Reduces 1-norm of system matrix S=[A B; C 0] by balancing.\n\n"
+     "Parameters:\n"
+     "  job (str): 'A' all, 'B' B+A, 'C' C+A, 'N' A only\n"
+     "  a (ndarray): N-by-N state matrix A (F-order)\n"
+     "  b (ndarray): N-by-M input matrix B (F-order)\n"
+     "  c (ndarray): P-by-N output matrix C (F-order)\n"
+     "  maxred (float): Max reduction (<=0 uses 10.0)\n\n"
+     "Returns:\n"
+     "  (a, b, c, maxred, scale, info): Balanced matrices,\n"
+     "    norm ratio, scale factors, exit code\n"},
 
     {NULL, NULL, 0, NULL}
 };

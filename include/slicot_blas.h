@@ -79,6 +79,8 @@ f64 SLC_FC_FUNC(dnrm2, DNRM2)(const int* n, const f64* x, const int* incx);
 
 int SLC_FC_FUNC(idamax, IDAMAX)(const int* n, const f64* x, const int* incx);
 
+f64 SLC_FC_FUNC(dasum, DASUM)(const int* n, const f64* x, const int* incx);
+
 /* BLAS Level 2 - Matrix-vector operations */
 void SLC_FC_FUNC(dgemv, DGEMV)(const char* trans, const int* m, const int* n,
                                 const f64* alpha, const f64* a, const int* lda,
@@ -377,6 +379,7 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DDOT     SLC_FC_FUNC(ddot, DDOT)
 #define SLC_DNRM2    SLC_FC_FUNC(dnrm2, DNRM2)
 #define SLC_IDAMAX   SLC_FC_FUNC(idamax, IDAMAX)
+#define SLC_DASUM    SLC_FC_FUNC(dasum, DASUM)
 #define SLC_DGEMV    SLC_FC_FUNC(dgemv, DGEMV)
 #define SLC_DTRMV    SLC_FC_FUNC(dtrmv, DTRMV)
 #define SLC_DTRSV    SLC_FC_FUNC(dtrsv, DTRSV)
