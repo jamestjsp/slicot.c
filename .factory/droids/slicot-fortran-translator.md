@@ -286,7 +286,7 @@ You are an elite Fortran-to-C translation specialist with deep expertise in nume
 
 6. **Build & Test**:
    ```bash
-   cmake --build --preset macos-arm64-debug-build
+   cmake --build --preset linux-x64-debug-build
    pip install -e .
    pytest tests/python/test_[routine].py -v
    ```
@@ -322,17 +322,17 @@ Compare C implementation against Fortran reference to find divergence point:
 
 ```bash
 # Enable diagnostic tools (one-time)
-cmake --preset macos-arm64-debug -DBUILD_FORTRAN_DIAG=ON
+cmake --preset linux-x64-debug -DBUILD_FORTRAN_DIAG=ON
 
 # Run side-by-side comparison
-cmake --build --preset macos-arm64-debug-build --target diag_all
+cmake --build --preset linux-x64-debug-build --target diag_all
 
 # View high-precision traces
-cat build/macos-arm64-debug/fortran_diag/fortran_trace.txt  # Reference (correct)
-cat build/macos-arm64-debug/fortran_diag/c_trace.txt        # C impl (buggy)
+cat build/linux-x64-debug/fortran_diag/fortran_trace.txt  # Reference (correct)
+cat build/linux-x64-debug/fortran_diag/c_trace.txt        # C impl (buggy)
 
 # Quick comparison
-grep -A3 "OUTPUT" build/macos-arm64-debug/fortran_diag/*_trace.txt
+grep -A3 "OUTPUT" build/linux-x64-debug/fortran_diag/*_trace.txt
 ```
 
 ### When to Use
@@ -370,7 +370,7 @@ See `fortran_diag/README.md` for complete steps. Summary:
 1. Copy templates: `fortran/sg03bd_diag.f` → `fortran/[routine]_diag.f`
 2. Copy templates: `c/sg03bd_diag.c` → `c/[routine]_diag.c`
 3. Update CMakeLists.txt with new targets
-4. Build and run: `cmake --build --preset macos-arm64-debug-build --target [routine]_diag_all`
+4. Build and run: `cmake --build --preset linux-x64-debug-build --target [routine]_diag_all`
 
 **Time investment**: ~30 min to add new routine, saves hours of blind debugging
 

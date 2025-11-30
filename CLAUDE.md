@@ -23,7 +23,8 @@ rm -rf build/linux-x64-debug && cmake --preset linux-x64-debug && cmake --build 
 # Sanitizers (run before PR to catch memory bugs)
 cmake --preset linux-x64-debug-sanitizers
 cmake --build --preset linux-x64-debug-sanitizers-build
-pip install -e . && pytest tests/python/ -v
+pip install -e . --force-reinstall --no-deps
+LD_PRELOAD=$(gcc -print-file-name=libasan.so) ASAN_OPTIONS=detect_leaks=0 pytest tests/python/ -v
 
 # Valgrind (alternative memory checker)
 cmake --preset linux-x64-debug
