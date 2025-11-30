@@ -2133,7 +2133,7 @@ void ib01bd(const char *meth, const char *job, const char *jobck,
             f64 *r, i32 ldr, f64 *a, i32 lda, f64 *c, i32 ldc,
             f64 *b, i32 ldb, f64 *d, i32 ldd, f64 *q, i32 ldq,
             f64 *ry, i32 ldry, f64 *s, i32 lds, f64 *k, i32 ldk,
-            f64 tol, i32 *iwork, f64 *dwork, i32 ldwork,
+            f64 tol, i32 *iwork, f64 *dwork, i32 ldwork, i32 *bwork,
             i32 *iwarn, i32 *info);
 
 void ib01px(const char *job, i32 nobr, i32 n, i32 m, i32 l,

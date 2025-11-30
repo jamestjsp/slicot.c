@@ -263,29 +263,51 @@ def test_ib01bd_html_example():
     _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad(meth_ib01ad, alg, jobd, batch, conct, ctrl, nobr, m, l, u, y, rcond, tol_ad)
     assert info_ad == 0
 
-    # Use MOESP instead of Combined - N4SID B,D estimation not yet implemented in IB01PD
-    # HTML example uses METH='C' which requires N4SID for B,D
-    meth = 'M'
+    # Use Combined method (MOESP for A,C then N4SID for B,D) with Kalman gain
+    meth = 'C'
     job = 'A'
-    jobck = 'N'
+    jobck = 'K'
     tol = 0.0
 
-    A, C, B, D, _Q, _Ry, _S, _K, _iwarn, info = ib01bd(meth, job, jobck, nobr, n, m, l, nsmp, r, tol)
+    A, C, B, D, Q, Ry, S, K, iwarn, info = ib01bd(meth, job, jobck, nobr, n, m, l, nsmp, r, tol)
 
     assert info == 0
 
-    # Verify matrices are computed (MOESP gives different values than Combined)
-    # The key test is that we get non-zero reasonable matrices
+    # Expected values from IB01BD.html documentation
+    A_expected = np.array([
+        [0.8924, 0.3887, 0.1285, 0.1716],
+        [-0.0837, 0.6186, -0.6273, -0.4582],
+        [0.0052, 0.1307, 0.6685, -0.6755],
+        [0.0055, 0.0734, -0.2148, 0.4788]
+    ], order='F', dtype=float)
+
+    C_expected = np.array([[-0.4442, 0.6663, 0.3961, 0.4102]], order='F', dtype=float)
+
+    B_expected = np.array([[-0.2142], [-0.1968], [0.0525], [0.0361]], order='F', dtype=float)
+
+    D_expected = np.array([[-0.0041]], order='F', dtype=float)
+
+    K_expected = np.array([[-1.9513], [-0.1867], [0.6348], [-0.3486]], order='F', dtype=float)
+
+    # Verify shapes
     assert A.shape == (n, n)
     assert C.shape == (l, n)
     assert B.shape == (n, m)
     assert D.shape == (l, m)
+    assert K.shape == (n, l)
 
-    # Verify matrices are not all zeros
-    assert np.linalg.norm(A, 'fro') > 0.1
-    assert np.linalg.norm(C, 'fro') > 0.1
-    assert np.linalg.norm(B, 'fro') > 0.1
-    # D may be small but non-zero for this data
+    # Verify values (HTML shows 4 decimal places, use rtol=5e-3 for some tolerance)
+    np.testing.assert_allclose(A, A_expected, rtol=5e-3, atol=1e-3)
+    np.testing.assert_allclose(C, C_expected, rtol=5e-3, atol=1e-3)
+    np.testing.assert_allclose(B, B_expected, rtol=5e-3, atol=1e-3)
+    np.testing.assert_allclose(D, D_expected, rtol=5e-2, atol=1e-3)
+    np.testing.assert_allclose(K, K_expected, rtol=5e-3, atol=1e-3)
+
+    # Verify covariance matrices are symmetric and positive semi-definite
+    assert Q.shape == (n, n)
+    assert Ry.shape == (l, l)
+    assert S.shape == (n, l)
+    np.testing.assert_allclose(Q, Q.T, rtol=1e-14)
 
 
 def test_ib01bd_moesp_basic():

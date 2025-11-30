@@ -4454,15 +4454,18 @@ static PyObject* py_ib01bd(PyObject* self, PyObject* args) {
     }
 
     if (jobck == 'K') {
-        i32 liwork = (2*n > m) ? 2*n : m;
-        if (liwork < n2) liwork = n2;
-        alt = 2*nn + n2 + npl + (6 > liwork ? 6 : liwork);
+        i32 nl = n * l;
+        i32 ll = l * l;
+        i32 tmp = 3*l > nl ? 3*l : nl;
+        alt = 4*nn + 2*nl + ll + tmp;
         if (alt > minwrk) minwrk = alt;
-        alt = 16*nn + 12*n + 5;
+        alt = 14*nn + 12*n + 5;
+        if (alt > minwrk) minwrk = alt;
+        alt = 2*nn + 2*nl + ll + 3*l;
         if (alt > minwrk) minwrk = alt;
     }
 
-    i32 ldwork = minwrk > 10000 ? minwrk : 10000;
+    i32 ldwork = minwrk > 50000 ? minwrk : 50000;
 
     i32 liwork = m*nobr + n;
     if (l*nobr > liwork) liwork = l*nobr;
@@ -4472,22 +4475,25 @@ static PyObject* py_ib01bd(PyObject* self, PyObject* args) {
 
     i32 *iwork = (i32*)calloc(liwork, sizeof(i32));
     f64 *dwork = (f64*)calloc(ldwork, sizeof(f64));
+    i32 lbwork = jobck == 'K' ? 2*n : 1;
+    i32 *bwork = (i32*)calloc(lbwork, sizeof(i32));
 
-    if (!iwork || !dwork) {
+    if (!iwork || !dwork || !bwork) {
         free(a); free(c); free(b); free(d);
         free(q); free(ry); free(s); free(k);
-        free(iwork); free(dwork);
+        free(iwork); free(dwork); free(bwork);
         Py_DECREF(r_array);
         return PyErr_NoMemory();
     }
 
     ib01bd(meth_str, job_str, jobck_str, nobr, n, m, l, nsmpl,
            r_data, ldr, a, lda, c, ldc, b, ldb, d, ldd, q, ldq,
-           ry, ldry, s, lds, k, ldk, tol, iwork, dwork, ldwork,
+           ry, ldry, s, lds, k, ldk, tol, iwork, dwork, ldwork, bwork,
            &iwarn, &info);
 
     free(iwork);
     free(dwork);
+    free(bwork);
 
     PyArray_ResolveWritebackIfCopy(r_array);
     Py_DECREF(r_array);

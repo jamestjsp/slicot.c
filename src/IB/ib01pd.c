@@ -156,6 +156,16 @@ void ib01pd(const char *meth, const char *job, const char *jobcv,
     f64 toll1 = tol;
     if (toll1 <= ZERO) toll1 = (f64)(nn) * eps;
 
+    char jobp = 'N';
+    if ((m > 0 && withb) || n4sid) {
+        jobp = 'P';
+    }
+    char jobpy = withal ? 'D' : job[0];
+
+    i32 rank = n;
+    i32 ihous = igal;
+    i32 iu = 0, isv = 0;
+
     if (moesp) {
         i32 ncol = 0;
         i32 iun2 = jwork;
@@ -173,7 +183,6 @@ void ib01pd(const char *meth, const char *job, const char *jobcv,
             jwork = iun2;
         }
 
-        i32 rank = n;
         if (rcond1 > (toll1 > thresh ? toll1 : thresh)) {
             if (withc) {
                 SLC_DTRTRS("Upper", "NoTranspose", "NonUnit", &n, &n,
@@ -185,19 +194,19 @@ void ib01pd(const char *meth, const char *job, const char *jobcv,
             }
             rank = n;
         } else {
-            i32 iu = iun2;
-            i32 isv = iu + nn;
+            iu = iun2;
+            isv = iu + nn;
             jwork = isv + n;
 
-            i32 ihous = igal;
+            ihous = igal;
             if (m > 0 && withb) {
                 ihous = jwork;
                 jwork = ihous + ldunn;
                 SLC_DLACPY("Lower", &ldun2, &n, &dwork[igal], &ldun2, &dwork[ihous], &ldun2);
             }
 
-            char jobp = (m > 0 && withb) ? 'P' : 'N';
-            mb02ud("Not factored", "Left", "NoTranspose", &jobp, n, ncol, ONE, toll1,
+            char jobp_local = (m > 0 && withb) ? 'P' : 'N';
+            mb02ud("Not factored", "Left", "NoTranspose", &jobp_local, n, ncol, ONE, toll1,
                    &rank, &dwork[igal], ldun2, &dwork[iu], n, &dwork[isv],
                    a, lda, &r[nr3 + nr2 * ldr], ldr, &dwork[jwork], ldwork - jwork, info);
 
@@ -214,6 +223,9 @@ void ib01pd(const char *meth, const char *job, const char *jobcv,
                 SLC_DORMQR("Right", "Transpose", &n, &ldun2, &n, &dwork[ihous], &ldun2,
                            &dwork[itau1], &r[nr3 + nr2 * ldr], &ldr, &dwork[jwork],
                            &(i32){ldwork - jwork}, info);
+                if (withco) {
+                    SLC_DLACPY("Full", &n, &ldun2, &r[nr3 + nr2 * ldr], &ldr, &dwork[igal], &n);
+                }
                 jwork = iun2;
             }
             ldw = jwork;
@@ -236,7 +248,7 @@ void ib01pd(const char *meth, const char *job, const char *jobcv,
                 SLC_DTRSM("Right", "Upper", "Transpose", "Non-unit", &lnobrn, &mnobr,
                           &ONE, &r[nr3], &ldr, &r[nr2 + nr3 * ldr], &ldr);
             } else {
-                i32 isv = ldw;
+                isv = ldw;
                 jwork = isv + mnobr;
                 i32 rank11;
                 mb02ud("Not factored", "Right", "Transpose", "No pinv", lnobrn, mnobr,
@@ -250,7 +262,6 @@ void ib01pd(const char *meth, const char *job, const char *jobcv,
                 jwork = ldw;
             }
 
-            char jobpy = withal ? 'D' : job[0];
             if (withco) {
                 SLC_DLACPY("Full", &lnobr, &n, &r[nr2 + nr2 * ldr], &ldr, o, &ldo);
             }
@@ -279,9 +290,256 @@ void ib01pd(const char *meth, const char *job, const char *jobcv,
         rcond2 = ONE;
     }
 
-    if (n4sid || (!moesp && withco)) {
+    if (n4sid || (withc && !withal)) {
+        if (m > 0)
+            SLC_DLACPY("Full", &lnobr, &n, &r[nr2 + nr2 * ldr], &ldr, &r[nr2], &ldr);
+        SLC_DLACPY("Full", &lnobr, &n, &r[nr2 + nr2 * ldr], &ldr, o, &ldo);
+    }
+
+    {
+        i32 itau2 = ldw;
+        jwork = itau2 + n;
+        SLC_DGEQRF(&lnobr, &n, &r[nr2], &ldr, &dwork[itau2],
+                   &dwork[jwork], &(i32){ldwork - jwork}, info);
+
+        if (moesp || (withb && !withal))
+            ma02ad("Full", lmmnob, lnobr, &r[nr4 * ldr], ldr, &r[nr4], ldr);
+        SLC_DORMQR("Left", "Transpose", &lnobr, &lmmnob, &n, &r[nr2], &ldr,
+                   &dwork[itau2], &r[nr4], &ldr, &dwork[jwork],
+                   &(i32){ldwork - jwork}, info);
+
+        SLC_DTRTRS("Upper", "NoTranspose", "NonUnit", &n, &lmmnob,
+                   &r[nr2], &ldr, &r[nr4], &ldr, info);
+        if (*info > 0) {
+            *info = 3;
+            return;
+        }
+        ma02ad("Full", n, lmmnob, &r[nr4], ldr, &r[nr2 * ldr], ldr);
+
+        i32 nr4mn = nr4 - n;
+        i32 nr4pl = nr4 + l;
+        i32 nrow = lmmnol;
+
+        bool shift = (m == 0) && (lnobr < n2);
+
+        if (rcond1 > (toll1 > thresh ? toll1 : thresh)) {
+            ma02ad("Full", lmmnol, ldun2, &r[nr4pl * ldr], ldr, &r[nr4pl], ldr);
+            SLC_DORMQR("Left", "Transpose", &ldun2, &lmmnol, &n,
+                       &dwork[igal], &ldun2, &dwork[itau1], &r[nr4pl], &ldr,
+                       &dwork[jwork], &(i32){ldwork - jwork}, info);
+
+            SLC_DTRTRS("Upper", "NoTranspose", "NonUnit", &n, &lmmnol,
+                       &dwork[igal], &ldun2, &r[nr4pl], &ldr, info);
+            if (*info > 0) {
+                *info = 3;
+                return;
+            }
+
+            if (shift) {
+                nr4mn = nr4;
+                for (i32 i = l - 1; i >= 0; i--) {
+                    SLC_DCOPY(&lmmnol, &r[(nr4 + i) * ldr], &(i32){1},
+                              &r[(nr4 + n + i) * ldr], &(i32){1});
+                }
+            }
+            ma02ad("Full", n, lmmnol, &r[nr4pl], ldr, &r[nr4mn * ldr], ldr);
+            nrow = 0;
+        }
+
+        if (n4sid || nrow > 0) {
+            char fact[2];
+            if (moesp) {
+                fact[0] = 'F'; fact[1] = '\0';
+                if (m > 0 && withb)
+                    SLC_DLACPY("Full", &n, &ldun2, &dwork[igal], &n,
+                               &r[nr4pl + nr2 * ldr], &ldr);
+            } else {
+                ihous = jwork;
+                SLC_DLACPY("Lower", &ldun2, &n, &dwork[igal], &ldun2,
+                           &dwork[ihous], &ldun2);
+                fact[0] = 'N'; fact[1] = '\0';
+                iu = ihous + ldunn;
+                isv = iu + nn;
+                jwork = isv + n;
+            }
+
+            mb02ud(fact, "Right", "Transpose", &jobp, nrow, n, ONE,
+                   toll1, &rank, &dwork[igal], ldun2, &dwork[iu], n,
+                   &dwork[isv], &r[nr4pl * ldr], ldr, &r[nr4pl + nr2 * ldr], ldr,
+                   &dwork[jwork], ldwork - jwork, info);
+
+            if (nrow > 0) {
+                if (shift) {
+                    nr4mn = nr4;
+                    SLC_DLACPY("Full", &lmmnol, &l, &r[nr4 * ldr], &ldr,
+                               &r[(nr4 - l) * ldr], &ldr);
+                    SLC_DLACPY("Full", &lmmnol, &n, &r[nr4pl * ldr], &ldr,
+                               &r[nr4mn * ldr], &ldr);
+                    SLC_DLACPY("Full", &lmmnol, &l, &r[(nr4 - l) * ldr], &ldr,
+                               &r[(nr4 + n) * ldr], &ldr);
+                } else {
+                    SLC_DLACPY("Full", &lmmnol, &n, &r[nr4pl * ldr], &ldr,
+                               &r[nr4mn * ldr], &ldr);
+                }
+            }
+
+            if (n4sid) {
+                if (*info != 0) {
+                    *info = 2;
+                    return;
+                }
+
+                jwork = iu;
+                i32 ldun2_minus_n = ldun2 - n;
+                SLC_DLASET("Full", &n, &ldun2_minus_n, &ZERO, &ZERO,
+                           &r[nr4pl + (nr2 + n) * ldr], &ldr);
+                SLC_DORMQR("Right", "Transpose", &n, &ldun2, &n,
+                           &dwork[ihous], &ldun2, &dwork[itau1],
+                           &r[nr4pl + nr2 * ldr], &ldr, &dwork[jwork],
+                           &(i32){ldwork - jwork}, info);
+            }
+        }
+
+        i32 itau;
+        if (moesp) {
+            itau = 0;
+        } else {
+            SLC_DCOPY(&n, &dwork[itau2], &(i32){1}, dwork, &(i32){1});
+            itau = n;
+        }
+
+        jwork = itau + n;
+        SLC_DGEQRF(&lmnobr, &n, &r[nr2 + nr2 * ldr], &ldr, &dwork[itau],
+                   &dwork[jwork], &(i32){ldwork - jwork}, info);
+
+        SLC_DORMQR("Left", "Transpose", &lmnobr, &npl, &n, &r[nr2 + nr2 * ldr], &ldr,
+                   &dwork[itau], &r[nr2 + nr4mn * ldr], &ldr, &dwork[jwork],
+                   &(i32){ldwork - jwork}, info);
+
+        i32 l_minus_1 = l - 1;
+        SLC_DLASET("Lower", &l_minus_1, &l_minus_1, &ZERO, &ZERO, &r[nr4 + 1 + nr4 * ldr], &ldr);
+
+        jwork = itau;
+        SLC_DTRCON("1-norm", "Upper", "NonUnit", &mnobrn, r, &ldr, &rcond3,
+                   &dwork[jwork], iwork, info);
+
+        f64 toll = tol;
+        if (toll <= ZERO)
+            toll = (f64)(mnobrn * mnobrn) * eps;
+
+        bool fullr;
+        i32 rankm;
+        if (rcond3 > (toll > thresh ? toll : thresh)) {
+            fullr = true;
+            rankm = mnobrn;
+            if (n4sid)
+                SLC_DTRSM("Left", "Upper", "NoTranspose", "NonUnit", &n,
+                          &npl, &ONE, &r[nr2 + nr2 * ldr], &ldr, &r[nr2 + nr4mn * ldr], &ldr);
+        } else {
+            fullr = false;
+
+            for (i32 i = 0; i < mnobrn; i++)
+                iwork[i] = 0;
+
+            if (n4sid && (m > 0 && withb))
+                SLC_DLACPY("Full", &lnobr, &n, &r[nr2], &ldr, &r[nr4], &ldr);
+
+            jwork = itau + mnobrn;
+            i32 mnobrn_m1 = mnobrn - 1;
+            SLC_DLASET("Lower", &mnobrn_m1, &mnobrn, &ZERO, &ZERO, &r[1], &ldr);
+
+            f64 sval[3];
+            mb03od("QR", mnobrn, mnobrn, r, ldr, iwork, toll, svlmax,
+                   &dwork[itau], &rankm, sval, &dwork[jwork], ldwork - jwork, info);
+
+            SLC_DORMQR("Left", "Transpose", &mnobrn, &npl, &mnobrn,
+                       r, &ldr, &dwork[itau], &r[nr4mn * ldr], &ldr,
+                       &dwork[jwork], &(i32){ldwork - jwork}, info);
+        }
+
+        if (withco) {
+            f64 rnrm = ONE / (f64)nsmpl;
+            i32 residual_rows = lmmnol - rankm;
+            if (moesp) {
+                SLC_DSYRK("Upper", "Transpose", &npl, &residual_rows, &rnrm,
+                          &r[rankm + nr4mn * ldr], &ldr, &ZERO, r, &ldr);
+                SLC_DLACPY("Upper", &n, &n, r, &ldr, q, &ldq);
+                SLC_DLACPY("Full", &n, &l, &r[n * ldr], &ldr, s, &lds);
+                SLC_DLACPY("Upper", &l, &l, &r[n + n * ldr], &ldr, ry, &ldry);
+            } else {
+                SLC_DSYRK("Upper", "Transpose", &npl, &residual_rows, &rnrm,
+                          &r[rankm + nr4mn * ldr], &ldr, &ZERO, &dwork[jwork], &npl);
+                SLC_DLACPY("Upper", &n, &n, &dwork[jwork], &npl, q, &ldq);
+                SLC_DLACPY("Full", &n, &l, &dwork[jwork + n * npl], &npl, s, &lds);
+                SLC_DLACPY("Upper", &l, &l, &dwork[jwork + n * (npl + 1)], &npl, ry, &ldry);
+            }
+            ma02ed('U', n, q, ldq);
+            ma02ed('U', l, ry, ldry);
+
+            f64 rnrm_check = SLC_DLANGE("1-norm", &residual_rows, &npl, &r[rankm + nr4mn * ldr],
+                                        &ldr, &dwork[jwork]);
+            if (rnrm_check < thresh)
+                *iwarn = 5;
+        }
+
         if (n4sid) {
-            SLC_DLACPY("Full", &lnobr, &n, &r[nr2 + nr2 * ldr], &ldr, o, &ldo);
+            if (!fullr) {
+                *iwarn = 4;
+
+                f64 sval[3];
+                mb03od("No QR", n, n, &r[nr2 + nr2 * ldr], ldr, iwork, toll1,
+                       svlmax, &dwork[itau], &rankm, sval, &dwork[jwork],
+                       ldwork - jwork, info);
+                mb02qy(n, n, npl, rankm, &r[nr2 + nr2 * ldr], ldr, iwork,
+                       &r[nr2 + nr4mn * ldr], ldr, &dwork[itau + mnobr],
+                       &dwork[jwork], ldwork - jwork, info);
+
+                jwork = itau;
+                if (m > 0 && withb)
+                    SLC_DLACPY("Full", &lnobr, &n, &r[nr4], &ldr, &r[nr2], &ldr);
+            }
+
+            if (withc) {
+                ma02ad("Full", n, n, &r[nr2 + nr4mn * ldr], ldr, a, lda);
+                ma02ad("Full", n, l, &r[nr2 + (nr4mn + n) * ldr], ldr, c, ldc);
+            } else {
+                ma02ad("Full", n, n, a, lda, &r[nr2 + nr4mn * ldr], ldr);
+                ma02ad("Full", l, n, c, ldc, &r[nr2 + (nr4mn + n) * ldr], ldr);
+            }
+
+            if (m > 0 && withb) {
+                f64 MINUS_ONE = -ONE;
+                SLC_DGEMM("NoTranspose", "NoTranspose", &mnobr, &npl, &n,
+                          &MINUS_ONE, &r[nr2 * ldr], &ldr, &r[nr2 + nr4mn * ldr], &ldr, &ONE,
+                          &r[nr4mn * ldr], &ldr);
+
+                SLC_DLACPY("Full", &n, &n, a, &lda, &r[nr2 + nr4 * ldr], &ldr);
+                SLC_DLACPY("Full", &l, &n, c, &ldc, &r[nr2 + n + nr4 * ldr], &ldr);
+                SLC_DTRSM("Right", "Upper", "NoTranspose", "NonUnit",
+                          &npl, &n, &ONE, &r[nr2], &ldr, &r[nr2 + nr4 * ldr], &ldr);
+                SLC_DLASET("Full", &npl, &lnobrn, &ZERO, &ZERO, &r[nr2 + (nr4 + n) * ldr], &ldr);
+
+                SLC_DORMQR("Right", "Transpose", &npl, &lnobr, &n, &r[nr2], &ldr,
+                           dwork, &r[nr2 + nr4 * ldr], &ldr, &dwork[jwork],
+                           &(i32){ldwork - jwork}, info);
+
+                ma02ad("Full", mnobr, npl, &r[nr4mn * ldr], ldr, &r[nr2 + nr3 * ldr], ldr);
+
+                i32 ix = mnobr * npl * npl * m;
+                jwork = ix + mnobr * npl;
+
+                i32 iwarnl = 0;
+                ib01px(&jobpy, nobr, n, m, l, r, ldr, o, ldo,
+                       &r[nr2 + nr4 * ldr], ldr, &r[nr4pl + nr2 * ldr], ldr,
+                       &r[nr2 + nr3 * ldr], ldr, dwork, mnobr * npl, &dwork[ix],
+                       b, ldb, d, ldd, tol, iwork, &dwork[jwork], ldwork - jwork,
+                       &iwarnl, info);
+
+                if (*info != 0)
+                    return;
+                if (iwarnl > *iwarn) *iwarn = iwarnl;
+                rcond4 = dwork[jwork + 1];
+            }
         }
     }
 

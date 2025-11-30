@@ -17,10 +17,11 @@ void ib01bd(const char *meth, const char *job, const char *jobck,
             f64 *r, i32 ldr, f64 *a, i32 lda, f64 *c, i32 ldc,
             f64 *b, i32 ldb, f64 *d, i32 ldd, f64 *q, i32 ldq,
             f64 *ry, i32 ldry, f64 *s, i32 lds, f64 *k, i32 ldk,
-            f64 tol, i32 *iwork, f64 *dwork, i32 ldwork,
+            f64 tol, i32 *iwork, f64 *dwork, i32 ldwork, i32 *bwork,
             i32 *iwarn, i32 *info)
 {
     const f64 ZERO = 0.0;
+    const f64 ONE = 1.0;
 
     bool moesp = (meth[0] == 'M' || meth[0] == 'm');
     bool n4sid = (meth[0] == 'N' || meth[0] == 'n');
@@ -39,6 +40,8 @@ void ib01bd(const char *meth, const char *job, const char *jobck,
     i32 nn = n * n;
     i32 n2 = n + n;
     i32 npl = n + l;
+    i32 nl = n * l;
+    i32 ll = l * l;
 
     *iwarn = 0;
     *info = 0;
@@ -139,13 +142,16 @@ void ib01bd(const char *meth, const char *job, const char *jobck,
             if (withk) {
                 i32 liwork = (2*n > m) ? 2*n : m;
                 if (liwork < n2) liwork = n2;
-                i32 alt = 2*nn + n2 + npl + (6 > liwork ? 6 : liwork);
+                i32 tmp = 3*l > nl ? 3*l : nl;
+                i32 alt1k = 4*nn + 2*nl + ll + tmp;
+                i32 alt2k = 14*nn + 12*n + 5;
+                i32 alt = alt1k > alt2k ? alt1k : alt2k;
                 if (alt > minwrk) minwrk = alt;
             }
         }
 
         if (ldwork < minwrk) {
-            *info = -29;
+            *info = -30;
             dwork[0] = (f64)minwrk;
         }
     }
@@ -174,6 +180,9 @@ void ib01bd(const char *meth, const char *job, const char *jobck,
     i32 infol = 0;
     f64 *o = &dwork[io];
     i32 ldo = lnobr;
+
+    f64 rcnd[8];
+    i32 maxwrk = minwrk;
 
     if (!combin) {
         char methpd[2] = {meth[0], '\0'};
@@ -229,25 +238,133 @@ void ib01bd(const char *meth, const char *job, const char *jobck,
         return;
     }
 
-    if (!withco) {
-        dwork[0] = (f64)minwrk;
+    if ((i32)dwork[jwork] + jwork - 1 > maxwrk) {
+        maxwrk = (i32)dwork[jwork] + jwork - 1;
+    }
+
+    for (i32 i = 0; i < 4; i++) {
+        rcnd[i] = dwork[jwork + i + 1];
+    }
+
+    if (withk) {
+        if (*iwarn == 5) {
+            SLC_DLASET("Full", &n, &l, &ZERO, &ZERO, k, &ldk);
+
+            for (i32 i = 5; i < 12; i++) {
+                dwork[i] = ONE;
+            }
+            dwork[12] = ZERO;
+        } else {
+            i32 ix = 0;
+            i32 iq = ix + nn;
+            i32 ia = iq + nn;
+            i32 ig = ia + nn;
+            i32 ic = ig + nn;
+            i32 ir = ic + nl;
+            i32 is = ir + ll;
+            jwork = is + nl;
+
+            ma02ad("Full", n, n, a, lda, &dwork[ia], n);
+            ma02ad("Full", l, n, c, ldc, &dwork[ic], n);
+            SLC_DLACPY("Upper", &n, &n, q, &ldq, &dwork[iq], &n);
+            SLC_DLACPY("Upper", &l, &l, ry, &ldry, &dwork[ir], &l);
+            SLC_DLACPY("Full", &n, &l, s, &lds, &dwork[is], &n);
+
+            i32 ifact;
+            sb02mt("G needed", "Nonzero S", "Not factored",
+                   "Upper", n, l, &dwork[ia], n, &dwork[ic], n,
+                   &dwork[iq], n, &dwork[ir], l, &dwork[is], n,
+                   iwork, &ifact, &dwork[ig], n, &iwork[l],
+                   &dwork[jwork], ldwork - jwork, &infol);
+
+            if (infol != 0) {
+                *info = 3;
+                return;
+            }
+            if ((i32)dwork[jwork] + jwork - 1 > maxwrk) {
+                maxwrk = (i32)dwork[jwork] + jwork - 1;
+            }
+            f64 rcondr = dwork[jwork + 1];
+
+            i32 it = ic;
+            i32 iv = it + nn;
+            i32 iwr = iv + nn;
+            i32 iwi = iwr + n2;
+            is = iwi + n2;
+            jwork = is + n2 * n2;
+
+            f64 sep, rcond, ferr;
+            sb02rd("All", "Discrete", "Direct", "NoTranspose",
+                   "Upper", "General scaling", "Unstable first",
+                   "Not factored", "Reduced", n, &dwork[ia], n,
+                   &dwork[it], n, &dwork[iv], n, &dwork[ig], n,
+                   &dwork[iq], n, &dwork[ix], n, &sep, &rcond, &ferr,
+                   &dwork[iwr], &dwork[iwi], &dwork[is], n2, iwork,
+                   &dwork[jwork], ldwork - jwork, bwork, &infol);
+
+            if (infol != 0 && infol < 7) {
+                *info = infol + 3;
+                return;
+            }
+            if ((i32)dwork[jwork] + jwork - 1 > maxwrk) {
+                maxwrk = (i32)dwork[jwork] + jwork - 1;
+            }
+
+            for (i32 i = 0; i < 4; i++) {
+                rcnd[i + 4] = dwork[jwork + i + 1];
+            }
+
+            ia = ix + nn;
+            ic = ia + nn;
+            ir = ic + nl;
+            i32 ik = ir + ll;
+            jwork = ik + nl;
+
+            ma02ad("Full", n, n, a, lda, &dwork[ia], n);
+            ma02ad("Full", l, n, c, ldc, &dwork[ic], n);
+            SLC_DLACPY("Upper", &l, &l, ry, &ldry, &dwork[ir], &l);
+
+            f64 rnorm = SLC_DLANGE("1", &l, &l, ry, &ldry, NULL);
+            i32 oufact[2];
+            sb02nd("Discrete", "NotFactored", "Upper",
+                   "Nonzero S", n, l, 0, &dwork[ia], n, &dwork[ic],
+                   n, &dwork[ir], l, iwork, s, lds, &dwork[ix], n,
+                   rnorm, &dwork[ik], l, oufact,
+                   &dwork[jwork], ldwork - jwork, &infol);
+
+            if (infol != 0) {
+                if (infol <= l + 1) {
+                    *info = 3;
+                } else if (infol == l + 2) {
+                    *info = 10;
+                }
+                return;
+            }
+            if ((i32)dwork[jwork] + jwork - 1 > maxwrk) {
+                maxwrk = (i32)dwork[jwork] + jwork - 1;
+            }
+
+            ma02ad("Full", l, n, &dwork[ik], l, k, ldk);
+
+            dwork[10] = dwork[jwork + 1];
+
+            for (i32 i = 5; i < 9; i++) {
+                dwork[i] = rcnd[i - 1];
+            }
+            dwork[9] = rcondr;
+            dwork[11] = rcond;
+            dwork[12] = ferr;
+        }
+
+        dwork[0] = (f64)maxwrk;
+        for (i32 i = 0; i < 4; i++) {
+            dwork[i + 1] = rcnd[i];
+        }
         return;
     }
 
-    f64 rnorm = SLC_DLANGE("F", &n, &l, s, &lds, NULL);
-
-    ma02ad("Full", n, l, s, lds, k, ldk);
-
-    if (rnorm <= ZERO || *iwarn == 5) {
-        dwork[0] = (f64)minwrk;
-        return;
+    dwork[0] = (f64)maxwrk;
+    for (i32 i = 0; i < 4; i++) {
+        dwork[i + 1] = rcnd[i];
     }
-
-    if (!withk) {
-        dwork[0] = (f64)minwrk;
-        return;
-    }
-
-    *iwarn = 5;
-    dwork[0] = (f64)minwrk;
 }
