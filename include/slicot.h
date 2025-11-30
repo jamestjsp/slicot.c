@@ -56,6 +56,48 @@ void mb01qd(char type, i32 m, i32 n, i32 kl, i32 ku,
             f64* a, i32 lda, i32* info);
 
 /**
+ * @brief Bilinear transformation of state-space system.
+ *
+ * Performs discrete-time <-> continuous-time conversion via bilinear
+ * transformation of the state-space matrices (A,B,C,D).
+ *
+ * For TYPE='D' (discrete -> continuous):
+ *   A_out = beta * (alpha*I + A)^{-1} * (A - alpha*I)
+ *   B_out = sqrt(2*alpha*beta) * (alpha*I + A)^{-1} * B
+ *   C_out = sqrt(2*alpha*beta) * C * (alpha*I + A)^{-1}
+ *   D_out = D - C * (alpha*I + A)^{-1} * B
+ *
+ * For TYPE='C' (continuous -> discrete):
+ *   A_out = alpha * (beta*I - A)^{-1} * (beta*I + A)
+ *   B_out = sqrt(2*alpha*beta) * (beta*I - A)^{-1} * B
+ *   C_out = sqrt(2*alpha*beta) * C * (beta*I - A)^{-1}
+ *   D_out = D + C * (beta*I - A)^{-1} * B
+ *
+ * @param[in] type 'D' for discrete->continuous, 'C' for continuous->discrete
+ * @param[in] n Order of state matrix A (n >= 0)
+ * @param[in] m Number of system inputs (m >= 0)
+ * @param[in] p Number of system outputs (p >= 0)
+ * @param[in] alpha Bilinear transformation parameter (alpha != 0)
+ * @param[in] beta Bilinear transformation parameter (beta != 0)
+ * @param[in,out] a State matrix, dimension (lda, n). On exit, transformed A.
+ * @param[in] lda Leading dimension of a (lda >= max(1, n))
+ * @param[in,out] b Input matrix, dimension (ldb, m). On exit, transformed B.
+ * @param[in] ldb Leading dimension of b (ldb >= max(1, n))
+ * @param[in,out] c Output matrix, dimension (ldc, n). On exit, transformed C.
+ * @param[in] ldc Leading dimension of c (ldc >= max(1, p))
+ * @param[in,out] d Feedthrough matrix, dimension (ldd, m). On exit, transformed D.
+ * @param[in] ldd Leading dimension of d (ldd >= max(1, p))
+ * @param[out] iwork Integer workspace, dimension (n)
+ * @param[out] dwork Double workspace, dimension (ldwork)
+ * @param[in] ldwork Workspace size (ldwork >= max(1, n))
+ * @return 0 on success, -i if parameter i is invalid, 1 if (alpha*I + A) singular,
+ *         2 if (beta*I - A) singular
+ */
+i32 ab04md(char type, i32 n, i32 m, i32 p, f64 alpha, f64 beta,
+           f64* a, i32 lda, f64* b, i32 ldb, f64* c, i32 ldc, f64* d, i32 ldd,
+           i32* iwork, f64* dwork, i32 ldwork);
+
+/**
  * @brief Compute matrix product T := alpha*op(T)*A or T := alpha*A*op(T).
  *
  * Computes one of the matrix products:

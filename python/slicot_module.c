@@ -6898,6 +6898,116 @@ cleanup:
     return NULL;
 }
 
+/* Python wrapper for ab04md */
+static PyObject* py_ab04md(PyObject* self, PyObject* args, PyObject* kwargs) {
+    const char *type_str;
+    PyObject *a_obj, *b_obj, *c_obj, *d_obj;
+    f64 alpha = 1.0, beta = 1.0;
+
+    static char *kwlist[] = {"type", "a", "b", "c", "d", "alpha", "beta", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sOOOO|dd", kwlist,
+                                      &type_str, &a_obj, &b_obj, &c_obj, &d_obj,
+                                      &alpha, &beta)) {
+        return NULL;
+    }
+
+    char type = (char)toupper((unsigned char)type_str[0]);
+    if (type != 'D' && type != 'C') {
+        PyErr_SetString(PyExc_ValueError, "type must be 'D' or 'C'");
+        return NULL;
+    }
+    if (alpha == 0.0) {
+        PyErr_SetString(PyExc_ValueError, "alpha must be non-zero");
+        return NULL;
+    }
+    if (beta == 0.0) {
+        PyErr_SetString(PyExc_ValueError, "beta must be non-zero");
+        return NULL;
+    }
+
+    PyArrayObject *a_array = (PyArrayObject*)PyArray_FROM_OTF(
+        a_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!a_array) return NULL;
+
+    PyArrayObject *b_array = (PyArrayObject*)PyArray_FROM_OTF(
+        b_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!b_array) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    PyArrayObject *c_array = (PyArrayObject*)PyArray_FROM_OTF(
+        c_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!c_array) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    PyArrayObject *d_array = (PyArrayObject*)PyArray_FROM_OTF(
+        d_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!d_array) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *b_dims = PyArray_DIMS(b_array);
+    npy_intp *c_dims = PyArray_DIMS(c_array);
+
+    i32 n = PyArray_NDIM(a_array) >= 1 ? (i32)a_dims[0] : 0;
+    i32 m = PyArray_NDIM(b_array) >= 2 ? (i32)b_dims[1] : (PyArray_NDIM(b_array) == 1 ? 1 : 0);
+    i32 p = PyArray_NDIM(c_array) >= 1 ? (i32)c_dims[0] : 0;
+
+    i32 lda = n > 0 ? n : 1;
+    i32 ldb = n > 0 ? n : 1;
+    i32 ldc = p > 0 ? p : 1;
+    i32 ldd = p > 0 ? p : 1;
+
+    i32 ldwork = n > 0 ? n : 1;
+    i32 *iwork = (i32*)malloc((n > 0 ? n : 1) * sizeof(i32));
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+
+    if (!iwork || !dwork) {
+        free(iwork);
+        free(dwork);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+    f64 *d_data = (f64*)PyArray_DATA(d_array);
+
+    i32 info = ab04md(type, n, m, p, alpha, beta,
+                      a_data, lda, b_data, ldb, c_data, ldc, d_data, ldd,
+                      iwork, dwork, ldwork);
+
+    free(iwork);
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    PyArray_ResolveWritebackIfCopy(c_array);
+    PyArray_ResolveWritebackIfCopy(d_array);
+
+    PyObject *result = Py_BuildValue("OOOOi", a_array, b_array, c_array, d_array, info);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(d_array);
+
+    return result;
+}
+
 /* Python wrapper for tb01id */
 static PyObject* py_tb01id(PyObject* self, PyObject* args) {
     const char *job_str;
@@ -6988,6 +7098,21 @@ static PyObject* py_tb01id(PyObject* self, PyObject* args) {
 
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
+    {"ab04md", (PyCFunction)py_ab04md, METH_VARARGS | METH_KEYWORDS,
+     "Bilinear transformation of state-space system.\n\n"
+     "Performs discrete-time <-> continuous-time conversion via bilinear\n"
+     "transformation of the state-space matrices (A,B,C,D).\n\n"
+     "Parameters:\n"
+     "  type (str): 'D' for discrete->continuous, 'C' for continuous->discrete\n"
+     "  a (ndarray): State matrix A (n x n, F-order)\n"
+     "  b (ndarray): Input matrix B (n x m, F-order)\n"
+     "  c (ndarray): Output matrix C (p x n, F-order)\n"
+     "  d (ndarray): Feedthrough matrix D (p x m, F-order)\n"
+     "  alpha (float, optional): Transformation parameter (default 1.0)\n"
+     "  beta (float, optional): Transformation parameter (default 1.0)\n\n"
+     "Returns:\n"
+     "  (a, b, c, d, info): Transformed matrices and exit code\n"},
+
     {"mb04od", py_mb04od, METH_VARARGS,
      "QR factorization of structured block matrix.\n\n"
      "Computes QR factorization of first block column and applies\n"
