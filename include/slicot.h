@@ -2088,6 +2088,54 @@ void ib01pd(const char *meth, const char *job, const char *jobcv,
             f64 tol, i32 *iwork, f64 *dwork, i32 ldwork,
             i32 *iwarn, i32 *info);
 
+/**
+ * @brief Estimate state-space matrices from N4SID/MOESP triangular factor.
+ *
+ * Estimates system matrices (A,C,B,D), optionally noise covariance matrices
+ * (Q,Ry,S), and Kalman gain K from the triangular factor R computed by IB01AD.
+ * Supports N4SID, MOESP, or combined subspace identification methods.
+ *
+ * @param[in] meth Method: 'M' MOESP, 'N' N4SID, 'C' combined
+ * @param[in] job Job: 'A' all matrices, 'C' A,C only, 'B' B,D only, 'D' D only
+ * @param[in] jobck Covariance: 'K' Kalman gain, 'C' covariances, 'N' neither
+ * @param[in] nobr Number of block rows s >= 2
+ * @param[in] n System order (0 < n < nobr)
+ * @param[in] m Number of inputs (m >= 0)
+ * @param[in] l Number of outputs (l > 0)
+ * @param[in] nsmpl Number of samples (nsmpl >= 2*(m+l)*nobr for covariances)
+ * @param[in,out] r Triangular factor from IB01AD, dimension (ldr, 2*(m+l)*nobr)
+ * @param[in] ldr Leading dimension of R
+ * @param[out] a N-by-N state matrix, dimension (lda,n)
+ * @param[in] lda Leading dimension of A
+ * @param[out] c L-by-N output matrix, dimension (ldc,n)
+ * @param[in] ldc Leading dimension of C
+ * @param[out] b N-by-M input matrix, dimension (ldb,m)
+ * @param[in] ldb Leading dimension of B
+ * @param[out] d L-by-M feedthrough matrix, dimension (ldd,m)
+ * @param[in] ldd Leading dimension of D
+ * @param[out] q N-by-N state covariance, dimension (ldq,n)
+ * @param[in] ldq Leading dimension of Q
+ * @param[out] ry L-by-L output covariance, dimension (ldry,l)
+ * @param[in] ldry Leading dimension of RY
+ * @param[out] s N-by-L state-output cross-covariance, dimension (lds,l)
+ * @param[in] lds Leading dimension of S
+ * @param[out] k N-by-L Kalman gain, dimension (ldk,l)
+ * @param[in] ldk Leading dimension of K
+ * @param[in] tol Tolerance for rank estimation
+ * @param[out] iwork INTEGER workspace
+ * @param[out] dwork DOUBLE PRECISION workspace
+ * @param[in] ldwork Workspace size
+ * @param[out] iwarn Warning indicator
+ * @param[out] info Exit code
+ */
+void ib01bd(const char *meth, const char *job, const char *jobck,
+            i32 nobr, i32 n, i32 m, i32 l, i32 nsmpl,
+            f64 *r, i32 ldr, f64 *a, i32 lda, f64 *c, i32 ldc,
+            f64 *b, i32 ldb, f64 *d, i32 ldd, f64 *q, i32 ldq,
+            f64 *ry, i32 ldry, f64 *s, i32 lds, f64 *k, i32 ldk,
+            f64 tol, i32 *iwork, f64 *dwork, i32 ldwork, i32 *bwork,
+            i32 *iwarn, i32 *info);
+
 void ib01px(const char *job, i32 nobr, i32 n, i32 m, i32 l,
             f64 *uf, i32 lduf, const f64 *un, i32 ldun,
             f64 *ul, i32 ldul, const f64 *pgal, i32 ldpgal,
