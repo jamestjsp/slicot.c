@@ -16,10 +16,10 @@ i32 ab04md(char type, i32 n, i32 m, i32 p, f64 alpha, f64 beta,
     const f64 ONE = 1.0;
     const f64 TWO = 2.0;
 
-    bool ltype = (toupper((unsigned char)type) == 'D');
-    bool ctype = (toupper((unsigned char)type) == 'C');
+    char type_upper = (char)toupper((unsigned char)type);
+    bool ltype = (type_upper == 'D');
 
-    if (!ltype && !ctype) {
+    if (type_upper != 'D' && type_upper != 'C') {
         return -1;
     }
     if (n < 0) {
