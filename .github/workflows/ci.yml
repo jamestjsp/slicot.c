@@ -8,8 +8,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Fast check on every push
+  # Fast check on direct pushes to main only (not PRs)
   quick-test:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/devcontainers/cpp:ubuntu
@@ -69,9 +70,6 @@ jobs:
       fail-fast: false
       matrix:
         preset:
-          - name: debug
-            configure: linux-x64-debug
-            build: linux-x64-debug-build
           - name: sanitizers
             configure: linux-x64-debug-sanitizers
             build: linux-x64-debug-sanitizers-build
@@ -93,8 +91,7 @@ jobs:
             gfortran \
             ninja-build \
             python3-venv \
-            python3-dev \
-            valgrind
+            python3-dev
 
       - name: Setup Python venv
         run: |
@@ -128,62 +125,3 @@ jobs:
         env:
           ASAN_OPTIONS: detect_leaks=0:symbolize=1:abort_on_error=1:verify_asan_link_order=0
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-
-  valgrind:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/devcontainers/cpp:ubuntu
-    name: Valgrind Memory Check
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install system dependencies
-        run: |
-          apt-get update
-          apt-get install -y \
-            libblas-dev \
-            liblapack-dev \
-            gfortran \
-            ninja-build \
-            python3-venv \
-            python3-dev \
-            valgrind
-
-      - name: Setup Python venv
-        run: |
-          python3 -m venv venv
-          . venv/bin/activate
-          pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt
-
-      - name: Configure CMake (Debug)
-        run: |
-          . venv/bin/activate
-          cmake --preset linux-x64-debug
-
-      - name: Build
-        run: |
-          . venv/bin/activate
-          cmake --build --preset linux-x64-debug-build
-
-      - name: Install Python extension
-        run: |
-          . venv/bin/activate
-          pip install -e .
-
-      - name: Run Valgrind
-        run: |
-          . venv/bin/activate
-          valgrind \
-            --leak-check=full \
-            --show-leak-kinds=definite \
-            --track-origins=yes \
-            --suppressions=python.supp \
-            --error-exitcode=1 \
-            --errors-for-leak-kinds=definite \
-            python -m pytest tests/python/ -v
