@@ -98,6 +98,33 @@ i32 ab04md(char type, i32 n, i32 m, i32 p, f64 alpha, f64 beta,
            i32* iwork, f64* dwork, i32 ldwork);
 
 /**
+ * @brief Compute the inverse of a linear system.
+ *
+ * Computes the inverse (Ai,Bi,Ci,Di) of a given system (A,B,C,D):
+ *   Ai = A - B*D^-1*C,  Bi = -B*D^-1,  Ci = D^-1*C,  Di = D^-1.
+ *
+ * @param[in] n Order of state matrix A (n >= 0)
+ * @param[in] m Number of system inputs/outputs (m >= 0, square system)
+ * @param[in,out] a State matrix, dimension (lda, n). On exit, Ai.
+ * @param[in] lda Leading dimension of a (lda >= max(1, n))
+ * @param[in,out] b Input matrix, dimension (ldb, m). On exit, Bi.
+ * @param[in] ldb Leading dimension of b (ldb >= max(1, n))
+ * @param[in,out] c Output matrix, dimension (ldc, n). On exit, Ci.
+ * @param[in] ldc Leading dimension of c (ldc >= max(1, m))
+ * @param[in,out] d Feedthrough matrix, dimension (ldd, m). On exit, Di.
+ * @param[in] ldd Leading dimension of d (ldd >= max(1, m))
+ * @param[out] rcond Reciprocal condition number of D
+ * @param[out] iwork Integer workspace, dimension (2*m)
+ * @param[out] dwork Double workspace, dimension (ldwork)
+ * @param[in] ldwork Workspace size (ldwork >= max(1, 4*m))
+ * @return 0 on success, -i if parameter i is invalid, 1..m if D is singular
+ *         (i-th diagonal element zero), m+1 if D is numerically singular
+ */
+i32 ab07nd(i32 n, i32 m, f64* a, i32 lda, f64* b, i32 ldb,
+           f64* c, i32 ldc, f64* d, i32 ldd, f64* rcond,
+           i32* iwork, f64* dwork, i32 ldwork);
+
+/**
  * @brief Compute matrix product T := alpha*op(T)*A or T := alpha*A*op(T).
  *
  * Computes one of the matrix products:

@@ -7096,6 +7096,97 @@ static PyObject* py_tb01id(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for ab07nd */
+static PyObject* py_ab07nd(PyObject* self, PyObject* args) {
+    PyObject *a_obj, *b_obj, *c_obj, *d_obj;
+
+    if (!PyArg_ParseTuple(args, "OOOO", &a_obj, &b_obj, &c_obj, &d_obj)) {
+        return NULL;
+    }
+
+    PyArrayObject *a_array = (PyArrayObject*)PyArray_FROM_OTF(
+        a_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!a_array) return NULL;
+
+    PyArrayObject *b_array = (PyArrayObject*)PyArray_FROM_OTF(
+        b_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!b_array) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    PyArrayObject *c_array = (PyArrayObject*)PyArray_FROM_OTF(
+        c_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!c_array) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    PyArrayObject *d_array = (PyArrayObject*)PyArray_FROM_OTF(
+        d_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!d_array) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *c_dims = PyArray_DIMS(c_array);
+
+    i32 n = PyArray_NDIM(a_array) >= 1 ? (i32)a_dims[0] : 0;
+    i32 m = PyArray_NDIM(c_array) >= 1 ? (i32)c_dims[0] : 0;
+
+    i32 lda = n > 0 ? n : 1;
+    i32 ldb = n > 0 ? n : 1;
+    i32 ldc = m > 0 ? m : 1;
+    i32 ldd = m > 0 ? m : 1;
+
+    i32 minwrk = (1 > 4 * m) ? 1 : 4 * m;
+    i32 iwork_size = (2 * m > 1) ? 2 * m : 1;
+    i32 ldwork = (n * m > minwrk) ? n * m : minwrk;
+
+    i32 *iwork = (i32*)malloc(iwork_size * sizeof(i32));
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+
+    if (!iwork || !dwork) {
+        free(iwork);
+        free(dwork);
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+    f64 *d_data = (f64*)PyArray_DATA(d_array);
+
+    f64 rcond;
+    i32 info = ab07nd(n, m, a_data, lda, b_data, ldb, c_data, ldc, d_data, ldd,
+                      &rcond, iwork, dwork, ldwork);
+
+    free(iwork);
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    PyArray_ResolveWritebackIfCopy(c_array);
+    PyArray_ResolveWritebackIfCopy(d_array);
+
+    PyObject *result = Py_BuildValue("OOOOdi", a_array, b_array, c_array, d_array, rcond, info);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(d_array);
+
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"ab04md", (PyCFunction)py_ab04md, METH_VARARGS | METH_KEYWORDS,
@@ -7112,6 +7203,19 @@ static PyMethodDef SlicotMethods[] = {
      "  beta (float, optional): Transformation parameter (default 1.0)\n\n"
      "Returns:\n"
      "  (a, b, c, d, info): Transformed matrices and exit code\n"},
+
+    {"ab07nd", py_ab07nd, METH_VARARGS,
+     "Compute the inverse of a linear system.\n\n"
+     "Computes the inverse (Ai,Bi,Ci,Di) of a given system (A,B,C,D):\n"
+     "  Ai = A - B*D^-1*C, Bi = -B*D^-1, Ci = D^-1*C, Di = D^-1.\n\n"
+     "Parameters:\n"
+     "  a (ndarray): State matrix A (n x n, F-order)\n"
+     "  b (ndarray): Input matrix B (n x m, F-order)\n"
+     "  c (ndarray): Output matrix C (m x n, F-order)\n"
+     "  d (ndarray): Feedthrough matrix D (m x m, F-order)\n\n"
+     "Returns:\n"
+     "  (ai, bi, ci, di, rcond, info): Inverse system matrices,\n"
+     "    reciprocal condition number, and exit code\n"},
 
     {"mb04od", py_mb04od, METH_VARARGS,
      "QR factorization of structured block matrix.\n\n"
