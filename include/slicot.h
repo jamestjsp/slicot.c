@@ -1198,7 +1198,7 @@ void md03bd(
     i32 itmax,
     f64 factor,
     i32 nprint,
-    const i32* ipar,
+    i32* ipar,
     i32 lipar,
     const f64* dpar1,
     i32 ldpar1,
@@ -2149,6 +2149,65 @@ void ib01py(const char *meth, const char *job, i32 nobr, i32 n, i32 m, i32 l,
             f64 *k, i32 ldk, f64 *r, i32 ldr, f64 *h, i32 ldh,
             f64 *b, i32 ldb, f64 *d, i32 ldd, f64 tol,
             i32 *iwork, f64 *dwork, i32 ldwork, i32 *iwarn, i32 *info);
+
+/**
+ * @brief Wiener system identification using Levenberg-Marquardt algorithm.
+ *
+ * Computes parameters for approximating a Wiener system consisting of a
+ * linear state-space part and a static nonlinearity (neural network):
+ *   x(t+1) = A*x(t) + B*u(t)       (linear state-space)
+ *   z(t)   = C*x(t) + D*u(t)
+ *   y(t)   = f(z(t), wb(1:L))      (nonlinear function)
+ *
+ * The parameter vector X = (wb(1),...,wb(L), theta) where wb(i) are neural
+ * network weights and theta are linear part parameters in output normal form.
+ *
+ * @param[in] init Initialization mode:
+ *                 'L' = initialize linear part only
+ *                 'S' = initialize static nonlinearity only
+ *                 'B' = initialize both parts
+ *                 'N' = no initialization (use given X)
+ * @param[in] nobr Block rows for MOESP/N4SID (used if INIT='L' or 'B')
+ * @param[in] m Number of system inputs (m >= 0)
+ * @param[in] l Number of system outputs (l >= 0, l > 0 if INIT='L' or 'B')
+ * @param[in] nsmp Number of input/output samples
+ * @param[in,out] n System order. If n < 0 and INIT='L' or 'B', order is estimated.
+ * @param[in] nn Number of neurons for nonlinear approximation (nn >= 0)
+ * @param[in] itmax1 Max iterations for nonlinear initialization (ignored if INIT='L' or 'N')
+ * @param[in] itmax2 Max iterations for whole optimization (itmax2 >= 0)
+ * @param[in] nprint Print control (> 0 enables iteration printing)
+ * @param[in] u Input samples, dimension (ldu, m)
+ * @param[in] ldu Leading dimension of U (ldu >= max(1, nsmp))
+ * @param[in] y Output samples, dimension (ldy, l)
+ * @param[in] ldy Leading dimension of Y (ldy >= max(1, nsmp))
+ * @param[in,out] x Parameter vector, dimension (lx).
+ *                  On entry: initial parameters (depending on INIT mode)
+ *                  On exit: optimized parameters
+ * @param[in,out] lx Length of X. On exit, may be updated if N was auto-detected.
+ * @param[in] tol1 Tolerance for nonlinear initialization (tol1 < 0 uses sqrt(eps))
+ * @param[in] tol2 Tolerance for whole optimization (tol2 < 0 uses sqrt(eps))
+ * @param[out] iwork INTEGER workspace
+ *                   On exit: iwork[0]=fcn evals, iwork[1]=jac evals,
+ *                   iwork[2]=number of condition numbers in dwork
+ * @param[in,out] dwork DOUBLE PRECISION workspace
+ *                      On entry: dwork[0:3] = seed for random initialization
+ *                      On exit: dwork[0]=opt workspace, dwork[1]=residual,
+ *                      dwork[2]=iterations, dwork[3]=final Levenberg factor
+ * @param[in] ldwork Workspace size
+ * @param[out] iwarn Warning indicator (k*100 + j*10 + i)
+ * @param[out] info Exit code (0=success, <0=invalid param, >0=algorithm error)
+ */
+void ib03bd(
+    const char* init,
+    i32 nobr, i32 m, i32 l, i32 nsmp,
+    i32* n,
+    i32 nn, i32 itmax1, i32 itmax2, i32 nprint,
+    const f64* u, i32 ldu,
+    const f64* y, i32 ldy,
+    f64* x, i32* lx,
+    f64 tol1, f64 tol2,
+    i32* iwork, f64* dwork, i32 ldwork,
+    i32* iwarn, i32* info);
 
 void mb01vd(const char *trana, const char *tranb, i32 ma, i32 na, i32 mb, i32 nb,
             f64 alpha, f64 beta, const f64 *a, i32 lda, const f64 *b, i32 ldb,

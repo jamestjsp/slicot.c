@@ -32,7 +32,7 @@ void md03bd(
     i32 itmax,
     f64 factor,
     i32 nprint,
-    const i32* ipar,
+    i32* ipar,
     i32 lipar,
     const f64* dpar1,
     i32 ldpar1,
@@ -67,11 +67,6 @@ void md03bd(
     i32 ldj, ldjsav, lfcn1, lfcn2, llmp, lqrf, nc, nfevl, sizej, wrkopt;
     f64 actred, delta, dirder, epsmch, fnorm, fnorm1, ftdef, gnorm, gtdef;
     f64 par, pnorm, prered, ratio, temp, temp1, temp2, toldef, xnorm, xtdef;
-
-    i32 ipar_local[5];
-    for (i32 k = 0; k < 5; k++) {
-        ipar_local[k] = (lipar > k) ? ipar[k] : 0;
-    }
 
     init = lsame(*xinit, 'R');
     iscal = lsame(*scale, 'I');
@@ -130,20 +125,20 @@ void md03bd(
     }
 
     iflag = 3;
-    i32 iw1_save = ipar_local[0];
-    i32 iw2_save = ipar_local[1];
-    i32 iw3_save = ipar_local[2];
-    i32 jw1_save = ipar_local[3];
-    i32 jw2_save = ipar_local[4];
+    i32 iw1_save = ipar[0];
+    i32 iw2_save = ipar[1];
+    i32 iw3_save = ipar[2];
+    i32 jw1_save = ipar[3];
+    i32 jw2_save = ipar[4];
 
-    fcn(&iflag, m, n, ipar_local, lipar, dpar1, ldpar1, dpar2, ldpar2,
+    fcn(&iflag, m, n, ipar, lipar, dpar1, ldpar1, dpar2, ldpar2,
         x, &nfevl, dwork, dwork, &ldjsav, dwork, ldwork, &infol);
 
-    sizej = ipar_local[0];
-    lfcn1 = ipar_local[1];
-    lfcn2 = ipar_local[2];
-    lqrf = ipar_local[3];
-    llmp = ipar_local[4];
+    sizej = ipar[0];
+    lfcn1 = ipar[1];
+    lfcn2 = ipar[2];
+    lqrf = ipar[3];
+    llmp = ipar[4];
 
     if (ldjsav > 0) {
         nc = sizej / ldjsav;
@@ -151,11 +146,11 @@ void md03bd(
         nc = sizej;
     }
 
-    ipar_local[0] = iw1_save;
-    ipar_local[1] = iw2_save;
-    ipar_local[2] = iw3_save;
-    ipar_local[3] = jw1_save;
-    ipar_local[4] = jw2_save;
+    ipar[0] = iw1_save;
+    ipar[1] = iw2_save;
+    ipar[2] = iw3_save;
+    ipar[3] = jw1_save;
+    ipar[4] = jw2_save;
 
     e = 0;
     jac = e + m;
@@ -199,16 +194,20 @@ void md03bd(
     wrkopt = 1;
 
     if (init) {
-        for (i32 k = 0; k < n; k++) {
-            x[k] = zero;
-        }
+        i32 seed[4];
+        seed[0] = ((i32)dwork[0]) % 4096;
+        seed[1] = ((i32)dwork[1]) % 4096;
+        seed[2] = ((i32)dwork[2]) % 4096;
+        seed[3] = (2 * ((i32)dwork[3]) + 1) % 4096;
+        i32 idist = 2;  // Uniform distribution on (-1, 1)
+        SLC_DLARNV(&idist, seed, &n, x);
     }
 
     par = zero;
     iter = 1;
 
     iflag = 1;
-    fcn(&iflag, m, n, ipar_local, lipar, dpar1, ldpar1, dpar2, ldpar2,
+    fcn(&iflag, m, n, ipar, lipar, dpar1, ldpar1, dpar2, ldpar2,
         x, &nfevl, &dwork[e], &dwork[jac], &ldj, &dwork[jw1],
         ldwork - jw1, &infol);
 
@@ -231,7 +230,7 @@ void md03bd(
     while (true) {
         ldj = ldjsav;
         iflag = 2;
-        fcn(&iflag, m, n, ipar_local, lipar, dpar1, ldpar1, dpar2, ldpar2,
+        fcn(&iflag, m, n, ipar, lipar, dpar1, ldpar1, dpar2, ldpar2,
             x, &nfevl, &dwork[e], &dwork[jac], &ldj, &dwork[jw1],
             ldwork - jw1, &infol);
 
@@ -258,7 +257,7 @@ void md03bd(
         if (nprint > 0) {
             if ((iter - 1) % nprint == 0) {
                 iflag = 0;
-                fcn(&iflag, m, n, ipar_local, lipar, dpar1, ldpar1, dpar2, ldpar2,
+                fcn(&iflag, m, n, ipar, lipar, dpar1, ldpar1, dpar2, ldpar2,
                     x, nfev, &dwork[e], &dwork[jac], &ldj, &dwork[jw1],
                     ldwork - jw1, &infol);
                 if (iflag < 0) {
@@ -267,7 +266,7 @@ void md03bd(
             }
         }
 
-        qrfact(n, ipar_local, lipar, fnorm, &dwork[jac], &ldj, &dwork[e],
+        qrfact(n, ipar, lipar, fnorm, &dwork[jac], &ldj, &dwork[e],
                &dwork[jw1], &gnorm, iwork, &dwork[jw2], ldwork - jw2, &infol);
 
         if (infol != 0) {
@@ -315,7 +314,7 @@ void md03bd(
         }
 
         while (true) {
-            lmparm(cond, n, ipar_local, lipar, &dwork[jac], ldj, iwork, diag,
+            lmparm(cond, n, ipar, lipar, &dwork[jac], ldj, iwork, diag,
                    &dwork[e], delta, &par, &iwork[n], &dwork[iw1], &dwork[iw2],
                    toldef, &dwork[iw3], ldwork - iw3, &infol);
 
@@ -347,7 +346,7 @@ void md03bd(
             }
 
             iflag = 1;
-            fcn(&iflag, m, n, ipar_local, lipar, dpar1, ldpar1, dpar2, ldpar2,
+            fcn(&iflag, m, n, ipar, lipar, dpar1, ldpar1, dpar2, ldpar2,
                 &dwork[iw1], &nfevl, &dwork[iw2], &dwork[jac], &ldj,
                 &dwork[jwork], ldwork - jwork, &infol);
 
@@ -456,7 +455,7 @@ L90:
 
     if (nprint > 0) {
         iflag = 0;
-        fcn(&iflag, m, n, ipar_local, lipar, dpar1, ldpar1, dpar2, ldpar2,
+        fcn(&iflag, m, n, ipar, lipar, dpar1, ldpar1, dpar2, ldpar2,
             x, nfev, &dwork[e], &dwork[jac], &ldj, &dwork[jwork],
             ldwork - jwork, &infol);
         if (iflag < 0) {

@@ -145,6 +145,30 @@ PyArray_ENABLEFLAGS(q_array, NPY_ARRAY_OWNDATA);
 ### Error Codes
 `info = 0` success, `info < 0` param error, `info > 0` algorithm error
 
+## Test Data Strategy
+
+**Threshold rule**: Use NPZ files for datasets with ≥50 values or >10 lines of data.
+
+| Scenario | Strategy | Example |
+|----------|----------|---------|
+| Small data (<50 values) | Embed inline | 3x3 matrix, short vector |
+| Large data (≥50 values) | NPZ file in `tests/python/data/` | 1000-sample time series |
+| Shared between tests | ALWAYS use NPZ | Same I/O data for IB01AD/IB01BD |
+
+**NPZ file pattern:**
+```python
+# Creating test data file (one-time)
+np.savez('tests/python/data/routine_test_data.npz', u=u, y=y, expected_a=a)
+
+# Loading in test
+def load_test_data():
+    data_path = os.path.join(os.path.dirname(__file__), 'data', 'routine_test_data.npz')
+    data = np.load(data_path)
+    return data['u'], data['y'], data['expected_a']
+```
+
+**Why**: Keeps test files readable (<400 lines), prevents data duplication, enables data sharing between related tests.
+
 ## Docs
 
 - `fortran_diag/README.md` - C vs Fortran debugging
