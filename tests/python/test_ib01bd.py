@@ -289,12 +289,27 @@ def test_ib01bd_html_example():
 
     K_expected = np.array([[-1.9513], [-0.1867], [0.6348], [-0.3486]], order='F', dtype=float)
 
+    # Expected covariance matrices from IB01BD.html documentation
+    Q_expected = np.array([
+        [0.0052, 0.0005, -0.0017, 0.0009],
+        [0.0005, 0.0000, -0.0002, 0.0001],
+        [-0.0017, -0.0002, 0.0006, -0.0003],
+        [0.0009, 0.0001, -0.0003, 0.0002]
+    ], order='F', dtype=float)
+
+    Ry_expected = np.array([[0.0012]], order='F', dtype=float)
+
+    S_expected = np.array([[-0.0025], [-0.0002], [0.0008], [-0.0005]], order='F', dtype=float)
+
     # Verify shapes
     assert A.shape == (n, n)
     assert C.shape == (l, n)
     assert B.shape == (n, m)
     assert D.shape == (l, m)
     assert K.shape == (n, l)
+    assert Q.shape == (n, n)
+    assert Ry.shape == (l, l)
+    assert S.shape == (n, l)
 
     # Verify values (HTML shows 4 decimal places, use rtol=5e-3 for some tolerance)
     np.testing.assert_allclose(A, A_expected, rtol=5e-3, atol=1e-3)
@@ -303,10 +318,12 @@ def test_ib01bd_html_example():
     np.testing.assert_allclose(D, D_expected, rtol=5e-2, atol=1e-3)
     np.testing.assert_allclose(K, K_expected, rtol=5e-3, atol=1e-3)
 
-    # Verify covariance matrices are symmetric and positive semi-definite
-    assert Q.shape == (n, n)
-    assert Ry.shape == (l, l)
-    assert S.shape == (n, l)
+    # Verify covariance matrices (HTML shows 4 decimal places)
+    np.testing.assert_allclose(Q, Q_expected, rtol=5e-2, atol=5e-4)
+    np.testing.assert_allclose(Ry, Ry_expected, rtol=5e-2, atol=5e-4)
+    np.testing.assert_allclose(S, S_expected, rtol=5e-2, atol=5e-4)
+
+    # Verify covariance matrices are symmetric
     np.testing.assert_allclose(Q, Q.T, rtol=1e-14)
 
 
