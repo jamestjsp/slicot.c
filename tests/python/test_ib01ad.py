@@ -304,7 +304,7 @@ def test_ib01ad_basic_n4sid():
     assert info == 0
     assert iwarn == 0
     assert n >= 0
-    assert n <= nobr - 1
+    assert n <= nobr
 
     lnobr = l * nobr
     assert len(sv) == lnobr

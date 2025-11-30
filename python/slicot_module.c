@@ -4144,6 +4144,198 @@ static PyObject* py_ib01nd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for ib01ad - System identification driver */
+static PyObject* py_ib01ad(PyObject* self, PyObject* args) {
+    const char *meth_str, *alg_str, *jobd_str, *batch_str, *conct_str, *ctrl_str;
+    i32 nobr, m, l;
+    f64 rcond, tol;
+    PyObject *u_obj, *y_obj;
+    PyArrayObject *u_array = NULL, *y_array = NULL;
+    i32 n, iwarn, info;
+
+    if (!PyArg_ParseTuple(args, "ssssssiiiOOdd",
+                          &meth_str, &alg_str, &jobd_str, &batch_str, &conct_str,
+                          &ctrl_str, &nobr, &m, &l, &u_obj, &y_obj, &rcond, &tol)) {
+        return NULL;
+    }
+
+    char meth = toupper((unsigned char)meth_str[0]);
+    char alg = toupper((unsigned char)alg_str[0]);
+    char jobd = toupper((unsigned char)jobd_str[0]);
+    char batch = toupper((unsigned char)batch_str[0]);
+    char conct = toupper((unsigned char)conct_str[0]);
+    char ctrl = toupper((unsigned char)ctrl_str[0]);
+
+    if (meth != 'M' && meth != 'N') {
+        PyErr_SetString(PyExc_ValueError, "METH must be 'M' or 'N'");
+        return NULL;
+    }
+    if (alg != 'C' && alg != 'F' && alg != 'Q') {
+        PyErr_SetString(PyExc_ValueError, "ALG must be 'C', 'F', or 'Q'");
+        return NULL;
+    }
+    if (meth == 'M' && jobd != 'M' && jobd != 'N') {
+        PyErr_SetString(PyExc_ValueError, "JOBD must be 'M' or 'N' for MOESP");
+        return NULL;
+    }
+    if (batch != 'F' && batch != 'I' && batch != 'L' && batch != 'O') {
+        PyErr_SetString(PyExc_ValueError, "BATCH must be 'F', 'I', 'L', or 'O'");
+        return NULL;
+    }
+    if (nobr <= 0) {
+        PyErr_SetString(PyExc_ValueError, "NOBR must be positive");
+        return NULL;
+    }
+    if (m < 0) {
+        PyErr_SetString(PyExc_ValueError, "M must be non-negative");
+        return NULL;
+    }
+    if (l <= 0) {
+        PyErr_SetString(PyExc_ValueError, "L must be positive");
+        return NULL;
+    }
+
+    u_array = (PyArrayObject*)PyArray_FROM_OTF(u_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    y_array = (PyArrayObject*)PyArray_FROM_OTF(y_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+
+    if (!u_array || !y_array) {
+        Py_XDECREF(u_array);
+        Py_XDECREF(y_array);
+        return NULL;
+    }
+
+    npy_intp *y_dims = PyArray_DIMS(y_array);
+    i32 nsmp = (i32)y_dims[0];
+    i32 ldu = (m > 0) ? nsmp : 1;
+    i32 ldy = nsmp;
+
+    i32 nobr2 = 2 * nobr;
+    i32 nr = 2 * (m + l) * nobr;
+    bool onebch = (batch == 'O');
+    i32 min_nsmp = onebch ? (2 * (m + l + 1) * nobr - 1) : nobr2;
+
+    if (nsmp < min_nsmp) {
+        Py_DECREF(u_array);
+        Py_DECREF(y_array);
+        PyErr_SetString(PyExc_ValueError, "NSMP too small for the problem");
+        return NULL;
+    }
+
+    const f64 *u_data = (const f64*)PyArray_DATA(u_array);
+    const f64 *y_data = (const f64*)PyArray_DATA(y_array);
+
+    i32 lnobr = l * nobr;
+    i32 lmnobr = lnobr + m * nobr;
+    bool jobdm = (jobd == 'M');
+
+    i32 ldr = nr;
+    if (meth == 'M' && jobdm && 3 * m * nobr > ldr) {
+        ldr = 3 * m * nobr;
+    }
+
+    f64 *r_data = (f64*)calloc(ldr * nr, sizeof(f64));
+    if (!r_data) {
+        Py_DECREF(u_array);
+        Py_DECREF(y_array);
+        return PyErr_NoMemory();
+    }
+
+    npy_intp sv_dims[1] = {lnobr};
+    PyArrayObject *sv_array = (PyArrayObject*)PyArray_SimpleNew(1, sv_dims, NPY_DOUBLE);
+    if (!sv_array) {
+        free(r_data);
+        Py_DECREF(u_array);
+        Py_DECREF(y_array);
+        return PyErr_NoMemory();
+    }
+    f64 *sv = (f64*)PyArray_DATA(sv_array);
+
+    i32 liwork = (meth == 'N') ? lmnobr : ((m + l > 3) ? (m + l) : 3);
+    i32 *iwork = (i32*)calloc(liwork, sizeof(i32));
+    if (!iwork) {
+        free(r_data);
+        Py_DECREF(u_array);
+        Py_DECREF(y_array);
+        Py_DECREF(sv_array);
+        return PyErr_NoMemory();
+    }
+
+    i32 ns = nsmp - 2 * nobr + 1;
+    i32 ldwork;
+
+    if (alg == 'C') {
+        ldwork = 5 * lnobr;
+        if (meth == 'M' && jobdm) {
+            i32 t1 = 2 * m * nobr - nobr;
+            if (t1 < 1) t1 = 1;
+            i32 t2 = lmnobr;
+            if (t1 > ldwork) ldwork = t1;
+            if (t2 > ldwork) ldwork = t2;
+        }
+        if (meth == 'N') {
+            ldwork = 5 * lmnobr + 1;
+        }
+    } else if (alg == 'F') {
+        ldwork = 2 * nr * (m + l + 1) + nr;
+    } else {
+        ldwork = 6 * (m + l) * nobr;
+        if (onebch && ldr >= ns) {
+            if (meth == 'M') {
+                i32 t = 5 * lnobr;
+                if (ldwork < t) ldwork = t;
+            } else {
+                ldwork = 5 * lmnobr + 1;
+            }
+        }
+    }
+    i32 t = (ns + 2) * nr;
+    if (ldwork < t) ldwork = t;
+    ldwork = (ldwork > 1) ? ldwork : 1;
+
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (!dwork) {
+        free(r_data);
+        free(iwork);
+        Py_DECREF(u_array);
+        Py_DECREF(y_array);
+        Py_DECREF(sv_array);
+        return PyErr_NoMemory();
+    }
+
+    ib01ad(meth_str, alg_str, jobd_str, batch_str, conct_str, ctrl_str,
+           nobr, m, l, nsmp, u_data, ldu, y_data, ldy,
+           &n, r_data, ldr, sv, rcond, tol,
+           iwork, dwork, ldwork, &iwarn, &info);
+
+    free(dwork);
+    free(iwork);
+    Py_DECREF(u_array);
+    Py_DECREF(y_array);
+
+    if (info < 0) {
+        free(r_data);
+        Py_DECREF(sv_array);
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    npy_intp r_dims[2] = {nr, nr};
+    npy_intp r_strides[2] = {sizeof(f64), nr * sizeof(f64)};
+    PyArrayObject *r_array = (PyArrayObject*)PyArray_New(
+        &PyArray_Type, 2, r_dims, NPY_DOUBLE, r_strides, r_data, 0, NPY_ARRAY_FARRAY, NULL);
+    if (!r_array) {
+        free(r_data);
+        Py_DECREF(sv_array);
+        return PyErr_NoMemory();
+    }
+    PyArray_ENABLEFLAGS(r_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *result = Py_BuildValue("iOOii", n, r_array, sv_array, iwarn, info);
+    Py_DECREF(r_array);
+    Py_DECREF(sv_array);
+    return result;
+}
+
 /* Python wrapper for ib01md */
 static PyObject* py_ib01md(PyObject* self, PyObject* args, PyObject* kwargs) {
     const char *meth_str, *alg_str, *batch_str, *conct_str;
@@ -6886,6 +7078,27 @@ static PyMethodDef SlicotMethods[] = {
      "  gtol (float): Gradient tolerance (default eps)\n\n"
      "Returns:\n"
      "  (x, nfev, njev, fnorm, iwarn, info): Solution, evaluations, norm, status\n"},
+
+    {"ib01ad", (PyCFunction)py_ib01ad, METH_VARARGS,
+     "System identification driver - MOESP/N4SID preprocessing and order estimation.\n\n"
+     "Preprocesses input-output data for estimating state-space matrices and finds\n"
+     "an estimate of the system order using MOESP or N4SID subspace identification.\n\n"
+     "Parameters:\n"
+     "  meth (str): 'M' for MOESP, 'N' for N4SID\n"
+     "  alg (str): 'C' for Cholesky, 'F' for Fast QR, 'Q' for QR\n"
+     "  jobd (str): 'M' or 'N' for MOESP BD computation mode (not used for N4SID)\n"
+     "  batch (str): 'F' first, 'I' intermediate, 'L' last, 'O' one block\n"
+     "  conct (str): 'C' connected blocks, 'N' not connected\n"
+     "  ctrl (str): 'C' user confirmation, 'N' no confirmation\n"
+     "  nobr (int): Number of block rows (nobr > 0)\n"
+     "  m (int): Number of system inputs (m >= 0)\n"
+     "  l (int): Number of system outputs (l > 0)\n"
+     "  u (ndarray): NSMP-by-M input data (F-order)\n"
+     "  y (ndarray): NSMP-by-L output data (F-order)\n"
+     "  rcond (float): Rank tolerance for N4SID (0 for default)\n"
+     "  tol (float): Order estimation tolerance (>=0: threshold, <0: gap-based)\n\n"
+     "Returns:\n"
+     "  (n, r, sv, iwarn, info): Order, R/S factor, singular values, warning, status\n"},
 
     {"ib01nd", (PyCFunction)py_ib01nd, METH_VARARGS,
      "SVD system order via block Hankel.\n\n"
