@@ -260,7 +260,7 @@ def test_ib01bd_html_example():
     rcond = 0.0
     tol_ad = -1.0
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad(meth_ib01ad, alg, jobd, batch, conct, ctrl, nobr, m, l, u, y, rcond, tol_ad)
+    _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad(meth_ib01ad, alg, jobd, batch, conct, ctrl, nobr, m, l, u, y, rcond, tol_ad)
     assert info_ad == 0
 
     # Use MOESP instead of Combined - N4SID B,D estimation not yet implemented in IB01PD
@@ -270,7 +270,7 @@ def test_ib01bd_html_example():
     jobck = 'N'
     tol = 0.0
 
-    A, C, B, D, Q, Ry, S, K, iwarn, info = ib01bd(meth, job, jobck, nobr, n, m, l, nsmp, r, tol)
+    A, C, B, D, _Q, _Ry, _S, _K, _iwarn, info = ib01bd(meth, job, jobck, nobr, n, m, l, nsmp, r, tol)
 
     assert info == 0
 
@@ -305,10 +305,10 @@ def test_ib01bd_moesp_basic():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
     assert info_ad == 0
 
-    A, C, B, D, Q, Ry, S, K, iwarn, info = ib01bd('M', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
+    A, C, B, D, _Q, _Ry, _S, _K, _iwarn, info = ib01bd('M', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
 
     assert info == 0
     assert A.shape == (n, n)
@@ -334,10 +334,10 @@ def test_ib01bd_n4sid_basic():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('N', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad('N', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
     assert info_ad == 0
 
-    A, C, B, D, Q, Ry, S, K, iwarn, info = ib01bd('N', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
+    A, C, B, D, _Q, _Ry, _S, _K, _iwarn, info = ib01bd('N', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
 
     assert info == 0
     assert A.shape == (n, n)
@@ -362,10 +362,10 @@ def test_ib01bd_job_c_only():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
     assert info_ad == 0
 
-    A, C, B, D, Q, Ry, S, K, iwarn, info = ib01bd('M', 'C', 'N', nobr, n, m, l, nsmp, r, 0.0)
+    A, C, _B, _D, _Q, _Ry, _S, _K, _iwarn, info = ib01bd('M', 'C', 'N', nobr, n, m, l, nsmp, r, 0.0)
 
     assert info == 0
     assert A.shape == (n, n)
@@ -392,10 +392,10 @@ def test_ib01bd_covariance_symmetry():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('N', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad('N', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
     assert info_ad == 0
 
-    A, C, B, D, Q, Ry, S, K, iwarn, info = ib01bd('N', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
+    A, C, _B, _D, _Q, _Ry, _S, _K, _iwarn, info = ib01bd('N', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
 
     assert info == 0
     assert A.shape == (n, n)
@@ -421,10 +421,10 @@ def test_ib01bd_with_kalman_gain():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('N', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad('N', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
     assert info_ad == 0
 
-    A, C, B, D, Q, Ry, S, K, iwarn, info = ib01bd('N', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
+    A, _C, B, _D, _Q, _Ry, _S, _K, _iwarn, info = ib01bd('N', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
 
     assert info == 0
     assert A.shape == (n, n)
@@ -447,10 +447,10 @@ def test_ib01bd_larger_system():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
     assert info_ad == 0
 
-    A, C, B, D, Q, Ry, S, K, iwarn, info = ib01bd('M', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
+    A, C, B, D, _Q, _Ry, _S, _K, _iwarn, info = ib01bd('M', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
 
     assert info == 0
     assert A.shape == (n, n)
@@ -475,10 +475,10 @@ def test_ib01bd_m_zero():
     u = np.zeros((nsmp, 0), order='F', dtype=float)
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
     assert info_ad == 0
 
-    A, C, B, D, Q, Ry, S, K, iwarn, info = ib01bd('M', 'C', 'N', nobr, n, m, l, nsmp, r, 0.0)
+    A, C, _B, _D, _Q, _Ry, _S, _K, _iwarn, info = ib01bd('M', 'C', 'N', nobr, n, m, l, nsmp, r, 0.0)
 
     assert info == 0
     assert A.shape == (n, n)
@@ -499,7 +499,7 @@ def test_ib01bd_error_invalid_meth():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, _info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
 
     with pytest.raises(ValueError, match="METH"):
         ib01bd('X', 'A', 'N', nobr, n, m, l, nsmp, r, 0.0)
@@ -519,7 +519,7 @@ def test_ib01bd_error_invalid_job():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, _info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
 
     with pytest.raises(ValueError, match="JOB"):
         ib01bd('M', 'X', 'N', nobr, n, m, l, nsmp, r, 0.0)
@@ -539,7 +539,7 @@ def test_ib01bd_error_invalid_jobck():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, _info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
 
     with pytest.raises(ValueError, match="JOBCK"):
         ib01bd('M', 'A', 'X', nobr, n, m, l, nsmp, r, 0.0)
@@ -559,7 +559,7 @@ def test_ib01bd_error_nobr_too_small():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, _info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
 
     with pytest.raises(ValueError, match="NOBR"):
         ib01bd('M', 'A', 'N', 1, n, m, l, nsmp, r, 0.0)
@@ -574,12 +574,12 @@ def test_ib01bd_error_n_invalid():
     m = 1
     l = 1
     nsmp = 50
-    n = 2
+    _n = 2
 
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, _info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
 
     with pytest.raises(ValueError, match="N"):
         ib01bd('M', 'A', 'N', nobr, 0, m, l, nsmp, r, 0.0)
@@ -602,7 +602,7 @@ def test_ib01bd_error_l_nonpositive():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r, sv, iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r, _sv, _iwarn_ad, _info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
 
     with pytest.raises(ValueError, match="L"):
         ib01bd('M', 'A', 'N', nobr, n, m, 0, nsmp, r, 0.0)
@@ -624,11 +624,11 @@ def test_ib01bd_deterministic_output():
     u = np.random.randn(nsmp, m).astype(float, order='F')
     y = np.random.randn(nsmp, l).astype(float, order='F')
 
-    n_est, r1, sv, iwarn_ad, info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
+    _n_est, r1, _sv, _iwarn_ad, _info_ad = ib01ad('M', 'Q', 'N', 'O', 'N', 'N', nobr, m, l, u, y, 0.0, 0.0)
     r2 = r1.copy()
 
-    A1, C1, B1, D1, Q1, Ry1, S1, K1, iwarn1, info1 = ib01bd('M', 'A', 'N', nobr, n, m, l, nsmp, r1, 0.0)
-    A2, C2, B2, D2, Q2, Ry2, S2, K2, iwarn2, info2 = ib01bd('M', 'A', 'N', nobr, n, m, l, nsmp, r2, 0.0)
+    A1, C1, B1, D1, _Q1, _Ry1, _S1, _K1, _iwarn1, info1 = ib01bd('M', 'A', 'N', nobr, n, m, l, nsmp, r1, 0.0)
+    A2, C2, B2, D2, _Q2, _Ry2, _S2, _K2, _iwarn2, info2 = ib01bd('M', 'A', 'N', nobr, n, m, l, nsmp, r2, 0.0)
 
     assert info1 == info2
     np.testing.assert_allclose(A1, A2, rtol=1e-14)
