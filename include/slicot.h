@@ -1921,6 +1921,52 @@ void slicot_ib01qd(
 );
 
 /**
+ * @brief System identification driver - MOESP/N4SID preprocessing and order estimation.
+ *
+ * Preprocesses input-output data for estimating state-space matrices and finds
+ * an estimate of the system order using MOESP or N4SID subspace identification.
+ * This driver calls IB01MD (R factor), IB01ND (SVD), IB01OD (order estimation).
+ *
+ * @param[in] meth Method: 'M' = MOESP, 'N' = N4SID
+ * @param[in] alg Algorithm: 'C' = Cholesky, 'F' = Fast QR, 'Q' = QR
+ * @param[in] jobd MOESP B/D mode: 'M' = compute via MOESP, 'N' = don't (N4SID: not used)
+ * @param[in] batch Processing: 'F' = first, 'I' = intermediate, 'L' = last, 'O' = one block
+ * @param[in] conct Connection: 'C' = connected, 'N' = not connected (unused if BATCH='O')
+ * @param[in] ctrl Confirmation: 'C' = user confirmation via IB01OY, 'N' = no confirmation
+ * @param[in] nobr Number of block rows (nobr > 0)
+ * @param[in] m Number of inputs (m >= 0)
+ * @param[in] l Number of outputs (l > 0)
+ * @param[in] nsmp Number of samples (nsmp >= 2*nobr for sequential,
+ *                 nsmp >= 2*(m+l+1)*nobr - 1 for non-sequential)
+ * @param[in] u NSMP-by-M input data, dimension (ldu,m)
+ * @param[in] ldu Leading dimension of U (ldu >= nsmp if m>0, else >= 1)
+ * @param[in] y NSMP-by-L output data, dimension (ldy,l)
+ * @param[in] ldy Leading dimension of Y (ldy >= nsmp)
+ * @param[out] n Estimated system order
+ * @param[out] r Upper triangular R/S factor, dimension (ldr, 2*(m+l)*nobr)
+ * @param[in] ldr Leading dimension of R (ldr >= max(2*(m+l)*nobr, 3*m*nobr) for MOESP/JOBD='M')
+ * @param[out] sv Singular values, dimension (l*nobr)
+ * @param[in] rcond Rank tolerance for N4SID (rcond > 0, or <= 0 for default)
+ * @param[in] tol Order estimation tolerance:
+ *                tol >= 0: n = last SV >= tol; tol = 0: default tol = nobr*eps*sv[0]
+ *                tol < 0: n = index of largest logarithmic gap
+ * @param[in,out] iwork INTEGER workspace, dimension >= max(3,(m+l)*nobr) for N4SID
+ *                      For sequential: iwork[0:2] preserves state
+ * @param[out] dwork DOUBLE PRECISION workspace
+ * @param[in] ldwork Workspace size (see IB01MD for requirements)
+ * @param[out] iwarn Warning: 0=none, 1=100 cycles, 2=fast failed, 3=all SV zero,
+ *                   4=U_f rank-deficient, 5=r_1 rank-deficient
+ * @param[out] info Exit code: 0=success, -i=param i invalid, 1=fast failed, 2=SVD failed
+ */
+void ib01ad(const char *meth, const char *alg, const char *jobd,
+            const char *batch, const char *conct, const char *ctrl,
+            i32 nobr, i32 m, i32 l, i32 nsmp,
+            const f64 *u, i32 ldu, const f64 *y, i32 ldy,
+            i32 *n, f64 *r, i32 ldr, f64 *sv, f64 rcond, f64 tol,
+            i32 *iwork, f64 *dwork, i32 ldwork,
+            i32 *iwarn, i32 *info);
+
+/**
  * @brief Upper triangular factor R of concatenated block Hankel matrices.
  *
  * Constructs the upper triangular factor R of the concatenated block
