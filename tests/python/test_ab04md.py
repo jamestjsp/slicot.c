@@ -28,11 +28,12 @@ def test_ab04md_continuous_to_discrete():
     from slicot import ab04md
 
     # Input matrices (column-major order)
-    # Note: Fortran reads column-by-column
+    # Note: Fortran reads column-by-column from data file:
+    # B data: 0.0, -1.0, 1.0, 0.0 -> B(:,1)=[0,-1], B(:,2)=[1,0]
     a = np.array([[1.0, 0.5],
                   [0.5, 1.0]], order='F', dtype=float)
-    b = np.array([[0.0, -1.0],
-                  [1.0, 0.0]], order='F', dtype=float)
+    b = np.array([[0.0, 1.0],
+                  [-1.0, 0.0]], order='F', dtype=float)
     c = np.array([[-1.0, 0.0],
                   [0.0, 1.0]], order='F', dtype=float)
     d = np.array([[1.0, 0.0],
@@ -70,20 +71,22 @@ def test_ab04md_discrete_to_continuous():
     from slicot import ab04md
 
     # Start with discrete-time system (output from previous test)
+    # Use exact sqrt(2) values for precision
+    sqrt2 = np.sqrt(2.0)
     a = np.array([[-1.0, -4.0],
                   [-4.0, -1.0]], order='F', dtype=float)
-    b = np.array([[2.8284, 0.0],
-                  [0.0, -2.8284]], order='F', dtype=float)
-    c = np.array([[0.0, 2.8284],
-                  [-2.8284, 0.0]], order='F', dtype=float)
+    b = np.array([[2*sqrt2, 0.0],
+                  [0.0, -2*sqrt2]], order='F', dtype=float)
+    c = np.array([[0.0, 2*sqrt2],
+                  [-2*sqrt2, 0.0]], order='F', dtype=float)
     d = np.array([[-1.0, 0.0],
                   [0.0, -3.0]], order='F', dtype=float)
 
-    # Expected: original continuous-time system
+    # Expected: original continuous-time system (with corrected B ordering)
     a_expected = np.array([[1.0, 0.5],
                            [0.5, 1.0]], order='F', dtype=float)
-    b_expected = np.array([[0.0, -1.0],
-                           [1.0, 0.0]], order='F', dtype=float)
+    b_expected = np.array([[0.0, 1.0],
+                           [-1.0, 0.0]], order='F', dtype=float)
     c_expected = np.array([[-1.0, 0.0],
                            [0.0, 1.0]], order='F', dtype=float)
     d_expected = np.array([[1.0, 0.0],
@@ -194,15 +197,20 @@ def test_ab04md_transfer_function_equivalence():
     alpha, beta = 1.0, 1.0
 
     # Simple stable continuous-time system
-    a_cont = np.array([[-1.0, 0.0],
-                       [0.0, -2.0]], order='F', dtype=float)
-    b_cont = np.array([[1.0],
-                       [1.0]], order='F', dtype=float)
-    c_cont = np.array([[1.0, 1.0]], order='F', dtype=float)
-    d_cont = np.array([[0.5]], order='F', dtype=float)
+    a_cont_orig = np.array([[-1.0, 0.0],
+                            [0.0, -2.0]], order='F', dtype=float)
+    b_cont_orig = np.array([[1.0],
+                            [1.0]], order='F', dtype=float)
+    c_cont_orig = np.array([[1.0, 1.0]], order='F', dtype=float)
+    d_cont_orig = np.array([[0.5]], order='F', dtype=float)
 
-    # Transform
-    a_disc, b_disc, c_disc, d_disc, info = ab04md('C', a_cont, b_cont, c_cont, d_cont, alpha=alpha, beta=beta)
+    # Transform (use copies since ab04md modifies in place)
+    a_disc, b_disc, c_disc, d_disc, info = ab04md('C',
+                                                   a_cont_orig.copy(),
+                                                   b_cont_orig.copy(),
+                                                   c_cont_orig.copy(),
+                                                   d_cont_orig.copy(),
+                                                   alpha=alpha, beta=beta)
     assert info == 0
 
     # Evaluate transfer function at several points and verify equivalence
@@ -212,7 +220,7 @@ def test_ab04md_transfer_function_equivalence():
     for s in s_vals:
         # Continuous transfer function: H_c(s) = D + C(sI-A)^{-1}B
         I = np.eye(n, dtype=complex)
-        H_cont = d_cont + c_cont @ np.linalg.solve(s * I - a_cont, b_cont)
+        H_cont = d_cont_orig + c_cont_orig @ np.linalg.solve(s * I - a_cont_orig, b_cont_orig)
 
         # Map s to z using bilinear transform: z = alpha*(beta+s)/(beta-s)
         z = alpha * (beta + s) / (beta - s)

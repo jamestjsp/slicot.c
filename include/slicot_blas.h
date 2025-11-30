@@ -155,6 +155,10 @@ void SLC_FC_FUNC(dgetrs, DGETRS)(const char* trans, const int* n, const int* nrh
                                   const f64* a, const int* lda, const int* ipiv,
                                   f64* b, const int* ldb, int* info);
 
+void SLC_FC_FUNC(dgetri, DGETRI)(const int* n, f64* a, const int* lda,
+                                  const int* ipiv, f64* work, const int* lwork,
+                                  int* info);
+
 void SLC_FC_FUNC(dgesv, DGESV)(const int* n, const int* nrhs, f64* a,
                                 const int* lda, int* ipiv, f64* b,
                                 const int* ldb, int* info);
@@ -397,6 +401,7 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DLASET   SLC_FC_FUNC(dlaset, DLASET)
 #define SLC_DGETRF   SLC_FC_FUNC(dgetrf, DGETRF)
 #define SLC_DGETRS   SLC_FC_FUNC(dgetrs, DGETRS)
+#define SLC_DGETRI   SLC_FC_FUNC(dgetri, DGETRI)
 #define SLC_DGESV    SLC_FC_FUNC(dgesv, DGESV)
 #define SLC_DGECON   SLC_FC_FUNC(dgecon, DGECON)
 #define SLC_DPOTRF   SLC_FC_FUNC(dpotrf, DPOTRF)
