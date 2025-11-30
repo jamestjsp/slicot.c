@@ -143,6 +143,9 @@ void SLC_FC_FUNC(dlacpy, DLACPY)(const char* uplo, const int* m, const int* n,
 void SLC_FC_FUNC(dlapmt, DLAPMT)(const int* forwrd, const int* m, const int* n,
                                   f64* x, const int* ldx, int* k);
 
+void SLC_FC_FUNC(dlarnv, DLARNV)(const int* idist, int* seed, const int* n,
+                                  f64* x);
+
 void SLC_FC_FUNC(dlaset, DLASET)(const char* uplo, const int* m, const int* n,
                                   const f64* alpha, const f64* beta, f64* a,
                                   const int* lda);

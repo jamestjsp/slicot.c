@@ -4163,8 +4163,6 @@ static PyObject* py_ib01ad(PyObject* self, PyObject* args) {
     char alg = toupper((unsigned char)alg_str[0]);
     char jobd = toupper((unsigned char)jobd_str[0]);
     char batch = toupper((unsigned char)batch_str[0]);
-    char conct = toupper((unsigned char)conct_str[0]);
-    char ctrl = toupper((unsigned char)ctrl_str[0]);
 
     if (meth != 'M' && meth != 'N') {
         PyErr_SetString(PyExc_ValueError, "METH must be 'M' or 'N'");
@@ -4388,7 +4386,6 @@ static PyObject* py_ib01bd(PyObject* self, PyObject* args) {
         NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
     if (r_array == NULL) return NULL;
 
-    i32 nr = 2 * (m + l) * nobr;
     i32 ldr = (i32)PyArray_DIM(r_array, 0);
     f64 *r_data = (f64*)PyArray_DATA(r_array);
 
@@ -4774,7 +4771,6 @@ static PyObject* py_ib01md(PyObject* self, PyObject* args, PyObject* kwargs) {
         return NULL;
     }
 
-    npy_intp *u_dims = PyArray_DIMS(u_array);
     npy_intp *y_dims = PyArray_DIMS(y_array);
     i32 nsmp = (i32)y_dims[0];
     i32 ldu = (m > 0) ? nsmp : 1;
@@ -4987,7 +4983,6 @@ static PyObject* py_ib01qd(PyObject* self, PyObject* args) {
     }
 
     npy_intp *u_dims = PyArray_DIMS(u_array);
-    npy_intp *y_dims = PyArray_DIMS(y_array);
     i32 nsmp = (i32)u_dims[0];
     i32 ldu = nsmp > 0 ? nsmp : 1;
     i32 ldy = nsmp > 0 ? nsmp : 1;
@@ -6027,11 +6022,6 @@ static PyObject* py_sb02rd(PyObject* self, PyObject* args, PyObject* kwargs) {
     char hinv = toupper((unsigned char)hinv_str[0]);
     char trana = toupper((unsigned char)trana_str[0]);
     char uplo = toupper((unsigned char)uplo_str[0]);
-    char scal = toupper((unsigned char)scal_str[0]);
-    char sort = toupper((unsigned char)sort_str[0]);
-    char fact = toupper((unsigned char)fact_str[0]);
-    char lyapun = toupper((unsigned char)lyapun_str[0]);
-
     if (job != 'X' && job != 'C' && job != 'E' && job != 'A') {
         PyErr_SetString(PyExc_ValueError, "JOB must be 'X', 'C', 'E', or 'A'");
         return NULL;
@@ -6283,7 +6273,6 @@ static PyObject* py_ib01pd(PyObject* self, PyObject* args, PyObject* kwargs) {
     bool withc = (job == 'A' || job == 'a' || job == 'C' || job == 'c');
     bool withb = (job == 'A' || job == 'a' || job == 'B' || job == 'b' ||
                   job == 'D' || job == 'd');
-    bool withd = (job == 'A' || job == 'a' || job == 'D' || job == 'd');
     bool withco = (jobcv == 'C' || jobcv == 'c');
     bool n4sid = (meth == 'N' || meth == 'n');
 
@@ -6688,7 +6677,6 @@ static PyObject* py_mb02pd(PyObject* self, PyObject* args) {
 
     npy_intp af_dims[2] = {n, n};
     npy_intp x_dims[2] = {n, nrhs};
-    npy_intp vec_dims[1] = {n > 0 ? n : 1};
     npy_intp rhs_dims[1] = {nrhs > 0 ? nrhs : 1};
 
     PyArrayObject *af_array = (PyArrayObject*)PyArray_ZEROS(2, af_dims, NPY_DOUBLE, 1);
@@ -6785,7 +6773,10 @@ static PyObject* py_sb03od(PyObject* self, PyObject* args) {
     i32 n = (i32)PyArray_DIM(a_array, 0);
     i32 lda = n > 0 ? n : 1;
     i32 ldq = n > 0 ? n : 1;
-    
+
+    // Initialize q_array early (before any gotos)
+    PyArrayObject *q_array = NULL;
+
     // Get B dimensions based on transpose flag
     i32 m, ldb;
     if (trans_str[0] == 'N' || trans_str[0] == 'n') {
@@ -6796,16 +6787,15 @@ static PyObject* py_sb03od(PyObject* self, PyObject* args) {
             goto cleanup;
         }
     } else {
-        m = (i32)PyArray_DIM(b_array, 1);  
+        m = (i32)PyArray_DIM(b_array, 1);
         ldb = n > 0 ? n : 1;
         if (PyArray_DIM(b_array, 0) != n) {
             PyErr_SetString(PyExc_ValueError, "B shape mismatch for trans='T'");
             goto cleanup;
         }
     }
-    
+
     // Handle Q matrix for fact='F'
-    PyArrayObject *q_array = NULL;
     bool nofact = (fact_str[0] == 'N' || fact_str[0] == 'n');
     if (!nofact) {
         if (q_obj == NULL) {

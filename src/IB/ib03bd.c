@@ -273,7 +273,7 @@ void ib03bd(
     f64 work[4] = {0.0, 0.0, 0.0, 0.0};
     i32 ipar[7];
     i32 lipar = 7;
-    bool bwork[1] = {false};
+    i32 bwork[1] = {0};
 
     if (init1) {
         // Initialize linear part using MOESP/N4SID
