@@ -98,6 +98,66 @@ i32 ab04md(char type, i32 n, i32 m, i32 p, f64 alpha, f64 beta,
            i32* iwork, f64* dwork, i32 ldwork);
 
 /**
+ * @brief Cascade (series) inter-connection of two state-space systems.
+ *
+ * Computes the state-space model (A,B,C,D) for the cascaded connection
+ * of two systems G1 and G2, where output of G1 feeds input of G2:
+ * Y = G2(G1(U))
+ *
+ * For UPLO='L' (lower block diagonal):
+ *   A = [A1,    0   ]    B = [ B1   ]    C = [D2*C1, C2]    D = D2*D1
+ *       [B2*C1, A2  ]        [B2*D1 ]
+ *
+ * For UPLO='U' (upper block diagonal):
+ *   A = [A2,    B2*C1]    B = [B2*D1]    C = [C2, D2*C1]    D = D2*D1
+ *       [0,     A1   ]        [ B1  ]
+ *
+ * @param[in] uplo 'L' for lower block diagonal, 'U' for upper block diagonal
+ * @param[in] over 'N' no overlap, 'O' overlap arrays (workspace required)
+ * @param[in] n1 Number of states in first system (n1 >= 0)
+ * @param[in] m1 Number of inputs to first system (m1 >= 0)
+ * @param[in] p1 Number of outputs from G1 = inputs to G2 (p1 >= 0)
+ * @param[in] n2 Number of states in second system (n2 >= 0)
+ * @param[in] p2 Number of outputs from second system (p2 >= 0)
+ * @param[in] a1 State matrix of G1, dimension (lda1, n1)
+ * @param[in] lda1 Leading dimension of a1 (lda1 >= max(1, n1))
+ * @param[in] b1 Input matrix of G1, dimension (ldb1, m1)
+ * @param[in] ldb1 Leading dimension of b1 (ldb1 >= max(1, n1))
+ * @param[in] c1 Output matrix of G1, dimension (ldc1, n1)
+ * @param[in] ldc1 Leading dimension of c1 (ldc1 >= max(1, p1) if n1 > 0)
+ * @param[in] d1 Feedthrough matrix of G1, dimension (ldd1, m1)
+ * @param[in] ldd1 Leading dimension of d1 (ldd1 >= max(1, p1))
+ * @param[in] a2 State matrix of G2, dimension (lda2, n2)
+ * @param[in] lda2 Leading dimension of a2 (lda2 >= max(1, n2))
+ * @param[in] b2 Input matrix of G2, dimension (ldb2, p1)
+ * @param[in] ldb2 Leading dimension of b2 (ldb2 >= max(1, n2))
+ * @param[in] c2 Output matrix of G2, dimension (ldc2, n2)
+ * @param[in] ldc2 Leading dimension of c2 (ldc2 >= max(1, p2) if n2 > 0)
+ * @param[in] d2 Feedthrough matrix of G2, dimension (ldd2, p1)
+ * @param[in] ldd2 Leading dimension of d2 (ldd2 >= max(1, p2))
+ * @param[out] n Total state order of cascaded system (n = n1 + n2)
+ * @param[out] a State matrix of cascaded system, dimension (lda, n1+n2)
+ * @param[in] lda Leading dimension of a (lda >= max(1, n1+n2))
+ * @param[out] b Input matrix of cascaded system, dimension (ldb, m1)
+ * @param[in] ldb Leading dimension of b (ldb >= max(1, n1+n2))
+ * @param[out] c Output matrix of cascaded system, dimension (ldc, n1+n2)
+ * @param[in] ldc Leading dimension of c (ldc >= max(1, p2) if n1+n2 > 0)
+ * @param[out] d Feedthrough matrix of cascaded system, dimension (ldd, m1)
+ * @param[in] ldd Leading dimension of d (ldd >= max(1, p2))
+ * @param[out] dwork Workspace, dimension (ldwork)
+ * @param[in] ldwork Workspace size (ldwork >= max(1, p1*max(n1,m1,n2,p2)) if over='O')
+ * @return 0 on success, -i if parameter i is invalid
+ */
+i32 ab05md(char uplo, char over, i32 n1, i32 m1, i32 p1, i32 n2, i32 p2,
+           const f64* a1, i32 lda1, const f64* b1, i32 ldb1,
+           const f64* c1, i32 ldc1, const f64* d1, i32 ldd1,
+           const f64* a2, i32 lda2, const f64* b2, i32 ldb2,
+           const f64* c2, i32 ldc2, const f64* d2, i32 ldd2,
+           i32* n, f64* a, i32 lda, f64* b, i32 ldb,
+           f64* c, i32 ldc, f64* d, i32 ldd,
+           f64* dwork, i32 ldwork);
+
+/**
  * @brief Compute the inverse of a linear system.
  *
  * Computes the inverse (Ai,Bi,Ci,Di) of a given system (A,B,C,D):

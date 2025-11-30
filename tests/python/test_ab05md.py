@@ -55,8 +55,8 @@ class TestAB05MDBasic:
         ], order='F', dtype=float)
 
         b2 = np.array([
-            [0.0, -1.0],
             [0.0, 1.0],
+            [-1.0, 0.0],
             [0.0, 2.0]
         ], order='F', dtype=float)
 
@@ -147,8 +147,8 @@ class TestAB05MDBasic:
         ], order='F', dtype=float)
 
         b2 = np.array([
-            [0.0, -1.0],
             [0.0, 1.0],
+            [-1.0, 0.0],
             [0.0, 2.0]
         ], order='F', dtype=float)
 
