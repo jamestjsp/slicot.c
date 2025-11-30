@@ -5,7 +5,6 @@
 
 #include "slicot.h"
 #include "slicot_blas.h"
-#include <stdlib.h>
 
 i32 ab07nd(i32 n, i32 m, f64* a, i32 lda, f64* b, i32 ldb,
            f64* c, i32 ldc, f64* d, i32 ldd, f64* rcond,
