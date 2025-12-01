@@ -177,6 +177,11 @@ void SLC_FC_FUNC(dsytrf, DSYTRF)(const char* uplo, const int* n, f64* a,
                                   const int* lda, int* ipiv, f64* work,
                                   const int* lwork, int* info);
 
+void SLC_FC_FUNC(dsysv, DSYSV)(const char* uplo, const int* n, const int* nrhs,
+                                f64* a, const int* lda, int* ipiv, f64* b,
+                                const int* ldb, f64* work, const int* lwork,
+                                int* info);
+
 void SLC_FC_FUNC(dpocon, DPOCON)(const char* uplo, const int* n, const f64* a,
                                   const int* lda, const f64* anorm, f64* rcond,
                                   f64* work, int* iwork, int* info);
@@ -266,6 +271,53 @@ void SLC_FC_FUNC(zstein, ZSTEIN)(const int* n, const f64* d, const f64* e, const
                                   const f64* w, const int* iblock, const int* isplit,
                                   double complex* z, const int* ldz, f64* work,
                                   int* iwork, int* ifail, int* info);
+
+/* Complex BLAS */
+void SLC_FC_FUNC(zcopy, ZCOPY)(const int* n, const double complex* x, const int* incx,
+                                double complex* y, const int* incy);
+
+void SLC_FC_FUNC(zgemv, ZGEMV)(const char* trans, const int* m, const int* n,
+                                const double complex* alpha, const double complex* a,
+                                const int* lda, const double complex* x, const int* incx,
+                                const double complex* beta, double complex* y, const int* incy);
+
+void SLC_FC_FUNC(zgemm, ZGEMM)(const char* transa, const char* transb,
+                                const int* m, const int* n, const int* k,
+                                const double complex* alpha, const double complex* a,
+                                const int* lda, const double complex* b, const int* ldb,
+                                const double complex* beta, double complex* c, const int* ldc);
+
+/* Complex LAPACK */
+void SLC_FC_FUNC(zlacpy, ZLACPY)(const char* uplo, const int* m, const int* n,
+                                  const double complex* a, const int* lda,
+                                  double complex* b, const int* ldb);
+
+void SLC_FC_FUNC(zlascl, ZLASCL)(const char* type, const int* kl, const int* ku,
+                                  const f64* cfrom, const f64* cto, const int* m,
+                                  const int* n, double complex* a, const int* lda, int* info);
+
+f64 SLC_FC_FUNC(zlange, ZLANGE)(const char* norm, const int* m, const int* n,
+                                 const double complex* a, const int* lda, f64* work);
+
+void SLC_FC_FUNC(zgetrf, ZGETRF)(const int* m, const int* n, double complex* a,
+                                  const int* lda, int* ipiv, int* info);
+
+void SLC_FC_FUNC(zgetri, ZGETRI)(const int* n, double complex* a, const int* lda,
+                                  const int* ipiv, double complex* work, const int* lwork,
+                                  int* info);
+
+void SLC_FC_FUNC(zgees, ZGEES)(const char* jobvs, const char* sort,
+                                int (*select)(const double complex*),
+                                const int* n, double complex* a, const int* lda,
+                                int* sdim, double complex* w, double complex* vs,
+                                const int* ldvs, double complex* work, const int* lwork,
+                                f64* rwork, int* bwork, int* info);
+
+void SLC_FC_FUNC(zgesvd, ZGESVD)(const char* jobu, const char* jobvt,
+                                  const int* m, const int* n, double complex* a,
+                                  const int* lda, f64* s, double complex* u, const int* ldu,
+                                  double complex* vt, const int* ldvt, double complex* work,
+                                  const int* lwork, f64* rwork, int* info);
 
 void SLC_FC_FUNC(xerbla, XERBLA)(const char* srname, const int* info);
 
@@ -409,6 +461,7 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DGECON   SLC_FC_FUNC(dgecon, DGECON)
 #define SLC_DPOTRF   SLC_FC_FUNC(dpotrf, DPOTRF)
 #define SLC_DSYTRF   SLC_FC_FUNC(dsytrf, DSYTRF)
+#define SLC_DSYSV    SLC_FC_FUNC(dsysv, DSYSV)
 #define SLC_DPOCON   SLC_FC_FUNC(dpocon, DPOCON)
 #define SLC_DSYCON   SLC_FC_FUNC(dsycon, DSYCON)
 #define SLC_DSYTRS   SLC_FC_FUNC(dsytrs, DSYTRS)
@@ -434,6 +487,16 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DLANV2   SLC_FC_FUNC(dlanv2, DLANV2)
 #define SLC_ZLARFG   SLC_FC_FUNC(zlarfg, ZLARFG)
 #define SLC_ZSTEIN   SLC_FC_FUNC(zstein, ZSTEIN)
+#define SLC_ZCOPY    SLC_FC_FUNC(zcopy, ZCOPY)
+#define SLC_ZGEMV    SLC_FC_FUNC(zgemv, ZGEMV)
+#define SLC_ZGEMM    SLC_FC_FUNC(zgemm, ZGEMM)
+#define SLC_ZLACPY   SLC_FC_FUNC(zlacpy, ZLACPY)
+#define SLC_ZLASCL   SLC_FC_FUNC(zlascl, ZLASCL)
+#define SLC_ZLANGE   SLC_FC_FUNC(zlange, ZLANGE)
+#define SLC_ZGETRF   SLC_FC_FUNC(zgetrf, ZGETRF)
+#define SLC_ZGETRI   SLC_FC_FUNC(zgetri, ZGETRI)
+#define SLC_ZGEES    SLC_FC_FUNC(zgees, ZGEES)
+#define SLC_ZGESVD   SLC_FC_FUNC(zgesvd, ZGESVD)
 #define SLC_XERBLA   SLC_FC_FUNC(xerbla, XERBLA)
 #define SLC_DGETC2   SLC_FC_FUNC(dgetc2, DGETC2)
 #define SLC_DGESC2   SLC_FC_FUNC(dgesc2, DGESC2)

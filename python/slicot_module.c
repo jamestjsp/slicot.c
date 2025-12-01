@@ -8303,6 +8303,190 @@ static PyObject* py_tb01id(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for ab13md */
+static PyObject* py_ab13md(PyObject* self, PyObject* args, PyObject* kwds) {
+    static char *kwlist[] = {"z", "nblock", "itype", "fact", "x", NULL};
+    PyObject *z_obj, *nblock_obj, *itype_obj;
+    const char *fact_str = "N";
+    PyObject *x_obj = NULL;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOO|sO", kwlist,
+                                      &z_obj, &nblock_obj, &itype_obj,
+                                      &fact_str, &x_obj)) {
+        return NULL;
+    }
+
+    char fact = (char)toupper((unsigned char)fact_str[0]);
+
+    PyArrayObject *z_array = (PyArrayObject*)PyArray_FROM_OTF(
+        z_obj, NPY_CDOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!z_array) return NULL;
+
+    PyArrayObject *nblock_array = (PyArrayObject*)PyArray_FROM_OTF(
+        nblock_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
+    if (!nblock_array) {
+        Py_DECREF(z_array);
+        return NULL;
+    }
+
+    PyArrayObject *itype_array = (PyArrayObject*)PyArray_FROM_OTF(
+        itype_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
+    if (!itype_array) {
+        Py_DECREF(z_array);
+        Py_DECREF(nblock_array);
+        return NULL;
+    }
+
+    PyArrayObject *x_array = NULL;
+    if (x_obj && x_obj != Py_None) {
+        x_array = (PyArrayObject*)PyArray_FROM_OTF(
+            x_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+        if (!x_array) {
+            Py_DECREF(z_array);
+            Py_DECREF(nblock_array);
+            Py_DECREF(itype_array);
+            return NULL;
+        }
+    }
+
+    npy_intp *z_dims = PyArray_DIMS(z_array);
+    i32 n = (i32)z_dims[0];
+    i32 ldz = n > 0 ? n : 1;
+    i32 m = (i32)PyArray_SIZE(nblock_array);
+
+    i32 *nblock_data = (i32*)PyArray_DATA(nblock_array);
+    i32 *itype_data = (i32*)PyArray_DATA(itype_array);
+
+    i32 mr = 0;
+    for (i32 i = 0; i < m; i++) {
+        if (itype_data[i] == 1) mr++;
+    }
+    i32 mt = m + mr - 1;
+    if (mt < 1) mt = 1;
+
+    i32 minwrk = 2*n*n*m - n*n + 9*m*m + n*m + 11*n + 33*m - 11;
+    if (minwrk < 1) minwrk = 1;
+    i32 minzrk = 6*n*n*m + 12*n*n + 6*m + 6*n - 3;
+    if (minzrk < 1) minzrk = 1;
+
+    i32 iwork_size = (4*m - 2 > n) ? 4*m - 2 : n;
+    if (iwork_size < 1) iwork_size = 1;
+
+    f64 *x_data_alloc = NULL;
+    f64 *x_data;
+    if (x_array) {
+        x_data = (f64*)PyArray_DATA(x_array);
+    } else {
+        x_data_alloc = (f64*)calloc(mt, sizeof(f64));
+        x_data = x_data_alloc;
+        if (!x_data) {
+            Py_DECREF(z_array);
+            Py_DECREF(nblock_array);
+            Py_DECREF(itype_array);
+            PyErr_NoMemory();
+            return NULL;
+        }
+    }
+
+    f64 *d_data = (f64*)malloc(n * sizeof(f64));
+    f64 *g_data = (f64*)malloc(n * sizeof(f64));
+    i32 *iwork = (i32*)malloc(iwork_size * sizeof(i32));
+    f64 *dwork = (f64*)malloc(minwrk * sizeof(f64));
+    c128 *zwork = (c128*)malloc(minzrk * sizeof(c128));
+
+    if (!d_data || !g_data || !iwork || !dwork || !zwork) {
+        free(x_data_alloc);
+        free(d_data);
+        free(g_data);
+        free(iwork);
+        free(dwork);
+        free(zwork);
+        Py_DECREF(z_array);
+        Py_DECREF(nblock_array);
+        Py_DECREF(itype_array);
+        Py_XDECREF(x_array);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    c128 *z_data = (c128*)PyArray_DATA(z_array);
+    f64 bound;
+
+    i32 info = ab13md(fact, n, z_data, ldz, m, nblock_data, itype_data,
+                      x_data, &bound, d_data, g_data, iwork, dwork, minwrk,
+                      zwork, minzrk);
+
+    free(iwork);
+    free(dwork);
+    free(zwork);
+
+    PyArray_ResolveWritebackIfCopy(z_array);
+    if (x_array) {
+        PyArray_ResolveWritebackIfCopy(x_array);
+    }
+
+    npy_intp d_dims[1] = {n};
+    npy_intp x_dims[1] = {mt};
+
+    PyObject *d_out = PyArray_SimpleNewFromData(1, d_dims, NPY_DOUBLE, d_data);
+    if (!d_out) {
+        free(x_data_alloc);
+        free(d_data);
+        free(g_data);
+        Py_DECREF(z_array);
+        Py_DECREF(nblock_array);
+        Py_DECREF(itype_array);
+        Py_XDECREF(x_array);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)d_out, NPY_ARRAY_OWNDATA);
+
+    PyObject *g_out = PyArray_SimpleNewFromData(1, d_dims, NPY_DOUBLE, g_data);
+    if (!g_out) {
+        free(x_data_alloc);
+        free(g_data);
+        Py_DECREF(d_out);
+        Py_DECREF(z_array);
+        Py_DECREF(nblock_array);
+        Py_DECREF(itype_array);
+        Py_XDECREF(x_array);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)g_out, NPY_ARRAY_OWNDATA);
+
+    PyObject *x_out;
+    if (x_data_alloc) {
+        x_out = PyArray_SimpleNewFromData(1, x_dims, NPY_DOUBLE, x_data_alloc);
+        if (x_out) {
+            PyArray_ENABLEFLAGS((PyArrayObject*)x_out, NPY_ARRAY_OWNDATA);
+        }
+    } else {
+        x_out = (PyObject*)x_array;
+        Py_INCREF(x_out);
+    }
+    if (!x_out) {
+        Py_DECREF(d_out);
+        Py_DECREF(g_out);
+        Py_DECREF(z_array);
+        Py_DECREF(nblock_array);
+        Py_DECREF(itype_array);
+        Py_XDECREF(x_array);
+        return NULL;
+    }
+
+    PyObject *result = Py_BuildValue("dOOOi", bound, d_out, g_out, x_out, info);
+
+    Py_DECREF(z_array);
+    Py_DECREF(nblock_array);
+    Py_DECREF(itype_array);
+    Py_XDECREF(x_array);
+    Py_DECREF(d_out);
+    Py_DECREF(g_out);
+    Py_DECREF(x_out);
+
+    return result;
+}
+
 /* Python wrapper for ab07nd */
 static PyObject* py_ab07nd(PyObject* self, PyObject* args) {
     PyObject *a_obj, *b_obj, *c_obj, *d_obj;
@@ -8535,6 +8719,20 @@ static PyMethodDef SlicotMethods[] = {
      "Returns:\n"
      "  (ai, bi, ci, di, rcond, info): Inverse system matrices,\n"
      "    reciprocal condition number, and exit code\n"},
+
+    {"ab13md", (PyCFunction)py_ab13md, METH_VARARGS | METH_KEYWORDS,
+     "Compute upper bound on structured singular value (mu).\n\n"
+     "Computes an upper bound on the structured singular value for a given\n"
+     "square complex matrix and a given block structure of the uncertainty.\n\n"
+     "Parameters:\n"
+     "  z (ndarray): Complex matrix Z (n x n, F-order)\n"
+     "  nblock (ndarray): Block sizes, dimension (m), int32\n"
+     "  itype (ndarray): Block types (1=real, 2=complex), dimension (m), int32\n"
+     "  fact (str, optional): 'F' to use x from previous call, 'N' fresh (default)\n"
+     "  x (ndarray, optional): Scaling vector from previous call\n\n"
+     "Returns:\n"
+     "  (bound, d, g, x, info): Upper bound on mu, scaling matrices D and G,\n"
+     "    scaling vector X for next call, exit code\n"},
 
     {"mb04od", py_mb04od, METH_VARARGS,
      "QR factorization of structured block matrix.\n\n"
