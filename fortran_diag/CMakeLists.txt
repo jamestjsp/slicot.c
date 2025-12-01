@@ -43,6 +43,7 @@ message(STATUS "Adding diagnostic targets:")
 
 # Add diagnostics for implemented routines
 add_slicot_diagnostic(SG03BD)
+add_slicot_diagnostic(AB13MD)
 
 # Convenience targets (backward compatibility with old naming)
 add_custom_target(run_fortran_diag DEPENDS run_sg03bd_fortran)

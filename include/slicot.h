@@ -421,6 +421,47 @@ i32 ab07nd(i32 n, i32 m, f64* a, i32 lda, f64* b, i32 ldb,
            i32* iwork, f64* dwork, i32 ldwork);
 
 /**
+ * @brief Compute upper bound on structured singular value (mu).
+ *
+ * Computes an upper bound on the structured singular value for a given
+ * square complex matrix and a given block structure of the uncertainty.
+ * Used for robustness analysis in control systems with mixed parametric
+ * uncertainty and unmodeled dynamics.
+ *
+ * The method is based on the algorithm proposed in:
+ * Fan, Tits, and Doyle, "Robustness in the presence of mixed parametric
+ * uncertainty and unmodeled dynamics", IEEE Trans. AC, 1991.
+ *
+ * @param[in] fact 'F' to use X from previous call, 'N' for fresh computation
+ * @param[in] n Order of complex matrix Z (n >= 0)
+ * @param[in] z Complex matrix, dimension (ldz, n)
+ * @param[in] ldz Leading dimension of z (ldz >= max(1, n))
+ * @param[in] m Number of diagonal blocks (m >= 1)
+ * @param[in] nblock Block sizes, dimension (m). Sum must equal n.
+ * @param[in] itype Block types, dimension (m). 1=real block, 2=complex block.
+ *                  Real blocks must have size 1.
+ * @param[in,out] x Scaling vector, dimension (m + mr - 1) where mr = # real blocks.
+ *                  On entry with fact='F': info from previous call.
+ *                  On exit: info for next call on similar matrix.
+ * @param[out] bound Upper bound on structured singular value
+ * @param[out] d Scaling matrix diagonal, dimension (n)
+ * @param[out] g Scaling matrix diagonal, dimension (n)
+ * @param[out] iwork Integer workspace, dimension (max(4*m-2, n))
+ * @param[out] dwork Double workspace, dimension (ldwork)
+ * @param[in] ldwork Workspace size (>= 2*n*n*m - n*n + 9*m*m + n*m + 11*n + 33*m - 11)
+ * @param[out] zwork Complex workspace, dimension (lzwork)
+ * @param[in] lzwork Complex workspace size (>= 6*n*n*m + 12*n*n + 6*m + 6*n - 3)
+ * @return 0 on success, -i if parameter i is invalid,
+ *         1 if block size not positive, 2 if sum(nblock) != n,
+ *         3 if real block has size > 1, 4 if block type not 1 or 2,
+ *         5 if linear algebra error, 6 if eigenvalue/SVD error
+ */
+i32 ab13md(char fact, i32 n, c128* z, i32 ldz, i32 m,
+           const i32* nblock, const i32* itype, f64* x, f64* bound,
+           f64* d, f64* g, i32* iwork, f64* dwork, i32 ldwork,
+           c128* zwork, i32 lzwork);
+
+/**
  * @brief Compute matrix product T := alpha*op(T)*A or T := alpha*A*op(T).
  *
  * Computes one of the matrix products:

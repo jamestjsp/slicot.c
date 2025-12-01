@@ -6,6 +6,7 @@ set(SLICOT_SOURCES
     AB/ab05pd.c
     AB/ab05qd.c
     AB/ab07nd.c
+    AB/ab13md.c
     IB/ib01ad.c
     IB/ib01bd.c
     IB/ib01cd.c
