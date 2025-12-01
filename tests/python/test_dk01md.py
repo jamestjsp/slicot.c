@@ -1,0 +1,248 @@
+"""Tests for DK01MD - Anti-aliasing window applied to a real signal."""
+
+import numpy as np
+import pytest
+from slicot import dk01md
+
+
+class TestDK01MDBasic:
+    """Basic functionality tests from SLICOT HTML documentation."""
+
+    def test_hamming_window_doc_example(self):
+        """
+        Test Hamming window using HTML doc example.
+
+        Input: N=8, TYPE='M', A=[0.3262, 0.8723, -0.7972, 0.6673, -0.1722, 0.3237, 0.5263, -0.3275]
+        Expected: A=[0.3262, 0.8326, -0.6591, 0.4286, -0.0754, 0.0820, 0.0661, -0.0262]
+        """
+        a = np.array([0.3262, 0.8723, -0.7972, 0.6673, -0.1722, 0.3237, 0.5263, -0.3275], dtype=float)
+        a_expected = np.array([0.3262, 0.8326, -0.6591, 0.4286, -0.0754, 0.0820, 0.0661, -0.0262], dtype=float)
+
+        a_out, info = dk01md('M', a)
+
+        assert info == 0
+        np.testing.assert_allclose(a_out, a_expected, rtol=1e-3, atol=1e-4)
+
+
+class TestDK01MDWindowTypes:
+    """Test all window types."""
+
+    def test_hamming_window_formula(self):
+        """
+        Validate Hamming window formula: A(i) = (0.54 + 0.46*cos(pi*(i-1)/(N-1)))*A(i).
+
+        Random seed: 42 (for reproducibility)
+        """
+        np.random.seed(42)
+        n = 10
+        a_input = np.random.randn(n)
+        a = a_input.copy()
+
+        a_out, info = dk01md('M', a)
+
+        assert info == 0
+        n1 = n - 1
+        for i in range(n):
+            window = 0.54 + 0.46 * np.cos(np.pi * i / n1)
+            expected = window * a_input[i]
+            np.testing.assert_allclose(a_out[i], expected, rtol=1e-14)
+
+    def test_hann_window_formula(self):
+        """
+        Validate Hann window formula: A(i) = 0.5*(1 + cos(pi*(i-1)/(N-1)))*A(i).
+
+        Random seed: 123 (for reproducibility)
+        """
+        np.random.seed(123)
+        n = 10
+        a_input = np.random.randn(n)
+        a = a_input.copy()
+
+        a_out, info = dk01md('N', a)
+
+        assert info == 0
+        n1 = n - 1
+        for i in range(n):
+            window = 0.5 * (1.0 + np.cos(np.pi * i / n1))
+            expected = window * a_input[i]
+            np.testing.assert_allclose(a_out[i], expected, rtol=1e-14)
+
+    def test_quadratic_window_formula(self):
+        """
+        Validate quadratic window formula.
+
+        For i = 1,...,(N-1)/2+1:
+            A(i) = (1 - 2*((i-1)/(N-1))**2)*(1 - (i-1)/(N-1))*A(i)
+        For i = (N-1)/2+2,...,N:
+            A(i) = 2*(1 - ((i-1)/(N-1))**3)*A(i)
+
+        Random seed: 456 (for reproducibility)
+        """
+        np.random.seed(456)
+        n = 11
+        a_input = np.random.randn(n)
+        a = a_input.copy()
+
+        a_out, info = dk01md('Q', a)
+
+        assert info == 0
+        fn = n - 1
+        n1 = (n - 1) // 2 + 1
+
+        for i in range(n):
+            buf = i / fn
+            temp = buf ** 2
+            if i < n1:
+                window = (1.0 - 2.0 * temp) * (1.0 - buf)
+            else:
+                window = 2.0 * (1.0 - buf * temp)
+            expected = window * a_input[i]
+            np.testing.assert_allclose(a_out[i], expected, rtol=1e-14)
+
+
+class TestDK01MDProperties:
+    """Mathematical property tests."""
+
+    def test_window_boundary_values_hamming(self):
+        """
+        Validate Hamming window boundary values.
+
+        At i=0 (first sample): window = 0.54 + 0.46*cos(0) = 1.0
+        At i=N-1 (last sample): window = 0.54 + 0.46*cos(pi) = 0.54 - 0.46 = 0.08
+        """
+        n = 8
+        a = np.ones(n, dtype=float)
+
+        a_out, info = dk01md('M', a)
+
+        assert info == 0
+        np.testing.assert_allclose(a_out[0], 1.0, rtol=1e-14)
+        np.testing.assert_allclose(a_out[-1], 0.08, rtol=1e-14)
+
+    def test_window_boundary_values_hann(self):
+        """
+        Validate Hann window boundary values.
+
+        At i=0 (first sample): window = 0.5*(1 + cos(0)) = 1.0
+        At i=N-1 (last sample): window = 0.5*(1 + cos(pi)) = 0.0
+        """
+        n = 8
+        a = np.ones(n, dtype=float)
+
+        a_out, info = dk01md('N', a)
+
+        assert info == 0
+        np.testing.assert_allclose(a_out[0], 1.0, rtol=1e-14)
+        np.testing.assert_allclose(a_out[-1], 0.0, atol=1e-15)
+
+    def test_window_symmetry_hamming(self):
+        """
+        Validate Hamming window symmetry property.
+
+        Hamming window coefficients are symmetric: w(i) = w(N-1-i)
+        """
+        n = 9
+        a = np.ones(n, dtype=float)
+
+        a_out, info = dk01md('M', a)
+
+        assert info == 0
+        for i in range(n // 2):
+            np.testing.assert_allclose(a_out[i], a_out[n - 1 - i], rtol=1e-14)
+
+    def test_window_symmetry_hann(self):
+        """
+        Validate Hann window symmetry property.
+
+        Hann window coefficients are symmetric: w(i) = w(N-1-i)
+        """
+        n = 9
+        a = np.ones(n, dtype=float)
+
+        a_out, info = dk01md('N', a)
+
+        assert info == 0
+        for i in range(n // 2):
+            np.testing.assert_allclose(a_out[i], a_out[n - 1 - i], rtol=1e-14)
+
+    def test_zero_signal_stays_zero(self):
+        """
+        Validate that zero signal stays zero after windowing.
+
+        Random seed: 789 (for reproducibility)
+        """
+        n = 10
+        a = np.zeros(n, dtype=float)
+
+        for win_type in ['M', 'N', 'Q']:
+            a_copy = a.copy()
+            a_out, info = dk01md(win_type, a_copy)
+            assert info == 0
+            np.testing.assert_allclose(a_out, np.zeros(n), atol=1e-15)
+
+
+class TestDK01MDEdgeCases:
+    """Edge case tests."""
+
+    def test_single_sample(self):
+        """
+        Test with single sample (N=1).
+
+        For N=1, window coefficient should be 1.0 for all window types
+        (since cos(0) = 1 and boundary formulas reduce to 1.0).
+        """
+        for win_type in ['M', 'N', 'Q']:
+            a = np.array([2.5], dtype=float)
+            a_out, info = dk01md(win_type, a)
+            assert info == 0
+            np.testing.assert_allclose(a_out[0], 2.5, rtol=1e-14)
+
+    def test_two_samples_hamming(self):
+        """Test Hamming window with N=2."""
+        a = np.array([1.0, 1.0], dtype=float)
+        a_out, info = dk01md('M', a)
+        assert info == 0
+        np.testing.assert_allclose(a_out[0], 1.0, rtol=1e-14)
+        np.testing.assert_allclose(a_out[1], 0.08, rtol=1e-14)
+
+    def test_two_samples_hann(self):
+        """Test Hann window with N=2."""
+        a = np.array([1.0, 1.0], dtype=float)
+        a_out, info = dk01md('N', a)
+        assert info == 0
+        np.testing.assert_allclose(a_out[0], 1.0, rtol=1e-14)
+        np.testing.assert_allclose(a_out[1], 0.0, atol=1e-15)
+
+
+class TestDK01MDErrors:
+    """Error handling tests."""
+
+    def test_invalid_type(self):
+        """Test with invalid window type."""
+        a = np.array([1.0, 2.0, 3.0], dtype=float)
+        a_out, info = dk01md('X', a)
+        assert info == -1
+
+    def test_lowercase_type_m(self):
+        """Test that lowercase 'm' works for Hamming window."""
+        a = np.array([1.0, 1.0, 1.0], dtype=float)
+        a_out, info = dk01md('m', a)
+        assert info == 0
+
+    def test_lowercase_type_n(self):
+        """Test that lowercase 'n' works for Hann window."""
+        a = np.array([1.0, 1.0, 1.0], dtype=float)
+        a_out, info = dk01md('n', a)
+        assert info == 0
+
+    def test_lowercase_type_q(self):
+        """Test that lowercase 'q' works for Quadratic window."""
+        a = np.array([1.0, 1.0, 1.0], dtype=float)
+        a_out, info = dk01md('q', a)
+        assert info == 0
+
+    def test_empty_array(self):
+        """Test with empty array (N=0) - should return error."""
+        a = np.array([], dtype=float)
+        a_out, info = dk01md('M', a)
+        assert info == -2
