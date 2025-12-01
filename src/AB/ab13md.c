@@ -398,6 +398,7 @@ i32 ab13md(
     l = 0;
     for (k = 0; k < m; k++) {
         if (itype[k] == 1) {
+            l++;
             for (i = 0; i < iwork[k]; i++) {
                 dwork[iw6 + i] = ZERO;
             }
@@ -426,7 +427,6 @@ i32 ab13md(
             }
 
             SLC_ZCOPY(&n2, &zwork[iz4], &one_int, &zwork[iz6 + (m-2+l)*n2], &one_int);
-            l++;
         }
     }
 
@@ -939,7 +939,8 @@ newton_loop:
         dwork[iw26 + i] = -creal(zwork[iz19 + i]) - dwork[iw26 + i];
     }
 
-    SLC_ZGEMM("N", "N", &n, &n2, &n, &CONE, &zwork[iz17], &n,
+    i32 nmt = n * mt;
+    SLC_ZGEMM("N", "N", &n, &nmt, &n, &CONE, &zwork[iz17], &n,
               &zwork[iz18], &n, &CZERO, &zwork[iz20], &n);
 
     SLC_DLASET("Full", &mt_int, &mt_int, &ZERO, &ZERO, &dwork[iw11], &mt_int);

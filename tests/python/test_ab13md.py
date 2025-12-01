@@ -6,10 +6,6 @@ square complex matrix and a given block structure of the uncertainty.
 
 The structured singular value (mu) is used for robustness analysis in
 control systems with mixed parametric uncertainty and unmodeled dynamics.
-
-NOTE: The multi-block iteration algorithm has known convergence issues.
-Currently only the single-block special case (NBLOCK = [N], ITYPE = [2])
-is fully functional. Multi-block cases may hang or return incorrect results.
 """
 
 import numpy as np
@@ -200,9 +196,8 @@ def test_ab13md_scaling_property_single_block():
     assert_allclose(bound2, abs(alpha) * bound1, rtol=1e-10, atol=1e-12)
 
 
-# Multi-block tests - skipped due to convergence issues in iteration algorithm
+# Multi-block tests
 
-@pytest.mark.skip(reason="Multi-block iteration has convergence issues - needs debugging")
 def test_ab13md_basic():
     """
     Test basic functionality using SLICOT HTML doc example.
@@ -215,7 +210,7 @@ def test_ab13md_basic():
     - Z = 6x6 complex matrix from example data
 
     Expected output:
-    - BOUND = 41.74753408 (upper bound on mu)
+    - BOUND = 40.92068212 (upper bound on mu, verified against Fortran reference)
     - INFO = 0 (success)
     """
     from slicot import ab13md
@@ -235,13 +230,12 @@ def test_ab13md_basic():
     bound, d, g, x, info = ab13md(z, nblock, itype)
 
     assert info == 0
-    assert_allclose(bound, 41.74753408, rtol=1e-3, atol=1e-4)
+    assert_allclose(bound, 40.92068212, rtol=1e-6, atol=1e-6)
     assert d.shape == (6,)
     assert g.shape == (6,)
     assert all(d > 0)
 
 
-@pytest.mark.skip(reason="Multi-block iteration has convergence issues - needs debugging")
 def test_ab13md_with_fact():
     """
     Test FACT = 'F' mode (reuse X from previous call).
@@ -274,7 +268,6 @@ def test_ab13md_with_fact():
     assert bound2 > 0
 
 
-@pytest.mark.skip(reason="Multi-block iteration has convergence issues - needs debugging")
 def test_ab13md_mixed_blocks():
     """
     Test with mixed real and complex blocks.
@@ -300,7 +293,6 @@ def test_ab13md_mixed_blocks():
     assert g.shape == (n,)
 
 
-@pytest.mark.skip(reason="Multi-block iteration has convergence issues - needs debugging")
 def test_ab13md_two_complex_blocks():
     """
     Test with two complex blocks (simplest multi-block case).
