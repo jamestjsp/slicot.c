@@ -7775,6 +7775,212 @@ static PyObject* py_ab05od(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for ab05pd */
+static PyObject* py_ab05pd(PyObject* self, PyObject* args) {
+    int n1, m, p, n2;
+    f64 alpha;
+    PyObject *a1_obj, *b1_obj, *c1_obj, *d1_obj;
+    PyObject *a2_obj, *b2_obj, *c2_obj, *d2_obj;
+
+    if (!PyArg_ParseTuple(args, "iiiidOOOOOOOO",
+                          &n1, &m, &p, &n2, &alpha,
+                          &a1_obj, &b1_obj, &c1_obj, &d1_obj,
+                          &a2_obj, &b2_obj, &c2_obj, &d2_obj)) {
+        return NULL;
+    }
+
+    PyArrayObject *a1_array = (PyArrayObject*)PyArray_FROM_OTF(
+        a1_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!a1_array) return NULL;
+
+    PyArrayObject *b1_array = (PyArrayObject*)PyArray_FROM_OTF(
+        b1_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!b1_array) {
+        Py_DECREF(a1_array);
+        return NULL;
+    }
+
+    PyArrayObject *c1_array = (PyArrayObject*)PyArray_FROM_OTF(
+        c1_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!c1_array) {
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        return NULL;
+    }
+
+    PyArrayObject *d1_array = (PyArrayObject*)PyArray_FROM_OTF(
+        d1_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!d1_array) {
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        return NULL;
+    }
+
+    PyArrayObject *a2_array = (PyArrayObject*)PyArray_FROM_OTF(
+        a2_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!a2_array) {
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        Py_DECREF(d1_array);
+        return NULL;
+    }
+
+    PyArrayObject *b2_array = (PyArrayObject*)PyArray_FROM_OTF(
+        b2_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!b2_array) {
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        Py_DECREF(d1_array);
+        Py_DECREF(a2_array);
+        return NULL;
+    }
+
+    PyArrayObject *c2_array = (PyArrayObject*)PyArray_FROM_OTF(
+        c2_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!c2_array) {
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        Py_DECREF(d1_array);
+        Py_DECREF(a2_array);
+        Py_DECREF(b2_array);
+        return NULL;
+    }
+
+    PyArrayObject *d2_array = (PyArrayObject*)PyArray_FROM_OTF(
+        d2_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!d2_array) {
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        Py_DECREF(d1_array);
+        Py_DECREF(a2_array);
+        Py_DECREF(b2_array);
+        Py_DECREF(c2_array);
+        return NULL;
+    }
+
+    i32 n = n1 + n2;
+    i32 lda1 = n1 > 0 ? n1 : 1;
+    i32 ldb1 = n1 > 0 ? n1 : 1;
+    i32 ldc1 = p > 0 ? p : 1;
+    i32 ldd1 = p > 0 ? p : 1;
+    i32 lda2 = n2 > 0 ? n2 : 1;
+    i32 ldb2 = n2 > 0 ? n2 : 1;
+    i32 ldc2 = p > 0 ? p : 1;
+    i32 ldd2 = p > 0 ? p : 1;
+
+    i32 lda = n > 0 ? n : 1;
+    i32 ldb = n > 0 ? n : 1;
+    i32 ldc = p > 0 ? p : 1;
+    i32 ldd = p > 0 ? p : 1;
+
+    f64 *a = (f64*)malloc(lda * n * sizeof(f64));
+    f64 *b = (f64*)malloc(ldb * m * sizeof(f64));
+    f64 *c = (f64*)malloc(ldc * n * sizeof(f64));
+    f64 *d = (f64*)malloc(ldd * m * sizeof(f64));
+
+    if (!a || !b || !c || !d) {
+        free(a);
+        free(b);
+        free(c);
+        free(d);
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        Py_DECREF(d1_array);
+        Py_DECREF(a2_array);
+        Py_DECREF(b2_array);
+        Py_DECREF(c2_array);
+        Py_DECREF(d2_array);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    const f64 *a1_data = (const f64*)PyArray_DATA(a1_array);
+    const f64 *b1_data = (const f64*)PyArray_DATA(b1_array);
+    const f64 *c1_data = (const f64*)PyArray_DATA(c1_array);
+    const f64 *d1_data = (const f64*)PyArray_DATA(d1_array);
+    const f64 *a2_data = (const f64*)PyArray_DATA(a2_array);
+    const f64 *b2_data = (const f64*)PyArray_DATA(b2_array);
+    const f64 *c2_data = (const f64*)PyArray_DATA(c2_array);
+    const f64 *d2_data = (const f64*)PyArray_DATA(d2_array);
+
+    i32 n_out;
+    i32 info = ab05pd('N', n1, m, p, n2, alpha,
+                      a1_data, lda1, b1_data, ldb1, c1_data, ldc1, d1_data, ldd1,
+                      a2_data, lda2, b2_data, ldb2, c2_data, ldc2, d2_data, ldd2,
+                      &n_out, a, lda, b, ldb, c, ldc, d, ldd);
+
+    Py_DECREF(a1_array);
+    Py_DECREF(b1_array);
+    Py_DECREF(c1_array);
+    Py_DECREF(d1_array);
+    Py_DECREF(a2_array);
+    Py_DECREF(b2_array);
+    Py_DECREF(c2_array);
+    Py_DECREF(d2_array);
+
+    npy_intp a_dims[2] = {n, n};
+    npy_intp a_strides[2] = {sizeof(f64), n * sizeof(f64)};
+    PyObject *a_out = PyArray_New(&PyArray_Type, 2, a_dims, NPY_DOUBLE, a_strides, a, 0, NPY_ARRAY_FARRAY, NULL);
+    if (!a_out) {
+        free(a);
+        free(b);
+        free(c);
+        free(d);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)a_out, NPY_ARRAY_OWNDATA);
+
+    npy_intp b_dims[2] = {n, m};
+    npy_intp b_strides[2] = {sizeof(f64), n * sizeof(f64)};
+    PyObject *b_out = PyArray_New(&PyArray_Type, 2, b_dims, NPY_DOUBLE, b_strides, b, 0, NPY_ARRAY_FARRAY, NULL);
+    if (!b_out) {
+        Py_DECREF(a_out);
+        free(b);
+        free(c);
+        free(d);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)b_out, NPY_ARRAY_OWNDATA);
+
+    npy_intp c_dims[2] = {p, n};
+    npy_intp c_strides[2] = {sizeof(f64), p * sizeof(f64)};
+    PyObject *c_out = PyArray_New(&PyArray_Type, 2, c_dims, NPY_DOUBLE, c_strides, c, 0, NPY_ARRAY_FARRAY, NULL);
+    if (!c_out) {
+        Py_DECREF(a_out);
+        Py_DECREF(b_out);
+        free(c);
+        free(d);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)c_out, NPY_ARRAY_OWNDATA);
+
+    npy_intp d_dims[2] = {p, m};
+    npy_intp d_strides[2] = {sizeof(f64), p * sizeof(f64)};
+    PyObject *d_out = PyArray_New(&PyArray_Type, 2, d_dims, NPY_DOUBLE, d_strides, d, 0, NPY_ARRAY_FARRAY, NULL);
+    if (!d_out) {
+        Py_DECREF(a_out);
+        Py_DECREF(b_out);
+        Py_DECREF(c_out);
+        free(d);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)d_out, NPY_ARRAY_OWNDATA);
+
+    PyObject *result = Py_BuildValue("iOOOOi", n_out, a_out, b_out, c_out, d_out, info);
+    Py_DECREF(a_out);
+    Py_DECREF(b_out);
+    Py_DECREF(c_out);
+    Py_DECREF(d_out);
+
+    return result;
+}
+
 /* Python wrapper for tb01id */
 static PyObject* py_tb01id(PyObject* self, PyObject* args) {
     const char *job_str;
@@ -8034,6 +8240,33 @@ static PyMethodDef SlicotMethods[] = {
      "  alpha (float): Coefficient multiplying second system\n\n"
      "Returns:\n"
      "  (a, b, c, d, n, m, info): Combined system matrices, state order, input count, exit code\n"},
+
+    {"ab05pd", py_ab05pd, METH_VARARGS,
+     "Parallel inter-connection of two state-space systems (same inputs).\n\n"
+     "Computes the state-space model (A,B,C,D) for the sum G = G1 + alpha*G2\n"
+     "where both systems share the same inputs:\n"
+     "  Y = G1*U + alpha*G2*U\n\n"
+     "Combined system has:\n"
+     "  A = [[A1, 0], [0, A2]]    (block diagonal)\n"
+     "  B = [[B1], [B2]]          (stacked vertically)\n"
+     "  C = [C1, alpha*C2]        (concatenated horizontally)\n"
+     "  D = D1 + alpha*D2         (matrix sum)\n\n"
+     "Parameters:\n"
+     "  n1 (int): Number of states in first system\n"
+     "  m (int): Number of inputs (same for both systems)\n"
+     "  p (int): Number of outputs (same for both systems)\n"
+     "  n2 (int): Number of states in second system\n"
+     "  alpha (float): Coefficient multiplying second system\n"
+     "  a1 (ndarray): State matrix of G1 (n1 x n1, F-order)\n"
+     "  b1 (ndarray): Input matrix of G1 (n1 x m, F-order)\n"
+     "  c1 (ndarray): Output matrix of G1 (p x n1, F-order)\n"
+     "  d1 (ndarray): Feedthrough matrix of G1 (p x m, F-order)\n"
+     "  a2 (ndarray): State matrix of G2 (n2 x n2, F-order)\n"
+     "  b2 (ndarray): Input matrix of G2 (n2 x m, F-order)\n"
+     "  c2 (ndarray): Output matrix of G2 (p x n2, F-order)\n"
+     "  d2 (ndarray): Feedthrough matrix of G2 (p x m, F-order)\n\n"
+     "Returns:\n"
+     "  (n, a, b, c, d, info): State order, combined system matrices, exit code\n"},
 
     {"ab07nd", py_ab07nd, METH_VARARGS,
      "Compute the inverse of a linear system.\n\n"
