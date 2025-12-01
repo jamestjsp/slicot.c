@@ -135,11 +135,12 @@ class TestDK01MDProperties:
         np.testing.assert_allclose(a_out[0], 1.0, rtol=1e-14)
         np.testing.assert_allclose(a_out[-1], 0.0, atol=1e-15)
 
-    def test_window_symmetry_hamming(self):
+    def test_window_coefficients_decrease_hamming(self):
         """
-        Validate Hamming window symmetry property.
+        Validate Hamming window coefficients decrease from start.
 
-        Hamming window coefficients are symmetric: w(i) = w(N-1-i)
+        At i=0: window = 0.54 + 0.46 = 1.0 (maximum)
+        At i=N-1: window = 0.54 - 0.46 = 0.08 (minimum)
         """
         n = 9
         a = np.ones(n, dtype=float)
@@ -147,14 +148,17 @@ class TestDK01MDProperties:
         a_out, info = dk01md('M', a)
 
         assert info == 0
-        for i in range(n // 2):
-            np.testing.assert_allclose(a_out[i], a_out[n - 1 - i], rtol=1e-14)
+        # First coefficient should be maximum (1.0)
+        assert a_out[0] == max(a_out)
+        # Last coefficient should be minimum (0.08)
+        np.testing.assert_allclose(a_out[-1], 0.08, rtol=1e-14)
 
-    def test_window_symmetry_hann(self):
+    def test_window_coefficients_decrease_hann(self):
         """
-        Validate Hann window symmetry property.
+        Validate Hann window coefficients decrease from start.
 
-        Hann window coefficients are symmetric: w(i) = w(N-1-i)
+        At i=0: window = 0.5*(1+1) = 1.0 (maximum)
+        At i=N-1: window = 0.5*(1-1) = 0.0 (minimum)
         """
         n = 9
         a = np.ones(n, dtype=float)
@@ -162,8 +166,10 @@ class TestDK01MDProperties:
         a_out, info = dk01md('N', a)
 
         assert info == 0
-        for i in range(n // 2):
-            np.testing.assert_allclose(a_out[i], a_out[n - 1 - i], rtol=1e-14)
+        # First coefficient should be maximum (1.0)
+        assert a_out[0] == max(a_out)
+        # Last coefficient should be minimum (0.0)
+        np.testing.assert_allclose(a_out[-1], 0.0, atol=1e-15)
 
     def test_zero_signal_stays_zero(self):
         """
