@@ -7532,6 +7532,249 @@ static PyObject* py_ab05nd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for ab05od */
+static PyObject* py_ab05od(PyObject* self, PyObject* args) {
+    const char *over_str;
+    f64 alpha;
+    PyObject *a1_obj, *b1_obj, *c1_obj, *d1_obj;
+    PyObject *a2_obj, *b2_obj, *c2_obj, *d2_obj;
+
+    if (!PyArg_ParseTuple(args, "sOOOOOOOOd",
+                          &over_str,
+                          &a1_obj, &b1_obj, &c1_obj, &d1_obj,
+                          &a2_obj, &b2_obj, &c2_obj, &d2_obj,
+                          &alpha)) {
+        return NULL;
+    }
+
+    char over = (char)toupper((unsigned char)over_str[0]);
+
+    if (over != 'N' && over != 'O') {
+        PyErr_SetString(PyExc_ValueError, "over must be 'N' or 'O'");
+        return NULL;
+    }
+
+    PyArrayObject *a1_array = (PyArrayObject*)PyArray_FROM_OTF(
+        a1_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!a1_array) return NULL;
+
+    PyArrayObject *b1_array = (PyArrayObject*)PyArray_FROM_OTF(
+        b1_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!b1_array) {
+        Py_DECREF(a1_array);
+        return NULL;
+    }
+
+    PyArrayObject *c1_array = (PyArrayObject*)PyArray_FROM_OTF(
+        c1_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!c1_array) {
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        return NULL;
+    }
+
+    PyArrayObject *d1_array = (PyArrayObject*)PyArray_FROM_OTF(
+        d1_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!d1_array) {
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        return NULL;
+    }
+
+    PyArrayObject *a2_array = (PyArrayObject*)PyArray_FROM_OTF(
+        a2_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!a2_array) {
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        Py_DECREF(d1_array);
+        return NULL;
+    }
+
+    PyArrayObject *b2_array = (PyArrayObject*)PyArray_FROM_OTF(
+        b2_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!b2_array) {
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        Py_DECREF(d1_array);
+        Py_DECREF(a2_array);
+        return NULL;
+    }
+
+    PyArrayObject *c2_array = (PyArrayObject*)PyArray_FROM_OTF(
+        c2_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!c2_array) {
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        Py_DECREF(d1_array);
+        Py_DECREF(a2_array);
+        Py_DECREF(b2_array);
+        return NULL;
+    }
+
+    PyArrayObject *d2_array = (PyArrayObject*)PyArray_FROM_OTF(
+        d2_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!d2_array) {
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        Py_DECREF(d1_array);
+        Py_DECREF(a2_array);
+        Py_DECREF(b2_array);
+        Py_DECREF(c2_array);
+        return NULL;
+    }
+
+    npy_intp *a1_dims = PyArray_DIMS(a1_array);
+    npy_intp *b1_dims = PyArray_DIMS(b1_array);
+    npy_intp *c1_dims = PyArray_DIMS(c1_array);
+    npy_intp *a2_dims = PyArray_DIMS(a2_array);
+    npy_intp *b2_dims = PyArray_DIMS(b2_array);
+    npy_intp *c2_dims = PyArray_DIMS(c2_array);
+
+    i32 n1 = PyArray_NDIM(a1_array) >= 1 ? (i32)a1_dims[0] : 0;
+    i32 m1 = PyArray_NDIM(b1_array) >= 2 ? (i32)b1_dims[1] : (PyArray_NDIM(b1_array) == 1 ? 1 : 0);
+    i32 p1 = PyArray_NDIM(c1_array) >= 1 ? (i32)c1_dims[0] : 0;
+    i32 n2 = PyArray_NDIM(a2_array) >= 1 ? (i32)a2_dims[0] : 0;
+    i32 m2 = PyArray_NDIM(b2_array) >= 2 ? (i32)b2_dims[1] : (PyArray_NDIM(b2_array) == 1 ? 1 : 0);
+
+    i32 p1_c2 = PyArray_NDIM(c2_array) >= 1 ? (i32)c2_dims[0] : 0;
+    if (n2 > 0 && p1_c2 != p1) {
+        PyErr_SetString(PyExc_ValueError, "P1 dimension mismatch: C1 rows must equal C2 rows");
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        Py_DECREF(d1_array);
+        Py_DECREF(a2_array);
+        Py_DECREF(b2_array);
+        Py_DECREF(c2_array);
+        Py_DECREF(d2_array);
+        return NULL;
+    }
+
+    i32 n = n1 + n2;
+    i32 m = m1 + m2;
+    i32 lda1 = n1 > 0 ? n1 : 1;
+    i32 ldb1 = n1 > 0 ? n1 : 1;
+    i32 ldc1 = p1 > 0 ? p1 : 1;
+    i32 ldd1 = p1 > 0 ? p1 : 1;
+    i32 lda2 = n2 > 0 ? n2 : 1;
+    i32 ldb2 = n2 > 0 ? n2 : 1;
+    i32 ldc2 = p1 > 0 ? p1 : 1;
+    i32 ldd2 = p1 > 0 ? p1 : 1;
+
+    i32 lda = n > 0 ? n : 1;
+    i32 ldb = n > 0 ? n : 1;
+    i32 ldc = p1 > 0 ? p1 : 1;
+    i32 ldd = p1 > 0 ? p1 : 1;
+
+    f64 *a = (f64*)malloc(lda * n * sizeof(f64));
+    f64 *b = (f64*)malloc(ldb * m * sizeof(f64));
+    f64 *c = (f64*)malloc(ldc * n * sizeof(f64));
+    f64 *d = (f64*)malloc(ldd * m * sizeof(f64));
+
+    if (!a || !b || !c || !d) {
+        free(a);
+        free(b);
+        free(c);
+        free(d);
+        Py_DECREF(a1_array);
+        Py_DECREF(b1_array);
+        Py_DECREF(c1_array);
+        Py_DECREF(d1_array);
+        Py_DECREF(a2_array);
+        Py_DECREF(b2_array);
+        Py_DECREF(c2_array);
+        Py_DECREF(d2_array);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    const f64 *a1_data = (const f64*)PyArray_DATA(a1_array);
+    const f64 *b1_data = (const f64*)PyArray_DATA(b1_array);
+    const f64 *c1_data = (const f64*)PyArray_DATA(c1_array);
+    const f64 *d1_data = (const f64*)PyArray_DATA(d1_array);
+    const f64 *a2_data = (const f64*)PyArray_DATA(a2_array);
+    const f64 *b2_data = (const f64*)PyArray_DATA(b2_array);
+    const f64 *c2_data = (const f64*)PyArray_DATA(c2_array);
+    const f64 *d2_data = (const f64*)PyArray_DATA(d2_array);
+
+    i32 n_out, m_out;
+    i32 info = ab05od('N', n1, m1, p1, n2, m2, alpha,
+                      a1_data, lda1, b1_data, ldb1, c1_data, ldc1, d1_data, ldd1,
+                      a2_data, lda2, b2_data, ldb2, c2_data, ldc2, d2_data, ldd2,
+                      &n_out, &m_out, a, lda, b, ldb, c, ldc, d, ldd);
+    (void)over;
+
+    Py_DECREF(a1_array);
+    Py_DECREF(b1_array);
+    Py_DECREF(c1_array);
+    Py_DECREF(d1_array);
+    Py_DECREF(a2_array);
+    Py_DECREF(b2_array);
+    Py_DECREF(c2_array);
+    Py_DECREF(d2_array);
+
+    npy_intp a_dims[2] = {n, n};
+    npy_intp a_strides[2] = {sizeof(f64), n * sizeof(f64)};
+    PyObject *a_out = PyArray_New(&PyArray_Type, 2, a_dims, NPY_DOUBLE, a_strides, a, 0, NPY_ARRAY_FARRAY, NULL);
+    if (!a_out) {
+        free(a);
+        free(b);
+        free(c);
+        free(d);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)a_out, NPY_ARRAY_OWNDATA);
+
+    npy_intp b_dims[2] = {n, m};
+    npy_intp b_strides[2] = {sizeof(f64), n * sizeof(f64)};
+    PyObject *b_out = PyArray_New(&PyArray_Type, 2, b_dims, NPY_DOUBLE, b_strides, b, 0, NPY_ARRAY_FARRAY, NULL);
+    if (!b_out) {
+        Py_DECREF(a_out);
+        free(b);
+        free(c);
+        free(d);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)b_out, NPY_ARRAY_OWNDATA);
+
+    npy_intp c_dims[2] = {p1, n};
+    npy_intp c_strides[2] = {sizeof(f64), p1 * sizeof(f64)};
+    PyObject *c_out = PyArray_New(&PyArray_Type, 2, c_dims, NPY_DOUBLE, c_strides, c, 0, NPY_ARRAY_FARRAY, NULL);
+    if (!c_out) {
+        Py_DECREF(a_out);
+        Py_DECREF(b_out);
+        free(c);
+        free(d);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)c_out, NPY_ARRAY_OWNDATA);
+
+    npy_intp d_dims[2] = {p1, m};
+    npy_intp d_strides[2] = {sizeof(f64), p1 * sizeof(f64)};
+    PyObject *d_out = PyArray_New(&PyArray_Type, 2, d_dims, NPY_DOUBLE, d_strides, d, 0, NPY_ARRAY_FARRAY, NULL);
+    if (!d_out) {
+        Py_DECREF(a_out);
+        Py_DECREF(b_out);
+        Py_DECREF(c_out);
+        free(d);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS((PyArrayObject*)d_out, NPY_ARRAY_OWNDATA);
+
+    PyObject *result = Py_BuildValue("OOOOiii", a_out, b_out, c_out, d_out, n_out, m_out, info);
+    Py_DECREF(a_out);
+    Py_DECREF(b_out);
+    Py_DECREF(c_out);
+    Py_DECREF(d_out);
+
+    return result;
+}
+
 /* Python wrapper for tb01id */
 static PyObject* py_tb01id(PyObject* self, PyObject* args) {
     const char *job_str;
@@ -7767,6 +8010,30 @@ static PyMethodDef SlicotMethods[] = {
      "  d2 (ndarray): Feedthrough matrix of G2 (m1 x p1, F-order)\n\n"
      "Returns:\n"
      "  (a, b, c, d, n, info): Feedback system matrices, state order, exit code\n"},
+
+    {"ab05od", py_ab05od, METH_VARARGS,
+     "Rowwise concatenation of two state-space systems.\n\n"
+     "Computes the state-space model (A,B,C,D) for rowwise concatenation\n"
+     "(parallel inter-connection with separate inputs):\n"
+     "  Y = G1*U1 + alpha*G2*U2\n\n"
+     "Combined system has:\n"
+     "  A = [[A1, 0], [0, A2]]  (block diagonal)\n"
+     "  B = [[B1, 0], [0, B2]]  (block diagonal)\n"
+     "  C = [C1, alpha*C2]      (rowwise concatenation)\n"
+     "  D = [D1, alpha*D2]      (rowwise concatenation)\n\n"
+     "Parameters:\n"
+     "  over (str): 'N' no overlap, 'O' overlap arrays\n"
+     "  a1 (ndarray): State matrix of G1 (n1 x n1, F-order)\n"
+     "  b1 (ndarray): Input matrix of G1 (n1 x m1, F-order)\n"
+     "  c1 (ndarray): Output matrix of G1 (p1 x n1, F-order)\n"
+     "  d1 (ndarray): Feedthrough matrix of G1 (p1 x m1, F-order)\n"
+     "  a2 (ndarray): State matrix of G2 (n2 x n2, F-order)\n"
+     "  b2 (ndarray): Input matrix of G2 (n2 x m2, F-order)\n"
+     "  c2 (ndarray): Output matrix of G2 (p1 x n2, F-order)\n"
+     "  d2 (ndarray): Feedthrough matrix of G2 (p1 x m2, F-order)\n"
+     "  alpha (float): Coefficient multiplying second system\n\n"
+     "Returns:\n"
+     "  (a, b, c, d, n, m, info): Combined system matrices, state order, input count, exit code\n"},
 
     {"ab07nd", py_ab07nd, METH_VARARGS,
      "Compute the inverse of a linear system.\n\n"
