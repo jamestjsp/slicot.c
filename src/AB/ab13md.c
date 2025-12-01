@@ -849,6 +849,7 @@ set_y:
         if (stsize < tol4) break;
     }
 
+newton_loop:
     SLC_DCOPY(&mm1, x, &one_int, &dwork[iw22], &one_int);
     if (mr > 0) {
         SLC_DCOPY(&mr, &x[m-1], &one_int, &dwork[iw23], &one_int);
@@ -1104,7 +1105,7 @@ hessian_rcond:
     if (delta < tol5) {
         goto center_found;
     }
-    goto iter_loop;
+    goto newton_loop;
 
 center_found:
     dwork[iw14] = dlambd;
