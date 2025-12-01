@@ -224,6 +224,63 @@ i32 ab05nd(char over, i32 n1, i32 m1, i32 p1, i32 n2, f64 alpha,
            i32* iwork, f64* dwork, i32 ldwork);
 
 /**
+ * @brief Rowwise concatenation of two state-space systems.
+ *
+ * Computes the state-space model (A,B,C,D) for rowwise concatenation
+ * (parallel inter-connection on outputs, with separate inputs) of two
+ * systems G1 and G2:
+ *   Y = G1*U1 + alpha*G2*U2
+ *
+ * The combined system has:
+ *   A = [[A1, 0], [0, A2]]     (block diagonal)
+ *   B = [[B1, 0], [0, B2]]     (block diagonal)
+ *   C = [C1, alpha*C2]         (rowwise concatenation)
+ *   D = [D1, alpha*D2]         (rowwise concatenation)
+ *
+ * @param[in] over 'N' no overlap, 'O' overlap arrays A1/A, B1/B, C1/C, D1/D
+ * @param[in] n1 Number of states in first system (n1 >= 0)
+ * @param[in] m1 Number of inputs to first system (m1 >= 0)
+ * @param[in] p1 Number of outputs from each system (p1 >= 0)
+ * @param[in] n2 Number of states in second system (n2 >= 0)
+ * @param[in] m2 Number of inputs to second system (m2 >= 0)
+ * @param[in] alpha Coefficient multiplying second system output
+ * @param[in] a1 State matrix of G1, dimension (lda1, n1)
+ * @param[in] lda1 Leading dimension of a1 (lda1 >= max(1, n1))
+ * @param[in] b1 Input matrix of G1, dimension (ldb1, m1)
+ * @param[in] ldb1 Leading dimension of b1 (ldb1 >= max(1, n1))
+ * @param[in] c1 Output matrix of G1, dimension (ldc1, n1)
+ * @param[in] ldc1 Leading dimension of c1 (ldc1 >= max(1, p1) if n1 > 0)
+ * @param[in] d1 Feedthrough matrix of G1, dimension (ldd1, m1)
+ * @param[in] ldd1 Leading dimension of d1 (ldd1 >= max(1, p1))
+ * @param[in] a2 State matrix of G2, dimension (lda2, n2)
+ * @param[in] lda2 Leading dimension of a2 (lda2 >= max(1, n2))
+ * @param[in] b2 Input matrix of G2, dimension (ldb2, m2)
+ * @param[in] ldb2 Leading dimension of b2 (ldb2 >= max(1, n2))
+ * @param[in] c2 Output matrix of G2, dimension (ldc2, n2)
+ * @param[in] ldc2 Leading dimension of c2 (ldc2 >= max(1, p1) if n2 > 0)
+ * @param[in] d2 Feedthrough matrix of G2, dimension (ldd2, m2)
+ * @param[in] ldd2 Leading dimension of d2 (ldd2 >= max(1, p1))
+ * @param[out] n Total state order (n = n1 + n2)
+ * @param[out] m Total inputs (m = m1 + m2)
+ * @param[out] a State matrix, dimension (lda, n1+n2)
+ * @param[in] lda Leading dimension of a (lda >= max(1, n1+n2))
+ * @param[out] b Input matrix, dimension (ldb, m1+m2)
+ * @param[in] ldb Leading dimension of b (ldb >= max(1, n1+n2))
+ * @param[out] c Output matrix, dimension (ldc, n1+n2)
+ * @param[in] ldc Leading dimension of c (ldc >= max(1, p1) if n1+n2 > 0)
+ * @param[out] d Feedthrough matrix, dimension (ldd, m1+m2)
+ * @param[in] ldd Leading dimension of d (ldd >= max(1, p1))
+ * @return 0 on success, -i if parameter i is invalid
+ */
+i32 ab05od(char over, i32 n1, i32 m1, i32 p1, i32 n2, i32 m2, f64 alpha,
+           const f64* a1, i32 lda1, const f64* b1, i32 ldb1,
+           const f64* c1, i32 ldc1, const f64* d1, i32 ldd1,
+           const f64* a2, i32 lda2, const f64* b2, i32 ldb2,
+           const f64* c2, i32 ldc2, const f64* d2, i32 ldd2,
+           i32* n, i32* m, f64* a, i32 lda, f64* b, i32 ldb,
+           f64* c, i32 ldc, f64* d, i32 ldd);
+
+/**
  * @brief Compute the inverse of a linear system.
  *
  * Computes the inverse (Ai,Bi,Ci,Di) of a given system (A,B,C,D):
