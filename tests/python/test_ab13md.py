@@ -207,21 +207,35 @@ def test_ab13md_basic():
     - M = 5 (number of blocks)
     - NBLOCK = [1, 1, 2, 1, 1] (block sizes)
     - ITYPE = [1, 1, 2, 2, 2] (block types: 1=real, 2=complex)
-    - Z = 6x6 complex matrix from example data
+    - Z = 6x6 complex matrix from example data (AB13MD.dat)
+
+    The data file is read row-by-row in Fortran with 3 values per line:
+    Lines 1-2: Row 1 columns 1-3, 4-6
+    Lines 3-4: Row 2 columns 1-3, 4-6
+    etc.
 
     Expected output:
-    - BOUND = 40.92068212 (upper bound on mu, verified against Fortran reference)
+    - BOUND = 41.74753408 (verified by running official Fortran reference
+      with AB13MD.dat - matches documented AB13MD.res result)
     - INFO = 0 (success)
     """
     from slicot import ab13md
 
+    # Matrix from AB13MD.dat, correctly interpreted as Fortran list-directed
+    # READ statement which reads row-by-row: ( ( Z(I,J), J=1,N ), I=1,N )
+    # Row 1: (-1,6), (2,-3), (3,8), (3,8), (-5,-9), (-6,2)
+    # Row 2: (4,2), (-2,5), (-6,-7), (-4,11), (8,-7), (12,-1)
+    # Row 3: (5,-4), (-4,-8), (1,-3), (-6,14), (2,-5), (4,16)
+    # Row 4: identical to Row 1
+    # Row 5: identical to Row 2
+    # Row 6: identical to Row 3
     z = np.array([
-        [-1.0+6.0j,   2.0-3.0j,   3.0+8.0j,  -1.0+6.0j,   2.0-3.0j,   3.0+8.0j],
-        [ 3.0+8.0j,  -5.0-9.0j,  -6.0+2.0j,   3.0+8.0j,  -5.0-9.0j,  -6.0+2.0j],
-        [ 4.0+2.0j,  -2.0+5.0j,  -6.0-7.0j,   4.0+2.0j,  -2.0+5.0j,  -6.0-7.0j],
-        [-4.0+11.0j,  8.0-7.0j,  12.0-1.0j,  -4.0+11.0j,  8.0-7.0j,  12.0-1.0j],
-        [ 5.0-4.0j,  -4.0-8.0j,   1.0-3.0j,   5.0-4.0j,  -4.0-8.0j,   1.0-3.0j],
-        [-6.0+14.0j,  2.0-5.0j,   4.0+16.0j, -6.0+14.0j,  2.0-5.0j,   4.0+16.0j]
+        [-1.0+6.0j,  2.0-3.0j,  3.0+8.0j,   3.0+8.0j,  -5.0-9.0j,  -6.0+2.0j],
+        [ 4.0+2.0j, -2.0+5.0j, -6.0-7.0j,  -4.0+11.0j,  8.0-7.0j,  12.0-1.0j],
+        [ 5.0-4.0j, -4.0-8.0j,  1.0-3.0j,  -6.0+14.0j,  2.0-5.0j,   4.0+16.0j],
+        [-1.0+6.0j,  2.0-3.0j,  3.0+8.0j,   3.0+8.0j,  -5.0-9.0j,  -6.0+2.0j],
+        [ 4.0+2.0j, -2.0+5.0j, -6.0-7.0j,  -4.0+11.0j,  8.0-7.0j,  12.0-1.0j],
+        [ 5.0-4.0j, -4.0-8.0j,  1.0-3.0j,  -6.0+14.0j,  2.0-5.0j,   4.0+16.0j]
     ], order='F', dtype=np.complex128)
 
     nblock = np.array([1, 1, 2, 1, 1], dtype=np.int32)
@@ -230,7 +244,7 @@ def test_ab13md_basic():
     bound, d, g, x, info = ab13md(z, nblock, itype)
 
     assert info == 0
-    assert_allclose(bound, 40.92068212, rtol=1e-6, atol=1e-6)
+    assert_allclose(bound, 41.74753408, rtol=1e-6, atol=1e-6)
     assert d.shape == (6,)
     assert g.shape == (6,)
     assert all(d > 0)
