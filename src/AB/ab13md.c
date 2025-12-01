@@ -662,8 +662,8 @@ set_y:
         if (info2 > 0) {
             return 5;
         }
-        i32 ldw = ldwork - iwrk;
-        SLC_ZGETRI(&n, &zwork[iz17], &n, iwork, &zwork[izwrk], &ldw, &info2);
+        i32 lzw = lzwork - izwrk;
+        SLC_ZGETRI(&n, &zwork[iz17], &n, iwork, &zwork[izwrk], &lzw, &info2);
         lza = (i32)creal(zwork[izwrk]);
         if (lza > lzamax) lzamax = lza;
 

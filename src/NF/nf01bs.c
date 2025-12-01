@@ -8,6 +8,7 @@
 #include "slicot_blas.h"
 #include <math.h>
 #include <ctype.h>
+#include <string.h>
 
 /**
  * @brief QR factorization of Jacobian in compressed form.
@@ -28,6 +29,12 @@
  * @param[in] ldwork Length of dwork.
  * @param[out] info Exit code.
  */
+static void local_dlacpy_safe(i32 m, i32 n, const f64 *a, i32 lda, f64 *b, i32 ldb) {
+    for (i32 j = 0; j < n; j++) {
+        memmove(&b[j * ldb], &a[j * lda], m * sizeof(f64));
+    }
+}
+
 void nf01bs(i32 n, const i32 *ipar, i32 lipar, f64 fnorm, f64 *j, i32 *ldj, 
             f64 *e, f64 *jnorms, f64 *gnorm, i32 *ipvt, f64 *dwork, 
             i32 ldwork, i32 *info)
@@ -273,7 +280,7 @@ void nf01bs(i32 n, const i32 *ipar, i32 lipar, f64 fnorm, f64 *j, i32 *ldj,
             if ((i32)dwork[jwork] + jwork > wrkopt) wrkopt = (i32)dwork[jwork] + jwork;
 
             ibsn = n * bsn;
-            SLC_DLACPY("Full", &n, &st, &j[(*ldj) * bsn], ldj, &j[ibsn], &n);
+            local_dlacpy_safe(n, st, &j[(*ldj) * bsn], *ldj, &j[ibsn], n);
 
             ibsni = ibsn;
             for (i = nths; i < n; i++) {
