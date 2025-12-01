@@ -8578,6 +8578,34 @@ static PyObject* py_ab07nd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for dk01md */
+static PyObject* py_dk01md(PyObject* self, PyObject* args) {
+    const char *type_str;
+    PyObject *a_obj;
+    PyArrayObject *a_array;
+
+    if (!PyArg_ParseTuple(args, "sO", &type_str, &a_obj)) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) {
+        return NULL;
+    }
+
+    i32 n = (i32)PyArray_SIZE(a_array);
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    i32 info;
+
+    dk01md(type_str, n, a_data, &info);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyObject *result = Py_BuildValue("Oi", a_array, info);
+    Py_DECREF(a_array);
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"ab04md", (PyCFunction)py_ab04md, METH_VARARGS | METH_KEYWORDS,
@@ -9686,6 +9714,14 @@ static PyMethodDef SlicotMethods[] = {
      "Returns:\n"
      "  (a, b, c, maxred, scale, info): Balanced matrices,\n"
      "    norm ratio, scale factors, exit code\n"},
+
+    {"dk01md", py_dk01md, METH_VARARGS,
+     "Apply anti-aliasing window to a real signal.\n\n"
+     "Parameters:\n"
+     "  type (str): 'M'=Hamming, 'N'=Hann, 'Q'=Quadratic\n"
+     "  a (ndarray): Signal array (N samples)\n\n"
+     "Returns:\n"
+     "  (a, info): Windowed signal and exit code\n"},
 
     {NULL, NULL, 0, NULL}
 };
