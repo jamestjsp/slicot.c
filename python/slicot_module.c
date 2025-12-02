@@ -8864,6 +8864,59 @@ static PyObject* py_sb10jd(PyObject* self, PyObject* args, PyObject* kwds) {
     return result;
 }
 
+/* Python wrapper for tc01od */
+static PyObject* py_tc01od(PyObject* self, PyObject* args) {
+    const char *leri_str;
+    i32 m, p;
+    PyObject *pcoeff_obj, *qcoeff_obj;
+    PyArrayObject *pcoeff_array, *qcoeff_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "siiOO", &leri_str, &m, &p, &pcoeff_obj, &qcoeff_obj)) {
+        return NULL;
+    }
+
+    char leri = leri_str[0];
+
+    pcoeff_array = (PyArrayObject*)PyArray_FROM_OTF(pcoeff_obj, NPY_DOUBLE,
+                                                     NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (pcoeff_array == NULL) {
+        return NULL;
+    }
+
+    qcoeff_array = (PyArrayObject*)PyArray_FROM_OTF(qcoeff_obj, NPY_DOUBLE,
+                                                     NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (qcoeff_array == NULL) {
+        Py_DECREF(pcoeff_array);
+        return NULL;
+    }
+
+    npy_intp *pcoeff_dims = PyArray_DIMS(pcoeff_array);
+    npy_intp *qcoeff_dims = PyArray_DIMS(qcoeff_array);
+
+    i32 ldpco1 = (i32)pcoeff_dims[0];
+    i32 ldpco2 = (i32)pcoeff_dims[1];
+    i32 indlim = (i32)pcoeff_dims[2];
+
+    i32 ldqco1 = (i32)qcoeff_dims[0];
+    i32 ldqco2 = (i32)qcoeff_dims[1];
+
+    f64 *pcoeff_data = (f64*)PyArray_DATA(pcoeff_array);
+    f64 *qcoeff_data = (f64*)PyArray_DATA(qcoeff_array);
+
+    tc01od(leri, m, p, indlim, pcoeff_data, ldpco1, ldpco2,
+           qcoeff_data, ldqco1, ldqco2, &info);
+
+    PyArray_ResolveWritebackIfCopy(pcoeff_array);
+    PyArray_ResolveWritebackIfCopy(qcoeff_array);
+
+    PyObject *result = Py_BuildValue("OOi", pcoeff_array, qcoeff_array, info);
+    Py_DECREF(pcoeff_array);
+    Py_DECREF(qcoeff_array);
+
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"ab04md", (PyCFunction)py_ab04md, METH_VARARGS | METH_KEYWORDS,
@@ -10016,6 +10069,20 @@ static PyMethodDef SlicotMethods[] = {
      "  np (int, optional): Number of outputs\n\n"
      "Returns:\n"
      "  (ad, bd, cd, dd, nsys, info): Converted matrices, reduced order, exit code\n"},
+
+    {"tc01od", py_tc01od, METH_VARARGS,
+     "Find dual polynomial matrix representation.\n\n"
+     "Finds the dual right (left) polynomial matrix representation of a given\n"
+     "left (right) polynomial matrix representation by transposing both the\n"
+     "numerator Q(s) and denominator P(s) polynomial matrices.\n\n"
+     "Parameters:\n"
+     "  leri (str): 'L' for left matrix fraction, 'R' for right matrix fraction\n"
+     "  m (int): Number of system inputs\n"
+     "  p (int): Number of system outputs\n"
+     "  pcoeff (ndarray): Denominator polynomial coefficients (porm x porm x indlim, F-order)\n"
+     "  qcoeff (ndarray): Numerator polynomial coefficients (max(m,p) x max(m,p) x indlim, F-order)\n\n"
+     "Returns:\n"
+     "  (pcoeff, qcoeff, info): Transposed coefficient matrices, exit code\n"},
 
     {NULL, NULL, 0, NULL}
 };
