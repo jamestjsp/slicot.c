@@ -131,7 +131,6 @@ void sb10jd(
             i32 ivk = iv + k * ((k > ns1) ? k : ns1);
             iwrk = ivk;
 
-            i32 ns1p1 = ns1;
             SLC_DGESVD("S", "S", &k, &k, &a[ns1 + ns1 * lda], &lda,
                        &dwork[isa], &dwork[iu], &k, &dwork[iv], &k,
                        &dwork[iwrk], &lwork, &info2);
