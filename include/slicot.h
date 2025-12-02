@@ -1196,6 +1196,58 @@ void sg03bx(
 );
 
 /**
+ * @brief Balance the matrices of a descriptor system pencil.
+ *
+ * Balances the system pencil S = ((A B), (C 0)) - lambda*((E 0), (0 0))
+ * corresponding to the descriptor triple (A-lambda*E, B, C) via diagonal
+ * similarity transformations (Dl*A*Dr - lambda*Dl*E*Dr, Dl*B, C*Dr).
+ *
+ * @param[in] job Controls which matrices are balanced:
+ *                'A' = All matrices (A, E, B, C)
+ *                'B' = B, A, and E only (not C)
+ *                'C' = C, A, and E only (not B)
+ *                'N' = A and E only (not B or C)
+ * @param[in] l Number of rows of A, B, E (L >= 0)
+ * @param[in] n Number of columns of A, E, C (N >= 0)
+ * @param[in] m Number of columns of B (M >= 0)
+ * @param[in] p Number of rows of C (P >= 0)
+ * @param[in] thresh Threshold for ignoring small elements (THRESH >= 0)
+ * @param[in,out] a DOUBLE PRECISION array, dimension (lda,n)
+ *                  In: L-by-N state dynamics matrix A
+ *                  Out: Balanced matrix Dl*A*Dr
+ * @param[in] lda Leading dimension of A (lda >= max(1,l))
+ * @param[in,out] e DOUBLE PRECISION array, dimension (lde,n)
+ *                  In: L-by-N descriptor matrix E
+ *                  Out: Balanced matrix Dl*E*Dr
+ * @param[in] lde Leading dimension of E (lde >= max(1,l))
+ * @param[in,out] b DOUBLE PRECISION array, dimension (ldb,m)
+ *                  In: L-by-M input/state matrix B
+ *                  Out: Balanced matrix Dl*B (if job='A' or 'B')
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,l) if m>0, else >= 1)
+ * @param[in,out] c DOUBLE PRECISION array, dimension (ldc,n)
+ *                  In: P-by-N state/output matrix C
+ *                  Out: Balanced matrix C*Dr (if job='A' or 'C')
+ * @param[in] ldc Leading dimension of C (ldc >= max(1,p))
+ * @param[out] lscale DOUBLE PRECISION array, dimension (l)
+ *                    Left scaling factors Dl(i), i=1,...,l
+ * @param[out] rscale DOUBLE PRECISION array, dimension (n)
+ *                    Right scaling factors Dr(j), j=1,...,n
+ * @param[out] dwork DOUBLE PRECISION array, dimension (3*(l+n))
+ * @param[out] info Exit code (0 = success, <0 = invalid parameter -i)
+ */
+void tg01ad(
+    const char* job, const i32 l, const i32 n, const i32 m, const i32 p,
+    const f64 thresh,
+    f64* a, const i32 lda,
+    f64* e, const i32 lde,
+    f64* b, const i32 ldb,
+    f64* c, const i32 ldc,
+    f64* lscale, f64* rscale,
+    f64* dwork,
+    i32* info
+);
+
+/**
  * @brief Orthogonal reduction of descriptor system to SVD-like coordinate form.
  *
  * Computes orthogonal transformation matrices Q and Z such that the transformed

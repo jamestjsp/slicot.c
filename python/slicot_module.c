@@ -523,6 +523,118 @@ static PyObject* py_mb03od(PyObject* self, PyObject* args, PyObject* kwargs) {
     return result;
 }
 
+static PyObject* py_tg01ad(PyObject* self, PyObject* args) {
+    const char *job;
+    i32 l, n, m, p;
+    f64 thresh;
+    PyObject *a_obj, *e_obj, *b_obj, *c_obj;
+    PyArrayObject *a_array, *e_array, *b_array, *c_array;
+    i32 info = 0;
+    i32 lda, lde, ldb, ldc;
+
+    if (!PyArg_ParseTuple(args, "siiiidOOOO", &job,
+                          &l, &n, &m, &p, &thresh,
+                          &a_obj, &e_obj, &b_obj, &c_obj)) {
+        return NULL;
+    }
+
+    if (l < 0 || n < 0 || m < 0 || p < 0) {
+        PyErr_Format(PyExc_ValueError, "Dimensions must be non-negative");
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    e_array = (PyArrayObject*)PyArray_FROM_OTF(e_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+
+    if (a_array == NULL || e_array == NULL || b_array == NULL || c_array == NULL) {
+        Py_XDECREF(a_array);
+        Py_XDECREF(e_array);
+        Py_XDECREF(b_array);
+        Py_XDECREF(c_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *e_dims = PyArray_DIMS(e_array);
+    npy_intp *b_dims = PyArray_DIMS(b_array);
+    npy_intp *c_dims = PyArray_DIMS(c_array);
+
+    lda = (l > 0) ? (i32)a_dims[0] : 1;
+    lde = (l > 0) ? (i32)e_dims[0] : 1;
+    ldb = (m > 0 && l > 0) ? (i32)b_dims[0] : 1;
+    ldc = (p > 0) ? (i32)c_dims[0] : 1;
+
+    i32 ldwork = 3 * (l + n);
+    if (ldwork < 1) ldwork = 1;
+
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    f64 *lscale = (l > 0) ? (f64*)malloc(l * sizeof(f64)) : NULL;
+    f64 *rscale = (n > 0) ? (f64*)malloc(n * sizeof(f64)) : NULL;
+
+    if (dwork == NULL || (l > 0 && lscale == NULL) || (n > 0 && rscale == NULL)) {
+        free(dwork);
+        free(lscale);
+        free(rscale);
+        Py_DECREF(a_array);
+        Py_DECREF(e_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate work arrays");
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *e_data = (f64*)PyArray_DATA(e_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+
+    tg01ad(job, l, n, m, p, thresh, a_data, lda, e_data, lde,
+           b_data, ldb, c_data, ldc, lscale, rscale, dwork, &info);
+
+    npy_intp lscale_dims[1] = {l};
+    npy_intp rscale_dims[1] = {n};
+
+    PyObject *lscale_array, *rscale_array;
+    if (l > 0) {
+        lscale_array = PyArray_SimpleNewFromData(1, lscale_dims, NPY_DOUBLE, lscale);
+        PyArray_ENABLEFLAGS((PyArrayObject*)lscale_array, NPY_ARRAY_OWNDATA);
+    } else {
+        lscale_array = PyArray_EMPTY(1, lscale_dims, NPY_DOUBLE, 0);
+    }
+
+    if (n > 0) {
+        rscale_array = PyArray_SimpleNewFromData(1, rscale_dims, NPY_DOUBLE, rscale);
+        PyArray_ENABLEFLAGS((PyArrayObject*)rscale_array, NPY_ARRAY_OWNDATA);
+    } else {
+        rscale_array = PyArray_EMPTY(1, rscale_dims, NPY_DOUBLE, 0);
+    }
+
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(e_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    PyArray_ResolveWritebackIfCopy(c_array);
+
+    PyObject *result = Py_BuildValue("(OOOOOOi)", a_array, e_array, b_array, c_array,
+                                     lscale_array, rscale_array, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(e_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(lscale_array);
+    Py_DECREF(rscale_array);
+
+    return result;
+}
+
 static PyObject* py_tg01fd(PyObject* self, PyObject* args) {
     const char *compq, *compz, *joba;
     i32 l, n, m, p;
@@ -9883,6 +9995,22 @@ static PyMethodDef SlicotMethods[] = {
      "  b (ndarray): Upper triangular matrix B (2 x 2, F-order)\n\n"
      "Returns:\n"
      "  (u, scale, m1, m2, info): Cholesky factor, scale, auxiliary matrices, exit code\n"},
+
+    {"tg01ad", py_tg01ad, METH_VARARGS,
+     "Balance the matrices of a descriptor system pencil.\n\n"
+     "Parameters:\n"
+     "  job (str): 'A' all, 'B' B+A+E, 'C' C+A+E, 'N' A+E only\n"
+     "  l (int): Number of rows of A, B, E\n"
+     "  n (int): Number of columns of A, E, C\n"
+     "  m (int): Number of columns of B\n"
+     "  p (int): Number of rows of C\n"
+     "  thresh (float): Threshold for small elements\n"
+     "  a (ndarray): State dynamics matrix (l x n, F-order)\n"
+     "  e (ndarray): Descriptor matrix (l x n, F-order)\n"
+     "  b (ndarray): Input/state matrix (l x m, F-order)\n"
+     "  c (ndarray): State/output matrix (p x n, F-order)\n\n"
+     "Returns:\n"
+     "  (a, e, b, c, lscale, rscale, info): Balanced system and scaling factors\n"},
 
     {"tg01fd", py_tg01fd, METH_VARARGS,
      "Orthogonal reduction of descriptor system to SVD-like form.\n\n"
