@@ -225,6 +225,13 @@ void SLC_FC_FUNC(dlarf, DLARF)(const char* side, const int* m, const int* n,
                                 const f64* v, const int* incv, const f64* tau,
                                 f64* c, const int* ldc, f64* work);
 
+/* LAPACK - SVD */
+void SLC_FC_FUNC(dgesvd, DGESVD)(const char* jobu, const char* jobvt,
+                                  const int* m, const int* n, f64* a, const int* lda,
+                                  f64* s, f64* u, const int* ldu, f64* vt,
+                                  const int* ldvt, f64* work, const int* lwork,
+                                  int* info);
+
 /* LAPACK - Singular values and condition estimation */
 void SLC_FC_FUNC(dlaic1, DLAIC1)(const int* job, const int* j, const f64* x,
                                   const f64* sest, const f64* w, const f64* gamma,
@@ -456,6 +463,7 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DLASET   SLC_FC_FUNC(dlaset, DLASET)
 #define SLC_DGETRF   SLC_FC_FUNC(dgetrf, DGETRF)
 #define SLC_DGETRS   SLC_FC_FUNC(dgetrs, DGETRS)
+#define SLC_DGESVD   SLC_FC_FUNC(dgesvd, DGESVD)
 #define SLC_DGETRI   SLC_FC_FUNC(dgetri, DGETRI)
 #define SLC_DGESV    SLC_FC_FUNC(dgesv, DGESV)
 #define SLC_DGECON   SLC_FC_FUNC(dgecon, DGECON)

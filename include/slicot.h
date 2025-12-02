@@ -3230,6 +3230,72 @@ void sb02ru(
     i32* info);
 
 /**
+ * @brief Convert descriptor state-space to regular state-space form.
+ *
+ * Converts the descriptor state-space system:
+ *     E*dx/dt = A*x + B*u
+ *          y = C*x + D*u
+ *
+ * into regular state-space form:
+ *     dx/dt = Ad*x + Bd*u
+ *         y = Cd*x + Dd*u
+ *
+ * Uses SVD decomposition of E for descriptor elimination. The order of the
+ * resulting regular system (NSYS) may be less than N if E is rank deficient.
+ *
+ * Reference:
+ * Chiang, R.Y. and Safonov, M.G.
+ * Robust Control Toolbox User's Guide.
+ * The MathWorks Inc., Natick, Mass., 1992.
+ *
+ * @param[in] n Order of descriptor system (n >= 0)
+ * @param[in] m Number of inputs (m >= 0)
+ * @param[in] np Number of outputs (np >= 0)
+ * @param[in,out] a N-by-N state matrix A, dimension (lda,n)
+ *                  On exit: NSYS-by-NSYS state matrix Ad
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in,out] b N-by-M input matrix B, dimension (ldb,m)
+ *                  On exit: NSYS-by-M input matrix Bd
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,n))
+ * @param[in,out] c NP-by-N output matrix C, dimension (ldc,n)
+ *                  On exit: NP-by-NSYS output matrix Cd
+ * @param[in] ldc Leading dimension of C (ldc >= max(1,np))
+ * @param[in,out] d NP-by-M feedthrough matrix D, dimension (ldd,m)
+ *                  On exit: NP-by-M feedthrough matrix Dd
+ * @param[in] ldd Leading dimension of D (ldd >= max(1,np))
+ * @param[in,out] e N-by-N descriptor matrix E, dimension (lde,n)
+ *                  On exit: destroyed (no useful info)
+ * @param[in] lde Leading dimension of E (lde >= max(1,n))
+ * @param[out] nsys Order of converted regular state-space system
+ * @param[out] dwork Double workspace, dimension (ldwork)
+ *                   On exit: dwork[0] = optimal ldwork
+ * @param[in] ldwork Workspace size
+ *                   ldwork >= max(1, 2*n*n + 2*n + n*max(5, n+m+np))
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  <0 = invalid parameter -info
+ *                  1 = SVD iteration did not converge
+ */
+void sb10jd(
+    const i32 n,
+    const i32 m,
+    const i32 np,
+    f64* a,
+    const i32 lda,
+    f64* b,
+    const i32 ldb,
+    f64* c,
+    const i32 ldc,
+    f64* d,
+    const i32 ldd,
+    f64* e,
+    const i32 lde,
+    i32* nsys,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info);
+
+/**
  * @brief Solve linear equations with LU factorization and iterative refinement.
  *
  * Solves op(A)*X = B using LU factorization with optional equilibration

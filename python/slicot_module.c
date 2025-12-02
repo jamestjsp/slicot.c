@@ -8742,6 +8742,128 @@ static PyObject* py_mb05nd(PyObject* self, PyObject* args, PyObject* kwargs) {
     return Py_BuildValue("OOi", ex_array, exint_array, info);
 }
 
+/* Python wrapper for sb10jd */
+static PyObject* py_sb10jd(PyObject* self, PyObject* args, PyObject* kwds) {
+    static char *kwlist[] = {"a", "b", "c", "d", "e", "n", "m", "np", NULL};
+    PyObject *a_obj, *b_obj, *c_obj, *d_obj, *e_obj;
+    int n_arg = -1, m_arg = -1, np_arg = -1;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OOOOO|iii", kwlist,
+                                      &a_obj, &b_obj, &c_obj, &d_obj, &e_obj,
+                                      &n_arg, &m_arg, &np_arg)) {
+        return NULL;
+    }
+
+    PyArrayObject *a_array = (PyArrayObject*)PyArray_FROM_OTF(
+        a_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!a_array) return NULL;
+
+    PyArrayObject *b_array = (PyArrayObject*)PyArray_FROM_OTF(
+        b_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!b_array) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    PyArrayObject *c_array = (PyArrayObject*)PyArray_FROM_OTF(
+        c_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!c_array) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    PyArrayObject *d_array = (PyArrayObject*)PyArray_FROM_OTF(
+        d_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!d_array) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        return NULL;
+    }
+
+    PyArrayObject *e_array = (PyArrayObject*)PyArray_FROM_OTF(
+        e_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!e_array) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *b_dims = PyArray_DIMS(b_array);
+    npy_intp *c_dims = PyArray_DIMS(c_array);
+    (void)PyArray_DIMS(d_array);
+
+    i32 n = (n_arg == -1) ? (i32)a_dims[0] : (i32)n_arg;
+    i32 m = (m_arg == -1) ? (PyArray_NDIM(b_array) >= 2 ? (i32)b_dims[1] : 0) : (i32)m_arg;
+    i32 np = (np_arg == -1) ? (i32)c_dims[0] : (i32)np_arg;
+
+    if (n < 0 || m < 0 || np < 0) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        Py_DECREF(e_array);
+        PyErr_SetString(PyExc_ValueError, "n, m, np must be non-negative");
+        return NULL;
+    }
+
+    i32 lda = n > 0 ? n : 1;
+    i32 ldb = n > 0 ? n : 1;
+    i32 ldc = np > 0 ? np : 1;
+    i32 ldd = np > 0 ? np : 1;
+    i32 lde = n > 0 ? n : 1;
+
+    i32 tmp = n + m + np;
+    i32 tmp2 = tmp > 5 ? tmp : 5;
+    i32 ldwork = 2 * n * n + 2 * n + n * tmp2;
+    if (ldwork < 1) ldwork = 1;
+
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (!dwork) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        Py_DECREF(e_array);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+    f64 *d_data = (f64*)PyArray_DATA(d_array);
+    f64 *e_data = (f64*)PyArray_DATA(e_array);
+
+    i32 nsys = 0;
+    i32 info = 0;
+
+    sb10jd(n, m, np, a_data, lda, b_data, ldb, c_data, ldc,
+           d_data, ldd, e_data, lde, &nsys, dwork, ldwork, &info);
+
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    PyArray_ResolveWritebackIfCopy(c_array);
+    PyArray_ResolveWritebackIfCopy(d_array);
+    PyArray_ResolveWritebackIfCopy(e_array);
+
+    Py_DECREF(e_array);
+
+    PyObject *result = Py_BuildValue("OOOOii", a_array, b_array, c_array, d_array, nsys, info);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(d_array);
+
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"ab04md", (PyCFunction)py_ab04md, METH_VARARGS | METH_KEYWORDS,
@@ -9879,6 +10001,21 @@ static PyMethodDef SlicotMethods[] = {
      "Returns:\n"
      "  (stable, nz, dp_out, iwarn, info): Stability flag, unstable zeros,\n"
      "    actual degree, warning, exit code\n"},
+
+    {"sb10jd", (PyCFunction)py_sb10jd, METH_VARARGS | METH_KEYWORDS,
+     "Convert descriptor state-space to regular state-space.\n\n"
+     "Converts E*dx/dt = A*x + B*u to dx/dt = Ad*x + Bd*u using SVD.\n\n"
+     "Parameters:\n"
+     "  a (ndarray): State matrix A (n x n, F-order)\n"
+     "  b (ndarray): Input matrix B (n x m, F-order)\n"
+     "  c (ndarray): Output matrix C (np x n, F-order)\n"
+     "  d (ndarray): Feedthrough matrix D (np x m, F-order)\n"
+     "  e (ndarray): Descriptor matrix E (n x n, F-order)\n"
+     "  n (int, optional): Order of descriptor system\n"
+     "  m (int, optional): Number of inputs\n"
+     "  np (int, optional): Number of outputs\n\n"
+     "Returns:\n"
+     "  (ad, bd, cd, dd, nsys, info): Converted matrices, reduced order, exit code\n"},
 
     {NULL, NULL, 0, NULL}
 };
