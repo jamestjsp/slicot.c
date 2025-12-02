@@ -22,7 +22,8 @@
       "Bash(python -c:*)",
       "Bash(timeout 120 pytest:*)",
       "Bash(gh issue create:*)",
-      "Bash(gh issue edit:*)"
+      "Bash(gh issue edit:*)",
+      "Bash(timeout 30 python:*)"
     ],
     "deny": [],
     "ask": []
