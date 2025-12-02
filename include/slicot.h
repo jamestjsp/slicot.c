@@ -1877,6 +1877,41 @@ void tf01mx(const i32 n, const i32 m, const i32 p, const i32 ny,
             i32* info);
 
 /**
+ * @brief Compute Markov parameters from state-space representation.
+ *
+ * Computes N Markov parameters M(1), M(2), ..., M(N) from system matrices
+ * (A, B, C), where M(k) = C * A^(k-1) * B for k = 1, 2, ..., N.
+ *
+ * For linear time-invariant discrete-time system:
+ *   x(k+1) = A*x(k) + B*u(k)
+ *   y(k)   = C*x(k) + D*u(k)
+ *
+ * The transfer function G(z) = D + sum_{k=1}^inf M(k) * z^(-k),
+ * where M(k) = C * A^(k-1) * B are the Markov parameters.
+ *
+ * @param[in] na Order of matrix A (na >= 0)
+ * @param[in] nb Number of system inputs (nb >= 0)
+ * @param[in] nc Number of system outputs (nc >= 0)
+ * @param[in] n Number of Markov parameters to compute (n >= 0)
+ * @param[in] a State matrix, dimension (lda,na), column-major
+ * @param[in] lda Leading dimension of A (lda >= max(1,na))
+ * @param[in] b Input matrix, dimension (ldb,nb), column-major
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,na))
+ * @param[in] c Output matrix, dimension (ldc,na), column-major
+ * @param[in] ldc Leading dimension of C (ldc >= max(1,nc))
+ * @param[out] h Markov parameters, dimension (ldh,n*nb). M(k) stored in
+ *               columns (k-1)*nb+1 to k*nb.
+ * @param[in] ldh Leading dimension of H (ldh >= max(1,nc))
+ * @param[out] dwork Workspace, dimension (ldwork)
+ * @param[in] ldwork Length of dwork (ldwork >= max(1,2*na*nc))
+ * @param[out] info Exit code (0 = success, <0 = invalid parameter)
+ */
+void tf01rd(const i32 na, const i32 nb, const i32 nc, const i32 n,
+            const f64* a, const i32 lda, const f64* b, const i32 ldb,
+            const f64* c, const i32 ldc, f64* h, const i32 ldh,
+            f64* dwork, const i32 ldwork, i32* info);
+
+/**
  * @brief Calculate the output of the Wiener system.
  *
  * @param[in] nsmp Number of training samples.

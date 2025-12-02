@@ -3027,6 +3027,104 @@ static PyObject* py_tf01mx(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for tf01rd */
+static PyObject* py_tf01rd(PyObject* self, PyObject* args) {
+    PyObject *a_obj, *b_obj, *c_obj;
+    i32 n_param;
+    PyArrayObject *a_array, *b_array, *c_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "OOOi", &a_obj, &b_obj, &c_obj, &n_param)) {
+        return NULL;
+    }
+
+    if (n_param < 0) {
+        PyErr_SetString(PyExc_ValueError, "N must be >= 0");
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (a_array == NULL) return NULL;
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (c_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    i32 na = (i32)PyArray_DIM(a_array, 0);
+    i32 nb = (PyArray_NDIM(b_array) >= 2) ? (i32)PyArray_DIM(b_array, 1) : 1;
+    i32 nc = (i32)PyArray_DIM(c_array, 0);
+
+    if ((i32)PyArray_DIM(a_array, 1) != na) {
+        PyErr_SetString(PyExc_ValueError, "A must be square");
+        goto fail;
+    }
+    if (na > 0 && (i32)PyArray_DIM(b_array, 0) != na) {
+        PyErr_SetString(PyExc_ValueError, "B row count must match A row count");
+        goto fail;
+    }
+    if ((i32)PyArray_DIM(c_array, 1) != na) {
+        PyErr_SetString(PyExc_ValueError, "C column count must match A column count");
+        goto fail;
+    }
+
+    i32 lda = (na > 1) ? na : 1;
+    i32 ldb = (na > 1) ? na : 1;
+    i32 ldc = (nc > 1) ? nc : 1;
+    i32 ldh = (nc > 1) ? nc : 1;
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+
+    npy_intp h_cols = (npy_intp)n_param * (npy_intp)nb;
+    npy_intp dims_h[2] = {nc, h_cols};
+    npy_intp strides_h[2] = {sizeof(f64), ldh * sizeof(f64)};
+    PyObject *h_array = PyArray_New(&PyArray_Type, 2, dims_h, NPY_DOUBLE, strides_h,
+                                     NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    if (h_array == NULL) {
+        goto fail;
+    }
+
+    f64 *h_data = (f64*)PyArray_DATA((PyArrayObject*)h_array);
+
+    i32 ldwork = (2 * na * nc > 1) ? 2 * na * nc : 1;
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (dwork == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+        Py_DECREF(h_array);
+        goto fail;
+    }
+
+    tf01rd(na, nb, nc, n_param, a_data, lda, b_data, ldb, c_data, ldc,
+           h_data, ldh, dwork, ldwork, &info);
+
+    free(dwork);
+
+    PyObject *result = Py_BuildValue("Oi", h_array, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(h_array);
+
+    return result;
+
+fail:
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    return NULL;
+}
+
 /* Python wrapper for md03ba */
 static PyObject* py_md03ba(PyObject* self, PyObject* args) {
     i32 n;
@@ -9380,6 +9478,18 @@ static PyMethodDef SlicotMethods[] = {
      "  x (ndarray): Initial state vector (n, F-order)\n\n"
      "Returns:\n"
      "  (y, x, info): Output sequence, final state, exit code\n"},
+
+    {"tf01rd", py_tf01rd, METH_VARARGS,
+     "Compute Markov parameters from state-space representation.\n\n"
+     "Computes N Markov parameters M(1), M(2), ..., M(N) from system\n"
+     "matrices (A, B, C), where M(k) = C * A^(k-1) * B.\n\n"
+     "Parameters:\n"
+     "  a (ndarray): State matrix (na x na, F-order)\n"
+     "  b (ndarray): Input matrix (na x nb, F-order)\n"
+     "  c (ndarray): Output matrix (nc x na, F-order)\n"
+     "  n (int): Number of Markov parameters to compute\n\n"
+     "Returns:\n"
+     "  (h, info): Markov parameters (nc x n*nb), exit code\n"},
 
     {"ma02ad", py_ma02ad, METH_VARARGS,
      "Transpose all or part of a matrix.\n\n"
