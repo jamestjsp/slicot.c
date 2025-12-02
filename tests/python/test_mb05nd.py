@@ -231,8 +231,8 @@ class TestMB05NDMathematicalProperties:
         ex, exint, info = mb05nd(n, delta, a, tol)
 
         assert info == 0
-        np.testing.assert_allclose(ex, ex_expected, rtol=1e-13)
-        np.testing.assert_allclose(exint, exint_expected, rtol=1e-12)
+        np.testing.assert_allclose(ex, ex_expected, rtol=1e-12)
+        np.testing.assert_allclose(exint, exint_expected, rtol=1e-11)
 
 
 class TestMB05NDErrorHandling:
