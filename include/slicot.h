@@ -421,6 +421,36 @@ i32 ab07nd(i32 n, i32 m, f64* a, i32 lda, f64* b, i32 ldb,
            i32* iwork, f64* dwork, i32 ldwork);
 
 /**
+ * @brief Dual of a state-space representation.
+ *
+ * Finds the dual of a given state-space representation.
+ * If (A,B,C,D) is M-input/P-output, its dual is P-input/M-output (A',C',B',D').
+ *
+ * @param[in] jobd 'D' if D is present, 'Z' if D is zero matrix
+ * @param[in] n Order of state-space representation (n >= 0)
+ * @param[in] m Number of system inputs (m >= 0)
+ * @param[in] p Number of system outputs (p >= 0)
+ * @param[in,out] a State matrix, dimension (lda, n). On exit, A' (transpose).
+ * @param[in] lda Leading dimension of a (lda >= max(1, n))
+ * @param[in,out] b Input matrix, dimension (ldb, max(m, p)).
+ *                  On entry: N-by-M part contains B.
+ *                  On exit: N-by-P part contains C' (transpose).
+ * @param[in] ldb Leading dimension of b (ldb >= max(1, n))
+ * @param[in,out] c Output matrix, dimension (ldc, n).
+ *                  On entry: P-by-N part contains C.
+ *                  On exit: M-by-N part contains B' (transpose).
+ * @param[in] ldc Leading dimension of c (ldc >= max(1, m, p) if n > 0, else >= 1)
+ * @param[in,out] d Feedthrough matrix, dimension (ldd, max(m, p)).
+ *                  On entry with jobd='D': P-by-M part contains D.
+ *                  On exit with jobd='D': M-by-P part contains D' (transpose).
+ *                  Not referenced if jobd='Z'.
+ * @param[in] ldd Leading dimension of d (ldd >= max(1, m, p) if jobd='D', else >= 1)
+ * @return 0 on success, -i if parameter i is invalid
+ */
+i32 ab07md(char jobd, i32 n, i32 m, i32 p, f64* a, i32 lda,
+           f64* b, i32 ldb, f64* c, i32 ldc, f64* d, i32 ldd);
+
+/**
  * @brief Compute upper bound on structured singular value (mu).
  *
  * Computes an upper bound on the structured singular value for a given

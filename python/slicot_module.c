@@ -8849,6 +8849,82 @@ static PyObject* py_ab13md(PyObject* self, PyObject* args, PyObject* kwds) {
     return result;
 }
 
+/* Python wrapper for ab07md */
+static PyObject* py_ab07md(PyObject* self, PyObject* args) {
+    const char *jobd_str;
+    i32 n, m, p;
+    PyObject *a_obj, *b_obj, *c_obj, *d_obj;
+
+    if (!PyArg_ParseTuple(args, "siiiOOOO", &jobd_str, &n, &m, &p,
+                          &a_obj, &b_obj, &c_obj, &d_obj)) {
+        return NULL;
+    }
+
+    char jobd = (char)toupper((unsigned char)jobd_str[0]);
+    if (jobd != 'D' && jobd != 'Z') {
+        PyErr_SetString(PyExc_ValueError, "jobd must be 'D' or 'Z'");
+        return NULL;
+    }
+
+    PyArrayObject *a_array = (PyArrayObject*)PyArray_FROM_OTF(
+        a_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!a_array) return NULL;
+
+    PyArrayObject *b_array = (PyArrayObject*)PyArray_FROM_OTF(
+        b_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!b_array) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    PyArrayObject *c_array = (PyArrayObject*)PyArray_FROM_OTF(
+        c_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!c_array) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    PyArrayObject *d_array = (PyArrayObject*)PyArray_FROM_OTF(
+        d_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!d_array) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *b_dims = PyArray_DIMS(b_array);
+    npy_intp *c_dims = PyArray_DIMS(c_array);
+    npy_intp *d_dims = PyArray_DIMS(d_array);
+
+    i32 lda = PyArray_NDIM(a_array) >= 1 ? (i32)a_dims[0] : 1;
+    i32 ldb = PyArray_NDIM(b_array) >= 1 ? (i32)b_dims[0] : 1;
+    i32 ldc = PyArray_NDIM(c_array) >= 1 ? (i32)c_dims[0] : 1;
+    i32 ldd = PyArray_NDIM(d_array) >= 1 ? (i32)d_dims[0] : 1;
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+    f64 *d_data = (f64*)PyArray_DATA(d_array);
+
+    i32 info = ab07md(jobd, n, m, p, a_data, lda, b_data, ldb, c_data, ldc, d_data, ldd);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    PyArray_ResolveWritebackIfCopy(c_array);
+    PyArray_ResolveWritebackIfCopy(d_array);
+
+    PyObject *result = Py_BuildValue("OOOOi", a_array, b_array, c_array, d_array, info);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(d_array);
+
+    return result;
+}
+
 /* Python wrapper for ab07nd */
 static PyObject* py_ab07nd(PyObject* self, PyObject* args) {
     PyObject *a_obj, *b_obj, *c_obj, *d_obj;
@@ -9407,6 +9483,22 @@ static PyMethodDef SlicotMethods[] = {
      "Returns:\n"
      "  (a, b, c, d, n, m, p, info): Combined system matrices,\n"
      "    state order, input count, output count, exit code\n"},
+
+    {"ab07md", py_ab07md, METH_VARARGS,
+     "Dual of a state-space representation.\n\n"
+     "Finds the dual of a given state-space representation (A,B,C,D).\n"
+     "If M-input/P-output, its dual is P-input/M-output (A',C',B',D').\n\n"
+     "Parameters:\n"
+     "  jobd (str): 'D' if D is present, 'Z' if D is zero matrix\n"
+     "  n (int): Order of state-space representation (n >= 0)\n"
+     "  m (int): Number of system inputs (m >= 0)\n"
+     "  p (int): Number of system outputs (p >= 0)\n"
+     "  a (ndarray): State matrix A (n x n, F-order)\n"
+     "  b (ndarray): Input matrix B (n x max(m,p), F-order)\n"
+     "  c (ndarray): Output matrix C (max(m,p) x n, F-order)\n"
+     "  d (ndarray): Feedthrough matrix D (max(m,p) x max(m,p), F-order)\n\n"
+     "Returns:\n"
+     "  (a_dual, b_dual, c_dual, d_dual, info): Dual system matrices and exit code\n"},
 
     {"ab07nd", py_ab07nd, METH_VARARGS,
      "Compute the inverse of a linear system.\n\n"
