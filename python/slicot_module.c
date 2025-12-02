@@ -8578,6 +8578,50 @@ static PyObject* py_ab07nd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for mc01td */
+static PyObject* py_mc01td(PyObject* self, PyObject* args) {
+    const char *dico_str;
+    PyObject *p_obj;
+    PyArrayObject *p_array;
+
+    if (!PyArg_ParseTuple(args, "sO", &dico_str, &p_obj)) {
+        return NULL;
+    }
+
+    char d = toupper((unsigned char)dico_str[0]);
+    if (d != 'C' && d != 'D') {
+        PyErr_SetString(PyExc_ValueError, "DICO must be 'C' or 'D'");
+        return NULL;
+    }
+
+    p_array = (PyArrayObject*)PyArray_FROM_OTF(p_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY);
+    if (p_array == NULL) {
+        return NULL;
+    }
+
+    i32 n = (i32)PyArray_SIZE(p_array);
+    if (n < 1) {
+        PyErr_SetString(PyExc_ValueError, "Polynomial must have at least 1 coefficient");
+        Py_DECREF(p_array);
+        return NULL;
+    }
+
+    i32 dp = n - 1;
+    f64 *p_data = (f64*)PyArray_DATA(p_array);
+
+    bool stable;
+    i32 nz, dp_out, iwarn, info;
+
+    mc01td(dico_str, dp, p_data, &stable, &nz, &dp_out, &iwarn, &info);
+
+    Py_DECREF(p_array);
+
+    PyObject *stable_obj = stable ? Py_True : Py_False;
+    Py_INCREF(stable_obj);
+
+    return Py_BuildValue("Oiiii", stable_obj, nz, dp_out, iwarn, info);
+}
+
 /* Python wrapper for dk01md */
 static PyObject* py_dk01md(PyObject* self, PyObject* args) {
     const char *type_str;
@@ -9722,6 +9766,15 @@ static PyMethodDef SlicotMethods[] = {
      "  a (ndarray): Signal array (N samples)\n\n"
      "Returns:\n"
      "  (a, info): Windowed signal and exit code\n"},
+
+    {"mc01td", py_mc01td, METH_VARARGS,
+     "Determine polynomial stability (Routh or Schur-Cohn).\n\n"
+     "Parameters:\n"
+     "  dico (str): 'C'=continuous-time, 'D'=discrete-time\n"
+     "  p (ndarray): Polynomial coefficients in increasing powers\n\n"
+     "Returns:\n"
+     "  (stable, nz, dp_out, iwarn, info): Stability flag, unstable zeros,\n"
+     "    actual degree, warning, exit code\n"},
 
     {NULL, NULL, 0, NULL}
 };

@@ -3661,6 +3661,32 @@ void tb01id(const char* job, i32 n, i32 m, i32 p, f64* maxred,
  */
 void dk01md(const char* type, i32 n, f64* a, i32* info);
 
+/**
+ * @brief Determine polynomial stability (Routh or Schur-Cohn algorithm).
+ *
+ * Determines whether a polynomial P(x) with real coefficients is stable:
+ * - Continuous-time (DICO='C'): all zeros in left half-plane (Routh algorithm)
+ * - Discrete-time (DICO='D'): all zeros inside unit circle (Schur-Cohn algorithm)
+ *
+ * The polynomial is: P(x) = p[0] + p[1]*x + p[2]*x^2 + ... + p[dp]*x^dp
+ *
+ * @param[in] dico 'C' for continuous-time, 'D' for discrete-time
+ * @param[in] dp Degree of polynomial (dp >= 0)
+ * @param[in] p Polynomial coefficients, dimension (dp+1), in increasing powers of x
+ * @param[out] stable true if polynomial is stable, false otherwise
+ * @param[out] nz Number of unstable zeros (right half-plane for 'C', outside unit circle for 'D')
+ * @param[out] dp_out Actual degree after removing leading zero coefficients
+ * @param[out] iwarn Warning indicator (number of leading zeros removed from high-order coefficients)
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  -1 = invalid DICO
+ *                  -2 = dp < 0
+ *                  1 = zero polynomial
+ *                  2 = algorithm cannot determine stability (zero Routh coefficient or Schur transform)
+ */
+void mc01td(const char* dico, i32 dp, const f64* p, bool* stable,
+            i32* nz, i32* dp_out, i32* iwarn, i32* info);
+
 #ifdef __cplusplus
 }
 #endif

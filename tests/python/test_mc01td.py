@@ -231,16 +231,15 @@ def test_mc01td_discrete_mixed_stability():
     """
     Test discrete polynomial with roots inside and outside unit circle.
 
-    P(x) = (x - 0.5)*(x - 2) = -1 + 2.5*x - x^2 = -1 + 2.5*x - x^2
-    Wait, let me recalculate: (x - 0.5)(x - 2) = x^2 - 2.5x + 1
-    Coefficients in increasing powers: [1.0, -2.5, 1.0]
-    Roots: 0.5 (inside), 2 (outside) = 1 unstable zero.
+    P(x) = (x - 0.3)(x - 3) = x^2 - 3.3x + 0.9
+    Coefficients in increasing powers: [0.9, -3.3, 1.0]
+    Roots: 0.3 (inside), 3 (outside) = 1 unstable zero.
 
     Random seed: not used (deterministic test data)
     """
     from slicot import mc01td
 
-    p = np.array([1.0, -2.5, 1.0], order='F', dtype=float)
+    p = np.array([0.9, -3.3, 1.0], order='F', dtype=float)
 
     stable, nz, dp_out, iwarn, info = mc01td('D', p)
 
