@@ -1282,6 +1282,55 @@ void tg01fd(
 );
 
 /**
+ * @brief Find dual polynomial matrix representation.
+ *
+ * Finds the dual right (left) polynomial matrix representation of a given
+ * left (right) polynomial matrix representation, where the representations
+ * are of the form Q(s)*inv(P(s)) and inv(P(s))*Q(s) respectively.
+ *
+ * The dual is found by transposing both the numerator matrix Q(s) and
+ * denominator matrix P(s) for each polynomial coefficient.
+ *
+ * @param[in] leri Specifies input representation type:
+ *                 'L' = left matrix fraction input
+ *                 'R' = right matrix fraction input
+ * @param[in] m Number of system inputs (m >= 0)
+ * @param[in] p Number of system outputs (p >= 0)
+ * @param[in] indlim Number of polynomial coefficient slices (indlim >= 1)
+ *                   Equal to kpcoef + 1 where kpcoef is max polynomial degree
+ * @param[in,out] pcoeff Denominator polynomial matrix coefficients
+ *                       Dimension (ldpco1, ldpco2, indlim)
+ *                       Leading porm-by-porm-by-indlim part used
+ *                       where porm = P if LERI='L', porm = M if LERI='R'
+ *                       PCOEFF(i,j,k) is coefficient in s^(indlim-k) of P(i,j)
+ *                       On exit: transposed coefficients P'(s)
+ * @param[in] ldpco1 Leading dimension of PCOEFF (>= max(1,P) if LERI='L',
+ *                   >= max(1,M) if LERI='R')
+ * @param[in] ldpco2 Second dimension of PCOEFF (same constraints as ldpco1)
+ * @param[in,out] qcoeff Numerator polynomial matrix coefficients
+ *                       Dimension (ldqco1, ldqco2, indlim)
+ *                       Leading P-by-M-by-indlim part on input
+ *                       QCOEFF(i,j,k) is coefficient in s^(indlim-k) of Q(i,j)
+ *                       On exit: leading M-by-P-by-indlim contains Q'(s)
+ * @param[in] ldqco1 Leading dimension of QCOEFF (>= max(1, m, p))
+ * @param[in] ldqco2 Second dimension of QCOEFF (>= max(1, m, p))
+ * @param[out] info Exit code: 0 = success, <0 = parameter -info invalid
+ */
+void tc01od(
+    const char leri,
+    const i32 m,
+    const i32 p,
+    const i32 indlim,
+    f64* pcoeff,
+    const i32 ldpco1,
+    const i32 ldpco2,
+    f64* qcoeff,
+    const i32 ldqco1,
+    const i32 ldqco2,
+    i32* info
+);
+
+/**
  * @brief Transpose all or part of a matrix.
  *
  * Transposes an M-by-N matrix A into N-by-M matrix B.

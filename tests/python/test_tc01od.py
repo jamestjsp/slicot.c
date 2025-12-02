@@ -88,15 +88,16 @@ class TestTC01ODBasic:
 class TestTC01ODTranspositionProperty:
     """Mathematical property tests for transposition."""
 
-    def test_double_transpose_identity(self):
+    def test_double_transpose_identity_square(self):
         """
         Validate involution property: applying dual twice returns original.
 
         (A^T)^T = A for all coefficient matrices.
+        For square systems (m=p), pcoeff dimensions are the same for L and R.
         Random seed: 42 (for reproducibility)
         """
         np.random.seed(42)
-        m, p, indlim = 3, 2, 4
+        m, p, indlim = 3, 3, 4
 
         # Create random polynomial matrices
         pcoeff_orig = np.random.randn(p, p, indlim).astype(float, order='F')
@@ -107,7 +108,6 @@ class TestTC01ODTranspositionProperty:
         assert info1 == 0
 
         # Second transpose (right -> left dual)
-        # After first call, qcoeff is M x P, for 'R' pcoeff is M x M
         pcoeff2, qcoeff2, info2 = tc01od('R', m, p, pcoeff1.copy(), qcoeff1.copy())
         assert info2 == 0
 
@@ -123,10 +123,15 @@ class TestTC01ODTranspositionProperty:
         """
         np.random.seed(123)
         m, p, indlim = 2, 3, 3
+        mplim = max(m, p)
 
         # For right representation, PORM = M
+        # LDQCO1 >= max(1,m,p), LDQCO2 >= max(1,m,p)
         pcoeff = np.random.randn(m, m, indlim).astype(float, order='F')
-        qcoeff = np.random.randn(p, m, indlim).astype(float, order='F')
+        qcoeff = np.zeros((mplim, mplim, indlim), dtype=float, order='F')
+        qcoeff[:p, :m, :] = np.random.randn(p, m, indlim)
+
+        qcoeff_input = qcoeff[:p, :m, :].copy()
 
         pcoeff_out, qcoeff_out, info = tc01od('R', m, p, pcoeff.copy(), qcoeff.copy())
         assert info == 0
@@ -137,7 +142,7 @@ class TestTC01ODTranspositionProperty:
 
         # Verify QCOEFF transposed (P x M -> M x P)
         for k in range(indlim):
-            np.testing.assert_allclose(qcoeff_out[:m, :p, k], qcoeff[:, :, k].T, rtol=1e-14)
+            np.testing.assert_allclose(qcoeff_out[:m, :p, k], qcoeff_input[:, :, k].T, rtol=1e-14)
 
 
 class TestTC01ODEdgeCases:
