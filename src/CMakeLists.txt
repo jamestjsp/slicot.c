@@ -36,6 +36,7 @@ set(SLICOT_SOURCES
     SB/sb03ov.c
     SB/sb03oy.c
     SB/sb04px.c
+    SB/sb10jd.c
     MB/mb01qd.c
     MB/mb01rb.c
     MB/mb02pd.c
