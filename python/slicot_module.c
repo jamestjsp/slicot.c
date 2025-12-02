@@ -2772,6 +2772,158 @@ static PyObject* py_ma02ad(PyObject* self, PyObject* args) {
     return b_array;
 }
 
+static PyObject* py_tf01md(PyObject* self, PyObject* args) {
+    PyObject *a_obj, *b_obj, *c_obj, *d_obj, *u_obj, *x_obj;
+    PyArrayObject *a_array, *b_array, *c_array, *d_array, *u_array, *x_array;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "OOOOOO", &a_obj, &b_obj, &c_obj, &d_obj, &u_obj, &x_obj)) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (a_array == NULL) return NULL;
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (c_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        return NULL;
+    }
+
+    d_array = (PyArrayObject*)PyArray_FROM_OTF(d_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (d_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        return NULL;
+    }
+
+    u_array = (PyArrayObject*)PyArray_FROM_OTF(u_obj, NPY_DOUBLE, NPY_ARRAY_IN_FARRAY);
+    if (u_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        return NULL;
+    }
+
+    x_array = (PyArrayObject*)PyArray_FROM_OTF(x_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (x_array == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(b_array);
+        Py_DECREF(c_array);
+        Py_DECREF(d_array);
+        Py_DECREF(u_array);
+        return NULL;
+    }
+
+    i32 n = (i32)PyArray_DIM(a_array, 0);
+    i32 m = (PyArray_NDIM(b_array) >= 2) ? (i32)PyArray_DIM(b_array, 1) : ((n > 0) ? 1 : 0);
+    i32 p = (i32)PyArray_DIM(c_array, 0);
+    i32 ny = (PyArray_NDIM(u_array) >= 2) ? (i32)PyArray_DIM(u_array, 1) : ((m > 0) ? 1 : 0);
+
+    if (PyArray_DIM(a_array, 1) != n) {
+        PyErr_SetString(PyExc_ValueError, "A must be square");
+        goto fail;
+    }
+    if (n > 0 && (i32)PyArray_DIM(b_array, 0) != n) {
+        PyErr_SetString(PyExc_ValueError, "B row count must match A row count");
+        goto fail;
+    }
+    if ((i32)PyArray_DIM(c_array, 1) != n) {
+        PyErr_SetString(PyExc_ValueError, "C column count must match A column count");
+        goto fail;
+    }
+    if ((i32)PyArray_DIM(d_array, 0) != p) {
+        PyErr_SetString(PyExc_ValueError, "D row count must match C row count");
+        goto fail;
+    }
+    if ((i32)PyArray_DIM(d_array, 1) != m) {
+        PyErr_SetString(PyExc_ValueError, "D column count must match B column count");
+        goto fail;
+    }
+    if ((i32)PyArray_DIM(u_array, 0) != m) {
+        PyErr_SetString(PyExc_ValueError, "U row count must match B column count");
+        goto fail;
+    }
+    if ((i32)PyArray_SIZE(x_array) != n) {
+        PyErr_SetString(PyExc_ValueError, "x length must match state dimension");
+        goto fail;
+    }
+
+    i32 lda = (n > 1) ? n : 1;
+    i32 ldb = (n > 1) ? n : 1;
+    i32 ldc = (p > 1) ? p : 1;
+    i32 ldd = (p > 1) ? p : 1;
+    i32 ldu = (m > 1) ? m : 1;
+    i32 ldy = (p > 1) ? p : 1;
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+    f64 *d_data = (f64*)PyArray_DATA(d_array);
+    f64 *u_data = (f64*)PyArray_DATA(u_array);
+    f64 *x_data = (f64*)PyArray_DATA(x_array);
+
+    npy_intp dims_y[2] = {p, ny};
+    npy_intp strides_y[2] = {sizeof(f64), ldy * sizeof(f64)};
+    PyObject *y_array = PyArray_New(&PyArray_Type, 2, dims_y, NPY_DOUBLE, strides_y,
+                                     NULL, 0, NPY_ARRAY_FARRAY, NULL);
+    if (y_array == NULL) {
+        goto fail;
+    }
+
+    f64 *y_data = (f64*)PyArray_DATA((PyArrayObject*)y_array);
+
+    f64 *dwork = NULL;
+    if (n > 0) {
+        dwork = (f64*)malloc(n * sizeof(f64));
+        if (dwork == NULL) {
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+            Py_DECREF(y_array);
+            goto fail;
+        }
+    }
+
+    tf01md(n, m, p, ny, a_data, lda, b_data, ldb, c_data, ldc, d_data, ldd,
+           u_data, ldu, x_data, y_data, ldy, dwork, &info);
+
+    if (dwork != NULL) {
+        free(dwork);
+    }
+
+    PyArray_ResolveWritebackIfCopy(x_array);
+
+    PyObject *result = Py_BuildValue("OOi", y_array, x_array, info);
+
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(d_array);
+    Py_DECREF(u_array);
+    Py_DECREF(x_array);
+    Py_DECREF(y_array);
+
+    return result;
+
+fail:
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    Py_DECREF(c_array);
+    Py_DECREF(d_array);
+    Py_DECREF(u_array);
+    Py_DECREF(x_array);
+    return NULL;
+}
+
 static PyObject* py_tf01mx(PyObject* self, PyObject* args) {
     i32 n, m, p, ny;
     PyObject *s_obj, *u_obj, *x_obj;
@@ -9202,6 +9354,19 @@ static PyMethodDef SlicotMethods[] = {
      "  c (ndarray): Output matrix (p x n, F-order)\n\n"
      "Returns:\n"
      "  (a, b, c, u, wr, wi, info): Transformed system, Schur vectors, eigenvalues, exit code\n"},
+
+    {"tf01md", py_tf01md, METH_VARARGS,
+     "Output response sequence of discrete-time state-space system.\n\n"
+     "Simulates: x(k+1) = A*x(k) + B*u(k), y(k) = C*x(k) + D*u(k)\n\n"
+     "Parameters:\n"
+     "  a (ndarray): State matrix (n x n, F-order)\n"
+     "  b (ndarray): Input matrix (n x m, F-order)\n"
+     "  c (ndarray): Output matrix (p x n, F-order)\n"
+     "  d (ndarray): Feedthrough matrix (p x m, F-order)\n"
+     "  u (ndarray): Input sequence (m x ny, F-order)\n"
+     "  x (ndarray): Initial state vector (n,), modified in-place\n\n"
+     "Returns:\n"
+     "  (y, x_final, info): Output sequence (p x ny), final state, exit code\n"},
 
     {"tf01mx", py_tf01mx, METH_VARARGS,
      "Output sequence of linear time-invariant open-loop system.\n\n"

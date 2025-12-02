@@ -1811,6 +1811,43 @@ void tb01vy(const char* apply, i32 n, i32 m, i32 l, const f64* theta,
             f64* d, i32 ldd, f64* x0, f64* dwork, i32 ldwork, i32* info);
 
 /**
+ * @brief Output response sequence of discrete-time state-space system.
+ *
+ * Computes output sequence y(1),...,y(NY) of discrete-time state-space model
+ * (A,B,C,D) given initial state x(1) and input sequence u(1),...,u(NY).
+ *
+ * Implements:
+ *   x(k+1) = A*x(k) + B*u(k)
+ *   y(k)   = C*x(k) + D*u(k)
+ * for k = 1,...,NY.
+ *
+ * @param[in] n Order of state matrix A (n >= 0)
+ * @param[in] m Number of system inputs (m >= 0)
+ * @param[in] p Number of system outputs (p >= 0)
+ * @param[in] ny Number of output vectors to compute (ny >= 0)
+ * @param[in] a State matrix, dimension (lda,n), column-major
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in] b Input matrix, dimension (ldb,m), column-major
+ * @param[in] ldb Leading dimension of B (ldb >= max(1,n))
+ * @param[in] c Output matrix, dimension (ldc,n), column-major
+ * @param[in] ldc Leading dimension of C (ldc >= max(1,p))
+ * @param[in] d Feedthrough matrix, dimension (ldd,m), column-major
+ * @param[in] ldd Leading dimension of D (ldd >= max(1,p))
+ * @param[in] u Input sequence, dimension (ldu,ny), column k is u(k)
+ * @param[in] ldu Leading dimension of U (ldu >= max(1,m))
+ * @param[in,out] x State vector, dimension (n). On entry: x(1). On exit: x(ny+1)
+ * @param[out] y Output sequence, dimension (ldy,ny), column k is y(k)
+ * @param[in] ldy Leading dimension of Y (ldy >= max(1,p))
+ * @param[out] dwork Workspace array, dimension (n)
+ * @param[out] info Exit code (0 = success, <0 = invalid parameter)
+ */
+void tf01md(const i32 n, const i32 m, const i32 p, const i32 ny,
+            const f64* a, const i32 lda, const f64* b, const i32 ldb,
+            const f64* c, const i32 ldc, const f64* d, const i32 ldd,
+            const f64* u, const i32 ldu, f64* x, f64* y, const i32 ldy,
+            f64* dwork, i32* info);
+
+/**
  * @brief Output sequence of linear time-invariant open-loop system.
  *
  * Computes output sequence y(1),...,y(NY) of discrete-time state-space model
