@@ -24,7 +24,9 @@
       "Bash(gh issue create:*)",
       "Bash(gh issue edit:*)",
       "Bash(timeout 30 python:*)",
-      "Bash(timeout 30 pytest:*)"
+      "Bash(timeout 30 pytest:*)",
+      "Bash(LD_PRELOAD=/usr/lib/gcc/aarch64-linux-gnu/13/libasan.so ASAN_OPTIONS=detect_leaks=0 pytest:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

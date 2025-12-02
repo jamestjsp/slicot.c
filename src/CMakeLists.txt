@@ -88,6 +88,7 @@ set(SLICOT_SOURCES
     TC/tc01od.c
     TF/tf01md.c
     TF/tf01mx.c
+    TF/tf01rd.c
     TG/tg01fd.c
 )
 
