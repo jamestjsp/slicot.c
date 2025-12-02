@@ -8650,6 +8650,98 @@ static PyObject* py_dk01md(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for mb05nd */
+static PyObject* py_mb05nd(PyObject* self, PyObject* args, PyObject* kwargs) {
+    static char *kwlist[] = {"n", "delta", "a", "tol", NULL};
+
+    i32 n;
+    f64 delta, tol;
+    PyObject *a_obj;
+    PyArrayObject *a_array;
+    i32 info;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "idOd", kwlist,
+                                     &n, &delta, &a_obj, &tol)) {
+        return NULL;
+    }
+
+    if (n < 0) {
+        info = -1;
+        npy_intp dims0[2] = {0, 0};
+        npy_intp strides0[2] = {sizeof(f64), sizeof(f64)};
+        PyObject *ex_array = PyArray_New(&PyArray_Type, 2, dims0, NPY_DOUBLE,
+                                         strides0, NULL, 0, NPY_ARRAY_FARRAY, NULL);
+        PyObject *exint_array = PyArray_New(&PyArray_Type, 2, dims0, NPY_DOUBLE,
+                                            strides0, NULL, 0, NPY_ARRAY_FARRAY, NULL);
+        return Py_BuildValue("OOi", ex_array, exint_array, info);
+    }
+
+    if (n == 0) {
+        info = 0;
+        npy_intp dims0[2] = {0, 0};
+        npy_intp strides0[2] = {sizeof(f64), sizeof(f64)};
+        PyObject *ex_array = PyArray_New(&PyArray_Type, 2, dims0, NPY_DOUBLE,
+                                         strides0, NULL, 0, NPY_ARRAY_FARRAY, NULL);
+        PyObject *exint_array = PyArray_New(&PyArray_Type, 2, dims0, NPY_DOUBLE,
+                                            strides0, NULL, 0, NPY_ARRAY_FARRAY, NULL);
+        return Py_BuildValue("OOi", ex_array, exint_array, info);
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (a_array == NULL) {
+        return NULL;
+    }
+
+    if (PyArray_NDIM(a_array) != 2 || PyArray_DIM(a_array, 0) != n || PyArray_DIM(a_array, 1) != n) {
+        PyErr_Format(PyExc_ValueError, "a must be %d x %d array", n, n);
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    i32 lda = (i32)n;
+    i32 ldex = (i32)n;
+    i32 ldexin = (i32)n;
+    i32 nn = n * n;
+    i32 ldwork = 2 * nn;
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+
+    f64 *ex = (f64*)malloc(nn * sizeof(f64));
+    f64 *exint = (f64*)malloc(nn * sizeof(f64));
+    i32 *iwork = (i32*)malloc(n * sizeof(i32));
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+
+    if (!ex || !exint || !iwork || !dwork) {
+        free(ex);
+        free(exint);
+        free(iwork);
+        free(dwork);
+        Py_DECREF(a_array);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    mb05nd(n, delta, a_data, lda, ex, ldex, exint, ldexin, tol,
+           iwork, dwork, ldwork, &info);
+
+    Py_DECREF(a_array);
+    free(iwork);
+    free(dwork);
+
+    npy_intp dims[2] = {n, n};
+    npy_intp strides[2] = {sizeof(f64), n * sizeof(f64)};
+
+    PyObject *ex_array = PyArray_New(&PyArray_Type, 2, dims, NPY_DOUBLE,
+                                     strides, ex, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)ex_array, NPY_ARRAY_OWNDATA);
+
+    PyObject *exint_array = PyArray_New(&PyArray_Type, 2, dims, NPY_DOUBLE,
+                                        strides, exint, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS((PyArrayObject*)exint_array, NPY_ARRAY_OWNDATA);
+
+    return Py_BuildValue("OOi", ex_array, exint_array, info);
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"ab04md", (PyCFunction)py_ab04md, METH_VARARGS | METH_KEYWORDS,
@@ -9086,6 +9178,18 @@ static PyMethodDef SlicotMethods[] = {
      "  c (ndarray): m-by-p matrix C (modified in place)\n\n"
      "Returns:\n"
      "  tau (ndarray): Scalar factors of elementary reflectors\n"},
+
+    {"mb05nd", (PyCFunction)py_mb05nd, METH_VARARGS | METH_KEYWORDS,
+     "Matrix exponential and integral.\n\n"
+     "Computes F(delta) = exp(A*delta) and\n"
+     "H(delta) = integral from 0 to delta of exp(A*s) ds.\n\n"
+     "Parameters:\n"
+     "  n (int): Order of matrix A (n >= 0)\n"
+     "  delta (float): Scalar time parameter\n"
+     "  a (ndarray): n-by-n matrix A (F-order)\n"
+     "  tol (float): Tolerance for Pade approximation order\n\n"
+     "Returns:\n"
+     "  (ex, exint, info): exp(A*delta), integral H(delta), exit code\n"},
 
     {"mb01rb", py_mb01rb, METH_VARARGS,
      "Block triangular symmetric rank-k update (BLAS 3 version).\n\n"

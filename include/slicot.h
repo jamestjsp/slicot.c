@@ -2873,6 +2873,53 @@ void mb04oy(const i32* m, const i32* n, const f64* v, const f64* tau,
             f64* c1, const i32* ldc1, f64* c2, const i32* ldc2, f64* dwork);
 
 /**
+ * @brief Matrix exponential and integral.
+ *
+ * Computes:
+ *   (a) F(delta) = exp(A*delta)
+ *   (b) H(delta) = integral from 0 to delta of exp(A*s) ds
+ *
+ * where A is a real N-by-N matrix and delta is a scalar value.
+ *
+ * Uses Pade approximation with scaling and squaring.
+ *
+ * @param[in] n Order of matrix A (n >= 0)
+ * @param[in] delta Scalar time parameter
+ * @param[in] a N-by-N matrix A, dimension (lda,n)
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[out] ex N-by-N matrix exp(A*delta), dimension (ldex,n)
+ * @param[in] ldex Leading dimension of EX (ldex >= max(1,n))
+ * @param[out] exint N-by-N integral matrix H(delta), dimension (ldexin,n)
+ * @param[in] ldexin Leading dimension of EXINT (ldexin >= max(1,n))
+ * @param[in] tol Tolerance for Pade approximation order. sqrt(eps) recommended.
+ * @param[out] iwork Integer workspace, dimension (n)
+ * @param[out] dwork Double workspace, dimension (ldwork)
+ *                   On exit: dwork[0] = optimal ldwork
+ * @param[in] ldwork Workspace size (ldwork >= max(1, n*(n+1)))
+ *                   For optimal performance: ldwork >= 2*n*n
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  < 0 = invalid parameter -info
+ *                  1..n = Pade denominator singular at (info,info)
+ *                  n+1 = delta*||A||_F too large for meaningful computation
+ */
+void mb05nd(
+    const i32 n,
+    const f64 delta,
+    const f64* a,
+    const i32 lda,
+    f64* ex,
+    const i32 ldex,
+    f64* exint,
+    const i32 ldexin,
+    const f64 tol,
+    i32* iwork,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info
+);
+
+/**
  * @brief Riccati preprocessing - convert coupling weight problems to standard form.
  *
  * Computes:
