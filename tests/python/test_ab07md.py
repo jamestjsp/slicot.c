@@ -1,0 +1,339 @@
+"""Tests for AB07MD: Dual of state-space representation."""
+
+import numpy as np
+import pytest
+from slicot import ab07md
+
+
+class TestAB07MDBasic:
+    """Basic functionality tests from HTML doc example."""
+
+    def test_ab07md_html_example(self):
+        """
+        Validate AB07MD using HTML doc example.
+
+        Input: 3-state, 1-input, 2-output system (A,B,C,D)
+        Output: Dual 2-input, 1-output system (A',C',B',D')
+        """
+        n, m, p = 3, 1, 2
+
+        a = np.array([
+            [1.0, 2.0, 0.0],
+            [4.0, -1.0, 0.0],
+            [0.0, 0.0, 1.0]
+        ], order='F', dtype=float)
+
+        b = np.array([
+            [1.0],
+            [0.0],
+            [1.0]
+        ], order='F', dtype=float)
+
+        c = np.array([
+            [0.0, 1.0, -1.0],
+            [0.0, 0.0, 1.0]
+        ], order='F', dtype=float)
+
+        d = np.array([
+            [0.0],
+            [1.0]
+        ], order='F', dtype=float)
+
+        a_dual_expected = np.array([
+            [1.0, 4.0, 0.0],
+            [2.0, -1.0, 0.0],
+            [0.0, 0.0, 1.0]
+        ], order='F', dtype=float)
+
+        b_dual_expected = np.array([
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [-1.0, 1.0]
+        ], order='F', dtype=float)
+
+        c_dual_expected = np.array([
+            [1.0, 0.0, 1.0]
+        ], order='F', dtype=float)
+
+        d_dual_expected = np.array([
+            [0.0, 1.0]
+        ], order='F', dtype=float)
+
+        a_dual, b_dual, c_dual, d_dual, info = ab07md('D', n, m, p, a, b, c, d)
+
+        assert info == 0
+        np.testing.assert_allclose(a_dual, a_dual_expected, rtol=1e-14)
+        np.testing.assert_allclose(b_dual, b_dual_expected, rtol=1e-14)
+        np.testing.assert_allclose(c_dual, c_dual_expected, rtol=1e-14)
+        np.testing.assert_allclose(d_dual, d_dual_expected, rtol=1e-14)
+
+
+class TestAB07MDMathematicalProperties:
+    """Mathematical property tests for dual transformation."""
+
+    def test_dual_involution(self):
+        """
+        Validate involution property: dual(dual(sys)) = sys.
+
+        Applying dual transformation twice returns original system.
+        Random seed: 42 (for reproducibility)
+        """
+        np.random.seed(42)
+        n, m, p = 4, 2, 3
+
+        a_orig = np.random.randn(n, n).astype(float, order='F')
+        b_orig = np.random.randn(n, m).astype(float, order='F')
+        c_orig = np.random.randn(p, n).astype(float, order='F')
+        d_orig = np.random.randn(p, m).astype(float, order='F')
+
+        a = a_orig.copy(order='F')
+        b = b_orig.copy(order='F')
+        c = c_orig.copy(order='F')
+        d = d_orig.copy(order='F')
+
+        a1, b1, c1, d1, info1 = ab07md('D', n, m, p, a, b, c, d)
+        assert info1 == 0
+
+        a2, b2, c2, d2, info2 = ab07md('D', n, p, m, a1, b1, c1, d1)
+        assert info2 == 0
+
+        np.testing.assert_allclose(a2, a_orig, rtol=1e-14)
+        np.testing.assert_allclose(b2, b_orig, rtol=1e-14)
+        np.testing.assert_allclose(c2, c_orig, rtol=1e-14)
+        np.testing.assert_allclose(d2, d_orig, rtol=1e-14)
+
+    def test_dual_transpose_relationships(self):
+        """
+        Validate dual relationships: A_dual = A^T, B_dual = C^T, C_dual = B^T, D_dual = D^T.
+
+        Random seed: 123 (for reproducibility)
+        """
+        np.random.seed(123)
+        n, m, p = 3, 2, 4
+
+        a_orig = np.random.randn(n, n).astype(float, order='F')
+        b_orig = np.random.randn(n, m).astype(float, order='F')
+        c_orig = np.random.randn(p, n).astype(float, order='F')
+        d_orig = np.random.randn(p, m).astype(float, order='F')
+
+        a = a_orig.copy(order='F')
+        b = b_orig.copy(order='F')
+        c = c_orig.copy(order='F')
+        d = d_orig.copy(order='F')
+
+        a_dual, b_dual, c_dual, d_dual, info = ab07md('D', n, m, p, a, b, c, d)
+
+        assert info == 0
+        np.testing.assert_allclose(a_dual, a_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(b_dual, c_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(c_dual, b_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(d_dual, d_orig.T, rtol=1e-14)
+
+    def test_eigenvalue_preservation(self):
+        """
+        Validate eigenvalue preservation: eigenvalues of A and A' are identical.
+
+        Random seed: 456 (for reproducibility)
+        """
+        np.random.seed(456)
+        n, m, p = 5, 2, 3
+
+        a_orig = np.random.randn(n, n).astype(float, order='F')
+        b = np.random.randn(n, m).astype(float, order='F')
+        c = np.random.randn(p, n).astype(float, order='F')
+        d = np.random.randn(p, m).astype(float, order='F')
+
+        eig_before = np.linalg.eigvals(a_orig)
+
+        a_dual, b_dual, c_dual, d_dual, info = ab07md('D', n, m, p, a_orig, b, c, d)
+
+        assert info == 0
+        eig_after = np.linalg.eigvals(a_dual)
+
+        np.testing.assert_allclose(
+            sorted(eig_before.real),
+            sorted(eig_after.real),
+            rtol=1e-14
+        )
+        np.testing.assert_allclose(
+            sorted(eig_before.imag),
+            sorted(eig_after.imag),
+            rtol=1e-14
+        )
+
+
+class TestAB07MDEdgeCases:
+    """Edge case tests."""
+
+    def test_jobd_z_no_d_processing(self):
+        """
+        Test JOBD='Z' mode where D is zero matrix (not processed).
+
+        Random seed: 789 (for reproducibility)
+        """
+        np.random.seed(789)
+        n, m, p = 3, 2, 2
+
+        a_orig = np.random.randn(n, n).astype(float, order='F')
+        b_orig = np.random.randn(n, m).astype(float, order='F')
+        c_orig = np.random.randn(p, n).astype(float, order='F')
+        d = np.zeros((p, m), order='F', dtype=float)
+
+        a = a_orig.copy(order='F')
+        b = b_orig.copy(order='F')
+        c = c_orig.copy(order='F')
+
+        a_dual, b_dual, c_dual, d_dual, info = ab07md('Z', n, m, p, a, b, c, d)
+
+        assert info == 0
+        np.testing.assert_allclose(a_dual, a_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(b_dual, c_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(c_dual, b_orig.T, rtol=1e-14)
+
+    def test_square_system_m_equals_p(self):
+        """
+        Test square system where M = P.
+
+        Random seed: 111 (for reproducibility)
+        """
+        np.random.seed(111)
+        n, m, p = 3, 2, 2
+
+        a_orig = np.random.randn(n, n).astype(float, order='F')
+        b_orig = np.random.randn(n, m).astype(float, order='F')
+        c_orig = np.random.randn(p, n).astype(float, order='F')
+        d_orig = np.random.randn(p, m).astype(float, order='F')
+
+        a = a_orig.copy(order='F')
+        b = b_orig.copy(order='F')
+        c = c_orig.copy(order='F')
+        d = d_orig.copy(order='F')
+
+        a_dual, b_dual, c_dual, d_dual, info = ab07md('D', n, m, p, a, b, c, d)
+
+        assert info == 0
+        np.testing.assert_allclose(a_dual, a_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(b_dual, c_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(c_dual, b_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(d_dual, d_orig.T, rtol=1e-14)
+
+    def test_siso_system(self):
+        """
+        Test SISO system (M=1, P=1).
+
+        Random seed: 222 (for reproducibility)
+        """
+        np.random.seed(222)
+        n, m, p = 4, 1, 1
+
+        a_orig = np.random.randn(n, n).astype(float, order='F')
+        b_orig = np.random.randn(n, m).astype(float, order='F')
+        c_orig = np.random.randn(p, n).astype(float, order='F')
+        d_orig = np.random.randn(p, m).astype(float, order='F')
+
+        a = a_orig.copy(order='F')
+        b = b_orig.copy(order='F')
+        c = c_orig.copy(order='F')
+        d = d_orig.copy(order='F')
+
+        a_dual, b_dual, c_dual, d_dual, info = ab07md('D', n, m, p, a, b, c, d)
+
+        assert info == 0
+        np.testing.assert_allclose(a_dual, a_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(b_dual, c_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(c_dual, b_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(d_dual, d_orig.T, rtol=1e-14)
+
+    def test_n_zero(self):
+        """
+        Test N=0 case (quick return).
+        """
+        n, m, p = 0, 2, 3
+
+        a = np.zeros((1, 1), order='F', dtype=float)
+        b = np.zeros((1, max(m, p)), order='F', dtype=float)
+        c = np.zeros((max(m, p), 1), order='F', dtype=float)
+        d = np.zeros((max(m, p), max(m, p)), order='F', dtype=float)
+
+        a_dual, b_dual, c_dual, d_dual, info = ab07md('D', n, m, p, a, b, c, d)
+
+        assert info == 0
+
+    def test_m_greater_than_p(self):
+        """
+        Test M > P case (more inputs than outputs).
+
+        Random seed: 333 (for reproducibility)
+        """
+        np.random.seed(333)
+        n, m, p = 3, 4, 2
+
+        a_orig = np.random.randn(n, n).astype(float, order='F')
+        b_orig = np.random.randn(n, m).astype(float, order='F')
+        c_orig = np.random.randn(p, n).astype(float, order='F')
+        d_orig = np.random.randn(p, m).astype(float, order='F')
+
+        a = a_orig.copy(order='F')
+        b = b_orig.copy(order='F')
+        c = c_orig.copy(order='F')
+        d = d_orig.copy(order='F')
+
+        a_dual, b_dual, c_dual, d_dual, info = ab07md('D', n, m, p, a, b, c, d)
+
+        assert info == 0
+        np.testing.assert_allclose(a_dual, a_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(b_dual, c_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(c_dual, b_orig.T, rtol=1e-14)
+        np.testing.assert_allclose(d_dual, d_orig.T, rtol=1e-14)
+
+
+class TestAB07MDErrorHandling:
+    """Error handling tests."""
+
+    def test_invalid_jobd(self):
+        """Test invalid JOBD parameter."""
+        n, m, p = 2, 1, 1
+        a = np.zeros((n, n), order='F', dtype=float)
+        b = np.zeros((n, 1), order='F', dtype=float)
+        c = np.zeros((1, n), order='F', dtype=float)
+        d = np.zeros((1, 1), order='F', dtype=float)
+
+        a_dual, b_dual, c_dual, d_dual, info = ab07md('X', n, m, p, a, b, c, d)
+
+        assert info == -1
+
+    def test_negative_n(self):
+        """Test negative N parameter."""
+        n, m, p = -1, 1, 1
+        a = np.zeros((1, 1), order='F', dtype=float)
+        b = np.zeros((1, 1), order='F', dtype=float)
+        c = np.zeros((1, 1), order='F', dtype=float)
+        d = np.zeros((1, 1), order='F', dtype=float)
+
+        a_dual, b_dual, c_dual, d_dual, info = ab07md('D', n, m, p, a, b, c, d)
+
+        assert info == -2
+
+    def test_negative_m(self):
+        """Test negative M parameter."""
+        n, m, p = 2, -1, 1
+        a = np.zeros((n, n), order='F', dtype=float)
+        b = np.zeros((n, 1), order='F', dtype=float)
+        c = np.zeros((1, n), order='F', dtype=float)
+        d = np.zeros((1, 1), order='F', dtype=float)
+
+        a_dual, b_dual, c_dual, d_dual, info = ab07md('D', n, m, p, a, b, c, d)
+
+        assert info == -3
+
+    def test_negative_p(self):
+        """Test negative P parameter."""
+        n, m, p = 2, 1, -1
+        a = np.zeros((n, n), order='F', dtype=float)
+        b = np.zeros((n, 1), order='F', dtype=float)
+        c = np.zeros((1, n), order='F', dtype=float)
+        d = np.zeros((1, 1), order='F', dtype=float)
+
+        a_dual, b_dual, c_dual, d_dual, info = ab07md('D', n, m, p, a, b, c, d)
+
+        assert info == -4
