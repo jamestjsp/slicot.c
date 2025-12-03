@@ -3109,6 +3109,48 @@ void mb04oy(const i32* m, const i32* n, const f64* v, const f64* tau,
             f64* c1, const i32* ldc1, f64* c2, const i32* ldc2, f64* dwork);
 
 /**
+ * @brief Hamiltonian matrix square-reduction.
+ *
+ * Transforms a Hamiltonian matrix H = [[A, G], [Q, -A^T]] into a
+ * square-reduced Hamiltonian matrix H' = [[A', G'], [Q', -A'^T]]
+ * by an orthogonal symplectic similarity transformation H' = U^T H U.
+ *
+ * The square-reduced form satisfies Q'A' - A'^T Q' = 0. The square
+ * of H' has the form [[A'', G''], [0, A''^T]] where A'' is upper
+ * Hessenberg and G'' is skew symmetric.
+ *
+ * Uses implicit Van Loan's method.
+ *
+ * @param[in] compu Indicates transformation matrix handling:
+ *                  'N' - U is not required
+ *                  'I'/'F' - On exit, U contains orthogonal symplectic matrix
+ *                  'V'/'A' - On input, U contains orthogonal symplectic S;
+ *                            On exit, U contains S*U
+ * @param[in] n Order of matrices A, G, Q (n >= 0)
+ * @param[in,out] a On input: N-by-N upper left block A
+ *                  On output: N-by-N upper left block A' (square-reduced)
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in,out] qg On input: N-by-(N+1) array storing Q and G in packed form:
+ *                   - Q(i,j) stored in QG(i,j) for i >= j (lower triangular)
+ *                   - G(i,j) stored in QG(j,i+1) for i >= j (upper triangular)
+ *                   On output: Square-reduced Q' and G' in same format
+ * @param[in] ldqg Leading dimension of QG (ldqg >= max(1,n))
+ * @param[in,out] u N-by-2N array for transformation matrix:
+ *                  - If COMPU='N': not referenced
+ *                  - If COMPU='I'/'F': on exit, first N rows of U
+ *                  - If COMPU='V'/'A': on input, first N rows of S;
+ *                                      on exit, first N rows of S*U
+ * @param[in] ldu Leading dimension of U (ldu >= max(1,n) if COMPU != 'N',
+ *                ldu >= 1 otherwise)
+ * @param[out] dwork Workspace, dimension (2*n)
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  < 0 = invalid parameter -info
+ */
+void mb04zd(const char *compu, i32 n, f64 *a, i32 lda, f64 *qg, i32 ldqg,
+            f64 *u, i32 ldu, f64 *dwork, i32 *info);
+
+/**
  * @brief Matrix exponential and integral.
  *
  * Computes:

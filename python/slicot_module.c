@@ -9411,6 +9411,109 @@ static PyObject* py_tc01od(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for mb04zd */
+static PyObject* py_mb04zd(PyObject* self, PyObject* args) {
+    const char *compu_str;
+    char compu;
+    i32 n;
+    PyObject *a_obj, *qg_obj, *u_obj = NULL;
+    PyArrayObject *a_array, *qg_array, *u_array = NULL;
+    f64 *dwork = NULL;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "siOO|O",
+                          &compu_str, &n, &a_obj, &qg_obj, &u_obj)) {
+        return NULL;
+    }
+
+    compu = compu_str[0];
+
+    bool need_u = (compu == 'I' || compu == 'i' || compu == 'F' || compu == 'f' ||
+                   compu == 'V' || compu == 'v' || compu == 'A' || compu == 'a');
+    bool accum = (compu == 'V' || compu == 'v' || compu == 'A' || compu == 'a');
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) {
+        return NULL;
+    }
+
+    qg_array = (PyArrayObject*)PyArray_FROM_OTF(qg_obj, NPY_DOUBLE,
+                                                NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (qg_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    npy_intp *qg_dims = PyArray_DIMS(qg_array);
+    i32 lda = (i32)a_dims[0];
+    i32 ldqg = (i32)qg_dims[0];
+    i32 ldu = (n > 0 && need_u) ? n : 1;
+
+    if (accum && u_obj != NULL && u_obj != Py_None) {
+        u_array = (PyArrayObject*)PyArray_FROM_OTF(u_obj, NPY_DOUBLE,
+                                                    NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+        if (u_array == NULL) {
+            Py_DECREF(a_array);
+            Py_DECREF(qg_array);
+            return NULL;
+        }
+        ldu = (i32)PyArray_DIMS(u_array)[0];
+    } else if (need_u && n > 0) {
+        npy_intp u_dims[2] = {n, 2 * n};
+        u_array = (PyArrayObject*)PyArray_ZEROS(2, u_dims, NPY_DOUBLE, 1);
+        if (u_array == NULL) {
+            Py_DECREF(a_array);
+            Py_DECREF(qg_array);
+            PyErr_NoMemory();
+            return NULL;
+        }
+        ldu = n;
+    } else {
+        npy_intp u_dims[2] = {1, 2};
+        u_array = (PyArrayObject*)PyArray_ZEROS(2, u_dims, NPY_DOUBLE, 1);
+        if (u_array == NULL) {
+            Py_DECREF(a_array);
+            Py_DECREF(qg_array);
+            PyErr_NoMemory();
+            return NULL;
+        }
+        ldu = 1;
+    }
+
+    i32 ldwork = (n > 0) ? 2 * n : 1;
+    dwork = (f64*)malloc(ldwork * sizeof(f64));
+    if (dwork == NULL) {
+        Py_DECREF(a_array);
+        Py_DECREF(qg_array);
+        Py_DECREF(u_array);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *qg_data = (f64*)PyArray_DATA(qg_array);
+    f64 *u_data = (f64*)PyArray_DATA(u_array);
+
+    mb04zd(&compu, n, a_data, lda, qg_data, ldqg, u_data, ldu, dwork, &info);
+
+    free(dwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(qg_array);
+    if (accum && u_obj != NULL && u_obj != Py_None) {
+        PyArray_ResolveWritebackIfCopy(u_array);
+    }
+
+    PyObject *result = Py_BuildValue("OOOi", a_array, qg_array, u_array, info);
+    Py_DECREF(a_array);
+    Py_DECREF(qg_array);
+    Py_DECREF(u_array);
+
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"ab04md", (PyCFunction)py_ab04md, METH_VARARGS | METH_KEYWORDS,
@@ -9902,6 +10005,21 @@ static PyMethodDef SlicotMethods[] = {
      "  c (ndarray): m-by-p matrix C (modified in place)\n\n"
      "Returns:\n"
      "  tau (ndarray): Scalar factors of elementary reflectors\n"},
+
+    {"mb04zd", py_mb04zd, METH_VARARGS,
+     "Hamiltonian matrix square-reduction.\n\n"
+     "Transforms Hamiltonian H=[[A,G],[Q,-A^T]] to square-reduced form\n"
+     "H'=[[A',G'],[Q',-A'^T]] by orthogonal symplectic similarity.\n"
+     "Square-reduced: Q'A' - A'^T Q' = 0.\n\n"
+     "Parameters:\n"
+     "  compu (str): 'N' - no transform, 'I'/'F' - compute U, 'V'/'A' - accumulate\n"
+     "  n (int): Order of matrices A, G, Q (n >= 0)\n"
+     "  a (ndarray): N-by-N matrix A (F-order, modified)\n"
+     "  qg (ndarray): N-by-(N+1) packed Q,G (F-order, modified)\n"
+     "               Q in lower triangular, G in upper triangular cols 1:n\n"
+     "  u (ndarray, optional): N-by-2N transform matrix (for 'V'/'A' modes)\n\n"
+     "Returns:\n"
+     "  (a, qg, u, info): Square-reduced matrices and exit code\n"},
 
     {"mb05nd", (PyCFunction)py_mb05nd, METH_VARARGS | METH_KEYWORDS,
      "Matrix exponential and integral.\n\n"
