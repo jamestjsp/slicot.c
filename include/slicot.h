@@ -3198,6 +3198,53 @@ void mb05nd(
 );
 
 /**
+ * @brief Schur form, eigenvalues, and right eigenvectors.
+ *
+ * Computes for an N-by-N real nonsymmetric matrix A:
+ *   - Orthogonal matrix Q reducing A to real Schur form T
+ *   - Eigenvalues (WR + i*WI)
+ *   - Right eigenvectors R of T (upper triangular by construction)
+ *
+ * The right eigenvector r(j) of T satisfies: T * r(j) = lambda(j) * r(j)
+ *
+ * @param[in] balanc 'N' = no scaling, 'S' = diagonal scaling
+ * @param[in] n Order of matrix A (n >= 0)
+ * @param[in,out] a N-by-N matrix A, dimension (lda,n)
+ *                  On exit: real Schur form T
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[out] wr Real parts of eigenvalues, dimension (n)
+ * @param[out] wi Imaginary parts of eigenvalues, dimension (n)
+ * @param[out] r N-by-N upper triangular matrix of right eigenvectors, dimension (ldr,n)
+ * @param[in] ldr Leading dimension of R (ldr >= max(1,n))
+ * @param[out] q N-by-N orthogonal matrix Q, dimension (ldq,n)
+ * @param[in] ldq Leading dimension of Q (ldq >= max(1,n))
+ * @param[out] dwork Workspace, dimension (ldwork)
+ *                   On exit: dwork[0] = optimal ldwork
+ *                   If balanc='S' and ldwork>0: dwork[1..n] = scaling factors
+ * @param[in] ldwork Workspace size (ldwork >= max(1,4*n))
+ *                   If ldwork=-1: workspace query
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  < 0 = invalid parameter -info
+ *                  > 0 = QR algorithm failed; eigenvalues info+1:n converged
+ */
+void mb05my(
+    const char* balanc,
+    const i32 n,
+    f64* a,
+    const i32 lda,
+    f64* wr,
+    f64* wi,
+    f64* r,
+    const i32 ldr,
+    f64* q,
+    const i32 ldq,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info
+);
+
+/**
  * @brief Riccati preprocessing - convert coupling weight problems to standard form.
  *
  * Computes:

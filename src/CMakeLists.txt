@@ -63,6 +63,7 @@ set(SLICOT_SOURCES
     MB/mb04oy.c
     MB/mb04py.c
     MB/mb04zd.c
+    MB/mb05my.c
     MB/mb05nd.c
     MD/md03ba.c
     MD/md03bb.c

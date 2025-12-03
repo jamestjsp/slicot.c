@@ -9552,6 +9552,110 @@ static PyObject* py_mb04zd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for mb05my */
+static PyObject* py_mb05my(PyObject* self, PyObject* args) {
+    const char *balanc_str;
+    char balanc;
+    PyObject *a_obj;
+    PyArrayObject *a_array = NULL;
+    f64 *wr = NULL, *wi = NULL, *r = NULL, *q = NULL, *dwork = NULL;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "sO", &balanc_str, &a_obj)) {
+        return NULL;
+    }
+
+    balanc = balanc_str[0];
+
+    if (balanc != 'N' && balanc != 'n' && balanc != 'S' && balanc != 's') {
+        info = -1;
+        npy_intp zero_dim[1] = {0};
+        npy_intp zero_dim2[2] = {0, 0};
+        PyArrayObject *wr_arr = (PyArrayObject*)PyArray_ZEROS(1, zero_dim, NPY_DOUBLE, 0);
+        PyArrayObject *wi_arr = (PyArrayObject*)PyArray_ZEROS(1, zero_dim, NPY_DOUBLE, 0);
+        PyArrayObject *r_arr = (PyArrayObject*)PyArray_ZEROS(2, zero_dim2, NPY_DOUBLE, 1);
+        PyArrayObject *q_arr = (PyArrayObject*)PyArray_ZEROS(2, zero_dim2, NPY_DOUBLE, 1);
+        PyArrayObject *t_arr = (PyArrayObject*)PyArray_ZEROS(2, zero_dim2, NPY_DOUBLE, 1);
+        PyObject *result = Py_BuildValue("OOOOOi", wr_arr, wi_arr, r_arr, q_arr, t_arr, info);
+        Py_DECREF(wr_arr);
+        Py_DECREF(wi_arr);
+        Py_DECREF(r_arr);
+        Py_DECREF(q_arr);
+        Py_DECREF(t_arr);
+        return result;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) {
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    i32 n = (i32)a_dims[0];
+    i32 lda = (n > 1) ? n : 1;
+    i32 ldr = lda;
+    i32 ldq = lda;
+
+    wr = (f64*)malloc((n > 0 ? n : 1) * sizeof(f64));
+    wi = (f64*)malloc((n > 0 ? n : 1) * sizeof(f64));
+    r = (f64*)malloc((n > 0 ? n * n : 1) * sizeof(f64));
+    q = (f64*)malloc((n > 0 ? n * n : 1) * sizeof(f64));
+    i32 ldwork = (n > 0) ? 4 * n : 1;
+    dwork = (f64*)malloc(ldwork * sizeof(f64));
+
+    if (wr == NULL || wi == NULL || r == NULL || q == NULL || dwork == NULL) {
+        free(wr);
+        free(wi);
+        free(r);
+        free(q);
+        free(dwork);
+        Py_DECREF(a_array);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+
+    mb05my(&balanc, n, a_data, lda, wr, wi, r, ldr, q, ldq, dwork, ldwork, &info);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+
+    npy_intp dims_n[1] = {n};
+    npy_intp dims_nn[2] = {n, n};
+    npy_intp strides[2] = {sizeof(f64), n * sizeof(f64)};
+    if (n == 0) {
+        strides[0] = sizeof(f64);
+        strides[1] = sizeof(f64);
+    }
+
+    PyArrayObject *wr_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 1, dims_n, NPY_DOUBLE, NULL, wr, 0, 0, NULL);
+    PyArray_ENABLEFLAGS(wr_array, NPY_ARRAY_OWNDATA);
+
+    PyArrayObject *wi_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 1, dims_n, NPY_DOUBLE, NULL, wi, 0, 0, NULL);
+    PyArray_ENABLEFLAGS(wi_array, NPY_ARRAY_OWNDATA);
+
+    PyArrayObject *r_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, dims_nn, NPY_DOUBLE, strides, r, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS(r_array, NPY_ARRAY_OWNDATA);
+
+    PyArrayObject *q_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, dims_nn, NPY_DOUBLE, strides, q, 0, NPY_ARRAY_FARRAY, NULL);
+    PyArray_ENABLEFLAGS(q_array, NPY_ARRAY_OWNDATA);
+
+    PyArrayObject *t_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, dims_nn, NPY_DOUBLE, strides, a_data, 0, NPY_ARRAY_FARRAY, NULL);
+
+    free(dwork);
+
+    PyObject *result = Py_BuildValue("OOOOOi", wr_array, wi_array, r_array, q_array, t_array, info);
+    Py_DECREF(wr_array);
+    Py_DECREF(wi_array);
+    Py_DECREF(r_array);
+    Py_DECREF(q_array);
+    Py_DECREF(t_array);
+    Py_DECREF(a_array);
+
+    return result;
+}
+
 /* Module method definitions */
 static PyMethodDef SlicotMethods[] = {
     {"ab04md", (PyCFunction)py_ab04md, METH_VARARGS | METH_KEYWORDS,
@@ -10058,6 +10162,18 @@ static PyMethodDef SlicotMethods[] = {
      "  u (ndarray, optional): N-by-2N transform matrix (for 'V'/'A' modes)\n\n"
      "Returns:\n"
      "  (a, qg, u, info): Square-reduced matrices and exit code\n"},
+
+    {"mb05my", py_mb05my, METH_VARARGS,
+     "Schur form, eigenvalues, and right eigenvectors.\n\n"
+     "Computes for an N-by-N real nonsymmetric matrix A:\n"
+     "  - Orthogonal matrix Q reducing A to real Schur form T\n"
+     "  - Eigenvalues (WR + i*WI)\n"
+     "  - Right eigenvectors R of T (upper triangular)\n\n"
+     "Parameters:\n"
+     "  balanc (str): 'N' - no scaling, 'S' - diagonal scaling\n"
+     "  a (ndarray): N-by-N matrix A (F-order)\n\n"
+     "Returns:\n"
+     "  (wr, wi, r, q, t, info): Eigenvalues, eigenvectors, Schur form\n"},
 
     {"mb05nd", (PyCFunction)py_mb05nd, METH_VARARGS | METH_KEYWORDS,
      "Matrix exponential and integral.\n\n"
