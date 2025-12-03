@@ -2254,6 +2254,39 @@ void SLC_MB04NY(i32 m, i32 n, const f64* v, i32 incv, f64 tau,
                 f64* a, i32 lda, f64* b, i32 ldb, f64* dwork);
 
 /**
+ * @brief Apply elementary reflector to matrix from left or right.
+ *
+ * Applies real elementary reflector H to m-by-n matrix C, from left or right:
+ *
+ *     H * C  (side='L')
+ *     C * H  (side='R')
+ *
+ * where:
+ *     H = I - tau * u * u',  u = [1; v]
+ *
+ * tau is scalar, v is (m-1)-vector if side='L', (n-1)-vector if side='R'.
+ * If tau=0, H is identity matrix.
+ *
+ * Uses inline code if H has order < 11 for efficiency.
+ *
+ * @param[in] side 'L' = apply H from left (H*C), 'R' = from right (C*H)
+ * @param[in] m Number of rows of matrix C, m >= 0
+ * @param[in] n Number of columns of matrix C, n >= 0
+ * @param[in] v Vector in reflector representation, dimension (m-1) if side='L',
+ *              (n-1) if side='R'
+ * @param[in] tau Scalar factor of elementary reflector H
+ * @param[in,out] c On entry: m-by-n matrix C
+ *                  On exit: H*C if side='L', C*H if side='R'
+ * @param[in] ldc Leading dimension of C, ldc >= max(1,m)
+ * @param[out] dwork Workspace, dimension (n) if side='L', (m) if side='R'.
+ *                   Not referenced if H has order < 11.
+ *
+ * @note Based on LAPACK's DLARFX with special structure optimization.
+ */
+void SLC_MB04PY(char side, i32 m, i32 n, const f64* v, f64 tau,
+                f64* c, i32 ldc, f64* dwork);
+
+/**
  * @brief RQ factorization of special structured block matrix.
  *
  * Calculates an RQ factorization of the first block row and applies

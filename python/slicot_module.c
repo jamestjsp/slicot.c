@@ -4193,6 +4193,62 @@ static PyObject* py_mb04ny(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for mb04py - Apply elementary reflector to matrix */
+static PyObject* py_mb04py(PyObject* self, PyObject* args) {
+    const char* side_str;
+    i32 m, n;
+    f64 tau;
+    PyObject *v_obj, *c_obj;
+    PyArrayObject *v_array, *c_array;
+
+    if (!PyArg_ParseTuple(args, "siiOdO", &side_str, &m, &n, &v_obj, &tau, &c_obj)) {
+        return NULL;
+    }
+
+    char side = side_str[0];
+
+    v_array = (PyArrayObject*)PyArray_FROM_OTF(v_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY);
+    if (v_array == NULL) return NULL;
+
+    c_array = (PyArrayObject*)PyArray_FROM_OTF(c_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (c_array == NULL) {
+        Py_DECREF(v_array);
+        return NULL;
+    }
+
+    npy_intp *c_dims = PyArray_DIMS(c_array);
+    i32 ldc = (i32)c_dims[0];
+
+    i32 order = (side == 'L' || side == 'l') ? m : n;
+    f64 *dwork = NULL;
+    if (order >= 11) {
+        i32 work_size = (side == 'L' || side == 'l') ? n : m;
+        dwork = (f64*)calloc(work_size > 0 ? work_size : 1, sizeof(f64));
+        if (dwork == NULL) {
+            Py_DECREF(v_array);
+            Py_DECREF(c_array);
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate workspace");
+            return NULL;
+        }
+    }
+
+    f64 *v_data = (f64*)PyArray_DATA(v_array);
+    f64 *c_data = (f64*)PyArray_DATA(c_array);
+
+    SLC_MB04PY(side, m, n, v_data, tau, c_data, ldc, dwork);
+
+    if (dwork != NULL) {
+        free(dwork);
+    }
+
+    Py_DECREF(v_array);
+
+    PyObject *result = Py_BuildValue("O", c_array);
+    Py_DECREF(c_array);
+    return result;
+}
+
 /* Python wrapper for mb04nd - RQ factorization of structured block matrix */
 static PyObject* py_mb04nd(PyObject* self, PyObject* args) {
     const char* uplo_str;
@@ -9817,6 +9873,20 @@ static PyMethodDef SlicotMethods[] = {
      "  b (ndarray): Matrix B (m x n, F-order, modified in place)\n\n"
      "Returns:\n"
      "  (a, b): Updated matrices\n"},
+
+    {"mb04py", py_mb04py, METH_VARARGS,
+     "Apply elementary reflector to matrix from left or right.\n\n"
+     "Applies H = I - tau*[1;v]*[1;v]' to m-by-n matrix C.\n"
+     "H*C if side='L', C*H if side='R'.\n\n"
+     "Parameters:\n"
+     "  side (str): 'L' for left, 'R' for right\n"
+     "  m (int): Number of rows of C\n"
+     "  n (int): Number of columns of C\n"
+     "  v (ndarray): Householder vector (m-1 if 'L', n-1 if 'R')\n"
+     "  tau (float): Householder scalar\n"
+     "  c (ndarray): Matrix C (m x n, F-order, modified in place)\n\n"
+     "Returns:\n"
+     "  c: Updated matrix\n"},
 
     {"mb04nd", py_mb04nd, METH_VARARGS,
      "RQ factorization of special structured block matrix.\n\n"
