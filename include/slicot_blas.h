@@ -409,6 +409,31 @@ void SLC_FC_FUNC(dgees, DGEES)(const char* jobvs, const char* sort,
                                 f64* vs, const int* ldvs, f64* work,
                                 const int* lwork, int* bwork, int* info);
 
+/* LAPACK - Hessenberg/Schur routines */
+void SLC_FC_FUNC(dgebal, DGEBAL)(const char* job, const int* n, f64* a,
+                                  const int* lda, int* ilo, int* ihi,
+                                  f64* scale, int* info);
+
+void SLC_FC_FUNC(dgehrd, DGEHRD)(const int* n, const int* ilo, const int* ihi,
+                                  f64* a, const int* lda, f64* tau,
+                                  f64* work, const int* lwork, int* info);
+
+void SLC_FC_FUNC(dorghr, DORGHR)(const int* n, const int* ilo, const int* ihi,
+                                  f64* a, const int* lda, const f64* tau,
+                                  f64* work, const int* lwork, int* info);
+
+void SLC_FC_FUNC(dhseqr, DHSEQR)(const char* job, const char* compz, const int* n,
+                                  const int* ilo, const int* ihi, f64* h,
+                                  const int* ldh, f64* wr, f64* wi, f64* z,
+                                  const int* ldz, f64* work, const int* lwork,
+                                  int* info);
+
+void SLC_FC_FUNC(dtrevc, DTREVC)(const char* side, const char* howmny,
+                                  const int* select, const int* n, const f64* t,
+                                  const int* ldt, f64* vl, const int* ldvl,
+                                  f64* vr, const int* ldvr, const int* mm,
+                                  int* m, f64* work, int* info);
+
 /* LAPACK - Bidiagonal decomposition and SVD */
 void SLC_FC_FUNC(dgebrd, DGEBRD)(const int* m, const int* n, f64* a,
                                   const int* lda, f64* d, f64* e, f64* tauq,
@@ -531,6 +556,11 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DSYEV    SLC_FC_FUNC(dsyev, DSYEV)
 #define SLC_DGGES    SLC_FC_FUNC(dgges, DGGES)
 #define SLC_DGEES    SLC_FC_FUNC(dgees, DGEES)
+#define SLC_DGEBAL   SLC_FC_FUNC(dgebal, DGEBAL)
+#define SLC_DGEHRD   SLC_FC_FUNC(dgehrd, DGEHRD)
+#define SLC_DORGHR   SLC_FC_FUNC(dorghr, DORGHR)
+#define SLC_DHSEQR   SLC_FC_FUNC(dhseqr, DHSEQR)
+#define SLC_DTREVC   SLC_FC_FUNC(dtrevc, DTREVC)
 #define SLC_DGEBRD   SLC_FC_FUNC(dgebrd, DGEBRD)
 #define SLC_DORGBR   SLC_FC_FUNC(dorgbr, DORGBR)
 #define SLC_DBDSQR   SLC_FC_FUNC(dbdsqr, DBDSQR)
