@@ -4025,6 +4025,39 @@ void tb01id(const char* job, i32 n, i32 m, i32 p, f64* maxred,
             f64* scale, i32* info);
 
 /**
+ * @brief Discrete Fourier transform or inverse transform of complex signal.
+ *
+ * Computes the discrete Fourier transform (DFT) or inverse DFT of a complex
+ * signal using a decimation-in-time FFT algorithm. N must be a power of 2.
+ *
+ * Forward transform (INDI='D'):
+ *   FZ(k) = SUM_{i=1}^{N} Z(i) * V^((k-1)*(i-1))
+ *   where V = exp(-2*pi*j/N) and j^2 = -1
+ *
+ * Inverse transform (INDI='I'):
+ *   Z(i) = SUM_{k=1}^{N} FZ(k) * W^((k-1)*(i-1))
+ *   where W = exp(2*pi*j/N)
+ *
+ * Note: Forward then inverse transform scales signal by factor N.
+ *
+ * @param[in] indi Transform direction:
+ *                 'D' = (Direct) Fourier transform
+ *                 'I' = Inverse Fourier transform
+ * @param[in] n Number of complex samples (n >= 2, must be power of 2)
+ * @param[in,out] xr Real part of signal, dimension (n)
+ *                   In: real part of z (if 'D') or f(z) (if 'I')
+ *                   Out: real part of f(z) (if 'D') or z (if 'I')
+ * @param[in,out] xi Imaginary part of signal, dimension (n)
+ *                   In: imaginary part of z (if 'D') or f(z) (if 'I')
+ *                   Out: imaginary part of f(z) (if 'D') or z (if 'I')
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  -1 = invalid INDI
+ *                  -2 = N < 2 or N not power of 2
+ */
+void dg01md(const char* indi, i32 n, f64* xr, f64* xi, i32* info);
+
+/**
  * @brief Apply anti-aliasing window to a real signal.
  *
  * Applies a windowing function (Hamming, Hann, or Quadratic) to a real signal
