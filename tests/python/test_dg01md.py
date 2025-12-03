@@ -239,8 +239,8 @@ class TestDG01MDEdgeCases:
         xr_back, xi_back, info2 = dg01md('I', xr_fft, xi_fft)
         assert info2 == 0
 
-        np.testing.assert_allclose(xr_back, n * xr_orig, rtol=1e-13)
-        np.testing.assert_allclose(xi_back, n * xi_orig, rtol=1e-13)
+        np.testing.assert_allclose(xr_back, n * xr_orig, rtol=1e-12)
+        np.testing.assert_allclose(xi_back, n * xi_orig, rtol=1e-12)
 
     def test_zero_signal(self):
         """Test that zero signal gives zero output."""

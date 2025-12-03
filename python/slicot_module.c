@@ -9116,6 +9116,44 @@ static PyObject* py_mc01td(PyObject* self, PyObject* args) {
     return Py_BuildValue("Oiiii", stable_obj, nz, dp_out, iwarn, info);
 }
 
+/* Python wrapper for dg01md */
+static PyObject* py_dg01md(PyObject* self, PyObject* args) {
+    const char *indi_str;
+    PyObject *xr_obj, *xi_obj;
+    PyArrayObject *xr_array, *xi_array;
+
+    if (!PyArg_ParseTuple(args, "sOO", &indi_str, &xr_obj, &xi_obj)) {
+        return NULL;
+    }
+
+    xr_array = (PyArrayObject*)PyArray_FROM_OTF(xr_obj, NPY_DOUBLE,
+                                                NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (xr_array == NULL) {
+        return NULL;
+    }
+
+    xi_array = (PyArrayObject*)PyArray_FROM_OTF(xi_obj, NPY_DOUBLE,
+                                                NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (xi_array == NULL) {
+        Py_DECREF(xr_array);
+        return NULL;
+    }
+
+    i32 n = (i32)PyArray_SIZE(xr_array);
+    f64 *xr_data = (f64*)PyArray_DATA(xr_array);
+    f64 *xi_data = (f64*)PyArray_DATA(xi_array);
+    i32 info;
+
+    dg01md(indi_str, n, xr_data, xi_data, &info);
+
+    PyArray_ResolveWritebackIfCopy(xr_array);
+    PyArray_ResolveWritebackIfCopy(xi_array);
+    PyObject *result = Py_BuildValue("OOi", xr_array, xi_array, info);
+    Py_DECREF(xr_array);
+    Py_DECREF(xi_array);
+    return result;
+}
+
 /* Python wrapper for dk01md */
 static PyObject* py_dk01md(PyObject* self, PyObject* args) {
     const char *type_str;
@@ -10720,6 +10758,15 @@ static PyMethodDef SlicotMethods[] = {
      "Returns:\n"
      "  (a, b, c, maxred, scale, info): Balanced matrices,\n"
      "    norm ratio, scale factors, exit code\n"},
+
+    {"dg01md", py_dg01md, METH_VARARGS,
+     "Compute discrete Fourier transform or inverse of complex signal.\n\n"
+     "Parameters:\n"
+     "  indi (str): 'D'=forward FFT, 'I'=inverse FFT\n"
+     "  xr (ndarray): Real part of signal (N samples, must be power of 2)\n"
+     "  xi (ndarray): Imaginary part of signal (N samples)\n\n"
+     "Returns:\n"
+     "  (xr, xi, info): Transformed signal (real, imag) and exit code\n"},
 
     {"dk01md", py_dk01md, METH_VARARGS,
      "Apply anti-aliasing window to a real signal.\n\n"
