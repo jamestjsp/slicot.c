@@ -8,10 +8,6 @@
 #include <math.h>
 #include <ctype.h>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
 void dg01md(const char *indi, i32 n, f64 *xr, f64 *xi, i32 *info)
 {
     *info = 0;
