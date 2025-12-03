@@ -4,7 +4,6 @@
 #include "slicot_blas.h"
 
 #include <stdbool.h>
-#include <string.h>
 
 void SLC_MB04PY(char side, i32 m, i32 n, const f64* v, f64 tau,
                 f64* c, i32 ldc, f64* dwork) {
