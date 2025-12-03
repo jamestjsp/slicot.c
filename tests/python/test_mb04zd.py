@@ -22,7 +22,7 @@ def test_mb04zd_html_example():
     ], dtype=float, order='F')
 
     g_upper = np.array([
-        [1.0, 1.0, 2.0],
+        [1.0, 1.0, 1.0],
         [0.0, 2.0, 2.0],
         [0.0, 0.0, 3.0]
     ], dtype=float, order='F')

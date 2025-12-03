@@ -99,6 +99,15 @@ void SLC_FC_FUNC(dger, DGER)(const int* m, const int* n, const f64* alpha,
                               const f64* x, const int* incx, const f64* y,
                               const int* incy, f64* a, const int* lda);
 
+void SLC_FC_FUNC(dsymv, DSYMV)(const char* uplo, const int* n, const f64* alpha,
+                                const f64* a, const int* lda, const f64* x,
+                                const int* incx, const f64* beta, f64* y,
+                                const int* incy);
+
+void SLC_FC_FUNC(dsyr2, DSYR2)(const char* uplo, const int* n, const f64* alpha,
+                                const f64* x, const int* incx, const f64* y,
+                                const int* incy, f64* a, const int* lda);
+
 /* BLAS Level 3 - Matrix-matrix operations */
 void SLC_FC_FUNC(dtrmm, DTRMM)(const char* side, const char* uplo, const char* transa,
                                 const char* diag, const int* m, const int* n,
@@ -224,6 +233,10 @@ void SLC_FC_FUNC(dlarfg, DLARFG)(const int* n, f64* alpha, f64* x,
 void SLC_FC_FUNC(dlarf, DLARF)(const char* side, const int* m, const int* n,
                                 const f64* v, const int* incv, const f64* tau,
                                 f64* c, const int* ldc, f64* work);
+
+void SLC_FC_FUNC(dlarfx, DLARFX)(const char* side, const int* m, const int* n,
+                                  const f64* v, const f64* tau, f64* c,
+                                  const int* ldc, f64* work);
 
 /* LAPACK - SVD */
 void SLC_FC_FUNC(dgesvd, DGESVD)(const char* jobu, const char* jobvt,
@@ -450,6 +463,8 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DTRMV    SLC_FC_FUNC(dtrmv, DTRMV)
 #define SLC_DTRSV    SLC_FC_FUNC(dtrsv, DTRSV)
 #define SLC_DGER     SLC_FC_FUNC(dger, DGER)
+#define SLC_DSYMV    SLC_FC_FUNC(dsymv, DSYMV)
+#define SLC_DSYR2    SLC_FC_FUNC(dsyr2, DSYR2)
 #define SLC_DTRMM    SLC_FC_FUNC(dtrmm, DTRMM)
 #define SLC_DTRSM    SLC_FC_FUNC(dtrsm, DTRSM)
 #define SLC_DGEMM    SLC_FC_FUNC(dgemm, DGEMM)
@@ -479,6 +494,7 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DGERQF   SLC_FC_FUNC(dgerqf, DGERQF)
 #define SLC_DLARFG   SLC_FC_FUNC(dlarfg, DLARFG)
 #define SLC_DLARF    SLC_FC_FUNC(dlarf, DLARF)
+#define SLC_DLARFX   SLC_FC_FUNC(dlarfx, DLARFX)
 #define SLC_DLAIC1   SLC_FC_FUNC(dlaic1, DLAIC1)
 #define SLC_DLANGE   SLC_FC_FUNC(dlange, DLANGE)
 #define SLC_DLANHS   SLC_FC_FUNC(dlanhs, DLANHS)
