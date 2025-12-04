@@ -3539,6 +3539,85 @@ void sb02rd(
     i32* info);
 
 /**
+ * @brief Construct extended Hamiltonian/symplectic matrix pairs for Riccati equations.
+ *
+ * Constructs extended matrix pairs for algebraic Riccati equations in optimal
+ * control and spectral factorization problems. The (2N+M)-dimensional pencils are:
+ *
+ * Discrete-time:              Continuous-time:
+ * |A   0   B|     |E   0   0|    |A   0   B|     |E   0   0|
+ * |Q  -E'  L| - z |0  -A'  0|,   |Q   A'  L| - s |0  -E'  0|
+ * |L'  0   R|     |0  -B'  0|    |L'  B'  R|     |0   0   0|
+ *
+ * For JOBB='G', directly constructs 2N-by-2N pairs using G = B*R^(-1)*B'.
+ * For JOBB='B', compresses the extended pencil to 2N-by-2N using QL factorization.
+ *
+ * @param[in] type_str Problem type: 'O'=optimal control, 'S'=spectral factorization
+ * @param[in] dico System type: 'C'=continuous, 'D'=discrete
+ * @param[in] jobb Input type: 'B'=B,R given, 'G'=G given
+ * @param[in] fact Factorization: 'N'=Q,R given, 'C'=C given Q=C'C, 'D'=D given R=D'D, 'B'=both
+ * @param[in] uplo Triangle: 'U'=upper, 'L'=lower (for Q,R,G when JOBB='G' or FACT='N')
+ * @param[in] jobl Cross-weight: 'Z'=L is zero, 'N'=L is nonzero (JOBB='B' only)
+ * @param[in] jobe Descriptor: 'I'=E is identity, 'N'=E is general
+ * @param[in] n Order of A, Q, E (n >= 0)
+ * @param[in] m Order of R and columns of B (JOBB='B'), unused for JOBB='G'
+ * @param[in] p Rows of C and/or D (FACT='C','D','B' or TYPE='S')
+ * @param[in] a N-by-N state matrix A, dimension (lda,n)
+ * @param[in] lda Leading dimension of A (>= max(1,n))
+ * @param[in] b If JOBB='B': N-by-M input matrix B; If JOBB='G': N-by-N symmetric G
+ * @param[in] ldb Leading dimension of B (>= max(1,n))
+ * @param[in] q If FACT='N','D': N-by-N symmetric Q; If FACT='C','B': P-by-N output matrix C
+ * @param[in] ldq Leading dimension of Q (>= max(1,n) or max(1,p) depending on FACT)
+ * @param[in] r If FACT='N','C': M-by-M symmetric R; If FACT='D','B': P-by-M matrix D
+ * @param[in] ldr Leading dimension of R (varies by JOBB and FACT)
+ * @param[in] l N-by-M cross-weighting matrix L (JOBL='N', JOBB='B')
+ * @param[in] ldl Leading dimension of L (>= max(1,n) if JOBL='N')
+ * @param[in] e N-by-N descriptor matrix E (JOBE='N')
+ * @param[in] lde Leading dimension of E (>= max(1,n) if JOBE='N')
+ * @param[out] af 2N-by-2N output matrix Af, dimension (ldaf, 2*n+m or 2*n)
+ * @param[in] ldaf Leading dimension of AF (>= 2*n+m if JOBB='B', >= 2*n otherwise)
+ * @param[out] bf 2N-by-2N output matrix Bf (not used if DICO='C', JOBB='G', JOBE='I')
+ * @param[in] ldbf Leading dimension of BF
+ * @param[in] tol Tolerance for singularity test (if <= 0, machine epsilon used)
+ * @param[out] iwork Integer workspace (m if JOBB='B', 1 otherwise)
+ * @param[out] dwork Double workspace. On exit: dwork[0]=optimal work, dwork[1]=rcond (JOBB='B')
+ * @param[in] ldwork Workspace size (>= max(1, 2*n+m, 3*m) for JOBB='B', >= 1 otherwise)
+ * @param[out] info 0=success, <0=invalid param, 1=singular extended pencil
+ */
+void sb02oy(
+    const char* type_str,
+    const char* dico,
+    const char* jobb,
+    const char* fact,
+    const char* uplo,
+    const char* jobl,
+    const char* jobe,
+    const i32 n,
+    const i32 m,
+    const i32 p,
+    const f64* a,
+    const i32 lda,
+    const f64* b,
+    const i32 ldb,
+    const f64* q,
+    const i32 ldq,
+    const f64* r,
+    const i32 ldr,
+    const f64* l,
+    const i32 ldl,
+    const f64* e,
+    const i32 lde,
+    f64* af,
+    const i32 ldaf,
+    f64* bf,
+    const i32 ldbf,
+    const f64 tol,
+    i32* iwork,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info);
+
+/**
  * @brief Construct Hamiltonian or symplectic matrix for Riccati equation.
  *
  * For continuous-time (DICO='C'):

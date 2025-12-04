@@ -7114,6 +7114,279 @@ cleanup:
     return NULL;
 }
 
+/* Python wrapper for sb02oy */
+static PyObject* py_sb02oy(PyObject* self, PyObject* args) {
+    const char *type_str, *dico_str, *jobb_str, *fact_str, *uplo_str, *jobl_str, *jobe_str;
+    i32 n, m, p;
+    f64 tol;
+    PyObject *a_obj, *b_obj, *q_obj, *r_obj, *l_obj, *e_obj;
+
+    if (!PyArg_ParseTuple(args, "sssssssiiiOOOOOOd",
+                          &type_str, &dico_str, &jobb_str, &fact_str, &uplo_str,
+                          &jobl_str, &jobe_str, &n, &m, &p,
+                          &a_obj, &b_obj, &q_obj, &r_obj, &l_obj, &e_obj, &tol)) {
+        return NULL;
+    }
+
+    char type_c = toupper((unsigned char)type_str[0]);
+    char dico = toupper((unsigned char)dico_str[0]);
+    char jobb = toupper((unsigned char)jobb_str[0]);
+    char fact = toupper((unsigned char)fact_str[0]);
+    char uplo = toupper((unsigned char)uplo_str[0]);
+    char jobl = toupper((unsigned char)jobl_str[0]);
+    char jobe = toupper((unsigned char)jobe_str[0]);
+
+    bool optc = (type_c == 'O');
+    bool discr = (dico == 'D');
+    bool ljobb = (jobb == 'B');
+    bool lfacn = (fact == 'N');
+    bool lfacq = (fact == 'C');
+    bool lfacr = (fact == 'D');
+    bool lfacb = (fact == 'B');
+    bool ljobl = (jobl == 'Z');
+    bool ljobe = (jobe == 'I');
+
+    if (!optc && type_c != 'S') {
+        PyErr_SetString(PyExc_ValueError, "TYPE must be 'O' or 'S'");
+        return NULL;
+    }
+    if (!discr && dico != 'C') {
+        PyErr_SetString(PyExc_ValueError, "DICO must be 'C' or 'D'");
+        return NULL;
+    }
+    if (!ljobb && jobb != 'G') {
+        PyErr_SetString(PyExc_ValueError, "JOBB must be 'B' or 'G'");
+        return NULL;
+    }
+    if (!lfacn && !lfacq && !lfacr && !lfacb) {
+        PyErr_SetString(PyExc_ValueError, "FACT must be 'N', 'C', 'D', or 'B'");
+        return NULL;
+    }
+    if (uplo != 'U' && uplo != 'L') {
+        PyErr_SetString(PyExc_ValueError, "UPLO must be 'U' or 'L'");
+        return NULL;
+    }
+    if (ljobb && !ljobl && jobl != 'N') {
+        PyErr_SetString(PyExc_ValueError, "JOBL must be 'Z' or 'N'");
+        return NULL;
+    }
+    if (!ljobe && jobe != 'N') {
+        PyErr_SetString(PyExc_ValueError, "JOBE must be 'I' or 'N'");
+        return NULL;
+    }
+    if (n < 0) {
+        PyErr_SetString(PyExc_ValueError, "n must be non-negative");
+        return NULL;
+    }
+    if (ljobb && m < 0) {
+        PyErr_SetString(PyExc_ValueError, "m must be non-negative");
+        return NULL;
+    }
+
+    PyArrayObject *a_array = NULL, *b_array = NULL, *q_array = NULL;
+    PyArrayObject *r_array = NULL, *l_array = NULL, *e_array = NULL;
+    PyArrayObject *af_array = NULL, *bf_array = NULL;
+
+    i32 lda = 1, ldb = 1, ldq = 1, ldr = 1, ldl = 1, lde = 1;
+    f64 *a_data = NULL, *b_data = NULL, *q_data = NULL;
+    f64 *r_data = NULL, *l_data = NULL, *e_data = NULL;
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!a_array) goto cleanup;
+    lda = (i32)PyArray_DIM(a_array, 0);
+    if (lda < 1) lda = 1;
+    a_data = (f64*)PyArray_DATA(a_array);
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!b_array) goto cleanup;
+    ldb = (i32)PyArray_DIM(b_array, 0);
+    if (ldb < 1) ldb = 1;
+    b_data = (f64*)PyArray_DATA(b_array);
+
+    q_array = (PyArrayObject*)PyArray_FROM_OTF(q_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+    if (!q_array) goto cleanup;
+    ldq = (i32)PyArray_DIM(q_array, 0);
+    if (ldq < 1) ldq = 1;
+    q_data = (f64*)PyArray_DATA(q_array);
+
+    if (ljobb && r_obj != Py_None) {
+        r_array = (PyArrayObject*)PyArray_FROM_OTF(r_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+        if (!r_array) goto cleanup;
+        ldr = (i32)PyArray_DIM(r_array, 0);
+        if (ldr < 1) ldr = 1;
+        r_data = (f64*)PyArray_DATA(r_array);
+    }
+
+    if (ljobb && l_obj != Py_None) {
+        l_array = (PyArrayObject*)PyArray_FROM_OTF(l_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+        if (!l_array) goto cleanup;
+        ldl = (i32)PyArray_DIM(l_array, 0);
+        if (ldl < 1) ldl = 1;
+        l_data = (f64*)PyArray_DATA(l_array);
+    }
+
+    if (!ljobe && e_obj != Py_None) {
+        e_array = (PyArrayObject*)PyArray_FROM_OTF(e_obj, NPY_DOUBLE, NPY_ARRAY_FARRAY_RO);
+        if (!e_array) goto cleanup;
+        lde = (i32)PyArray_DIM(e_array, 0);
+        if (lde < 1) lde = 1;
+        e_data = (f64*)PyArray_DATA(e_array);
+    }
+
+    i32 n2 = 2 * n;
+    i32 nnm = ljobb ? (n2 + m) : n2;
+    i32 ldaf = nnm > 1 ? nnm : 1;
+    i32 ldbf;
+    bool need_bf;
+
+    if (!ljobb && !discr && ljobe) {
+        need_bf = false;
+        ldbf = 1;
+    } else {
+        need_bf = true;
+        ldbf = nnm > 1 ? nnm : 1;
+    }
+
+    i32 af_cols = ljobb ? nnm : n2;
+    f64 *af_data = (f64*)calloc(ldaf * af_cols, sizeof(f64));
+    if (!af_data) {
+        PyErr_NoMemory();
+        goto cleanup;
+    }
+
+    f64 *bf_data = NULL;
+    if (need_bf) {
+        bf_data = (f64*)calloc(ldbf * n2, sizeof(f64));
+        if (!bf_data) {
+            free(af_data);
+            PyErr_NoMemory();
+            goto cleanup;
+        }
+    }
+
+    i32 ldwork;
+    if (ljobb) {
+        i32 req1 = nnm > 3*m ? nnm : 3*m;
+        ldwork = req1 > 1 ? req1 : 1;
+    } else {
+        ldwork = 1;
+    }
+
+    i32 liwork = ljobb ? (m > 1 ? m : 1) : 1;
+
+    f64 *dwork = (f64*)calloc(ldwork, sizeof(f64));
+    i32 *iwork = (i32*)calloc(liwork, sizeof(i32));
+    if (!dwork || !iwork) {
+        free(dwork);
+        free(iwork);
+        PyErr_NoMemory();
+        goto cleanup;
+    }
+
+    i32 info;
+    sb02oy(type_str, dico_str, jobb_str, fact_str, uplo_str, jobl_str, jobe_str,
+           n, m, p, a_data, lda, b_data, ldb, q_data, ldq,
+           r_data, ldr, l_data, ldl, e_data, lde,
+           af_data, ldaf, bf_data, ldbf, tol, iwork, dwork, ldwork, &info);
+
+    f64 rcond = ljobb ? dwork[1] : 0.0;
+
+    free(dwork);
+    free(iwork);
+
+    if (info < 0) {
+        free(af_data);
+        free(bf_data);
+        Py_XDECREF(a_array);
+        Py_XDECREF(b_array);
+        Py_XDECREF(q_array);
+        Py_XDECREF(r_array);
+        Py_XDECREF(l_array);
+        Py_XDECREF(e_array);
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    npy_intp af_out_dims[2] = {n2, n2};
+    npy_intp af_out_strides[2] = {sizeof(f64), ldaf * sizeof(f64)};
+    PyArrayObject *af_out = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, af_out_dims, NPY_DOUBLE,
+                                                        af_out_strides, af_data, 0, NPY_ARRAY_FARRAY, NULL);
+    if (!af_out) {
+        free(af_data);
+        free(bf_data);
+        Py_XDECREF(a_array);
+        Py_XDECREF(b_array);
+        Py_XDECREF(q_array);
+        Py_XDECREF(r_array);
+        Py_XDECREF(l_array);
+        Py_XDECREF(e_array);
+        return NULL;
+    }
+    PyArray_ENABLEFLAGS(af_out, NPY_ARRAY_OWNDATA);
+
+    PyObject *result;
+    if (!need_bf) {
+        result = Py_BuildValue("Oi", af_out, info);
+    } else if (ljobb) {
+        npy_intp bf_out_dims[2] = {n2, n2};
+        npy_intp bf_out_strides[2] = {sizeof(f64), ldbf * sizeof(f64)};
+        PyArrayObject *bf_out = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, bf_out_dims, NPY_DOUBLE,
+                                                            bf_out_strides, bf_data, 0, NPY_ARRAY_FARRAY, NULL);
+        if (!bf_out) {
+            free(bf_data);
+            Py_DECREF(af_out);
+            Py_XDECREF(a_array);
+            Py_XDECREF(b_array);
+            Py_XDECREF(q_array);
+            Py_XDECREF(r_array);
+            Py_XDECREF(l_array);
+            Py_XDECREF(e_array);
+            return NULL;
+        }
+        PyArray_ENABLEFLAGS(bf_out, NPY_ARRAY_OWNDATA);
+        result = Py_BuildValue("OOdi", af_out, bf_out, rcond, info);
+        Py_DECREF(bf_out);
+    } else {
+        npy_intp bf_out_dims[2] = {n2, n2};
+        npy_intp bf_out_strides[2] = {sizeof(f64), ldbf * sizeof(f64)};
+        PyArrayObject *bf_out = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, bf_out_dims, NPY_DOUBLE,
+                                                            bf_out_strides, bf_data, 0, NPY_ARRAY_FARRAY, NULL);
+        if (!bf_out) {
+            free(bf_data);
+            Py_DECREF(af_out);
+            Py_XDECREF(a_array);
+            Py_XDECREF(b_array);
+            Py_XDECREF(q_array);
+            Py_XDECREF(r_array);
+            Py_XDECREF(l_array);
+            Py_XDECREF(e_array);
+            return NULL;
+        }
+        PyArray_ENABLEFLAGS(bf_out, NPY_ARRAY_OWNDATA);
+        result = Py_BuildValue("OOi", af_out, bf_out, info);
+        Py_DECREF(bf_out);
+    }
+
+    Py_DECREF(af_out);
+    Py_XDECREF(a_array);
+    Py_XDECREF(b_array);
+    Py_XDECREF(q_array);
+    Py_XDECREF(r_array);
+    Py_XDECREF(l_array);
+    Py_XDECREF(e_array);
+
+    return result;
+
+cleanup:
+    Py_XDECREF(a_array);
+    Py_XDECREF(b_array);
+    Py_XDECREF(q_array);
+    Py_XDECREF(r_array);
+    Py_XDECREF(l_array);
+    Py_XDECREF(e_array);
+    return NULL;
+}
+
 /* Python wrapper for mb02pd */
 static PyObject* py_mb02pd(PyObject* self, PyObject* args) {
     const char *fact_str, *trans_str;
@@ -10914,6 +11187,33 @@ static PyMethodDef SlicotMethods[] = {
      "  (s, rcond, pivotg, info): 2N-by-2N Hamiltonian/symplectic matrix,\n"
      "                           condition number (discrete only), pivot growth,\n"
      "                           exit code (0=success)\n"},
+
+    {"sb02oy", (PyCFunction)py_sb02oy, METH_VARARGS,
+     "Construct extended Hamiltonian/symplectic matrix pairs for Riccati equations.\n\n"
+     "Constructs extended matrix pairs for algebraic Riccati equations in optimal\n"
+     "control and spectral factorization problems, then compresses to 2N-by-2N.\n\n"
+     "Parameters:\n"
+     "  type_str (str): 'O' optimal control, 'S' spectral factorization\n"
+     "  dico (str): 'C' continuous-time, 'D' discrete-time\n"
+     "  jobb (str): 'B' matrices B,R given, 'G' matrix G given\n"
+     "  fact (str): 'N' Q,R given, 'C' Q=C'C, 'D' R=D'D, 'B' both factored\n"
+     "  uplo (str): 'U' upper triangle, 'L' lower triangle\n"
+     "  jobl (str): 'Z' L is zero, 'N' L is nonzero\n"
+     "  jobe (str): 'I' E is identity, 'N' E is general\n"
+     "  n (int): Order of A, Q, E (>= 0)\n"
+     "  m (int): Order of R, columns of B (>= 0, for JOBB='B')\n"
+     "  p (int): Rows of C/D (for FACT='C','D','B' or TYPE='S')\n"
+     "  a (ndarray): N-by-N state matrix A (F-order)\n"
+     "  b (ndarray): N-by-M input matrix B or N-by-N matrix G (F-order)\n"
+     "  q (ndarray): N-by-N symmetric Q or P-by-N output matrix C (F-order)\n"
+     "  r (ndarray or None): M-by-M symmetric R or P-by-M matrix D (F-order)\n"
+     "  l (ndarray or None): N-by-M cross-weighting L (F-order)\n"
+     "  e (ndarray): N-by-N descriptor E (F-order)\n"
+     "  tol (float): Tolerance for singularity test (<=0 uses eps)\n\n"
+     "Returns:\n"
+     "  For JOBB='B': (af, bf, rcond, info) - 2N-by-2N matrices, condition number\n"
+     "  For JOBB='G', DICO='C', JOBE='I': (af, info) - 2N-by-2N matrix only\n"
+     "  For JOBB='G' otherwise: (af, bf, info) - 2N-by-2N matrices\n"},
 
     {"mb02pd", (PyCFunction)py_mb02pd, METH_VARARGS,
      "Solve linear system op(A)*X = B with LU factorization.\n\n"
