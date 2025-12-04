@@ -6151,6 +6151,138 @@ static PyObject* py_ib01cd(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for sb02mu */
+static PyObject* py_sb02mu(PyObject* self, PyObject* args) {
+    const char *dico_str, *hinv_str, *uplo_str;
+    i32 n;
+    PyObject *a_obj, *g_obj, *q_obj;
+    PyArrayObject *a_array = NULL, *g_array = NULL, *q_array = NULL;
+    PyArrayObject *s_array = NULL;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "sssiOOO",
+                          &dico_str, &hinv_str, &uplo_str,
+                          &n, &a_obj, &g_obj, &q_obj)) {
+        return NULL;
+    }
+
+    char dico = toupper((unsigned char)dico_str[0]);
+    char hinv = toupper((unsigned char)hinv_str[0]);
+    char uplo = toupper((unsigned char)uplo_str[0]);
+
+    bool discr = (dico == 'D');
+
+    if (dico != 'C' && dico != 'D') {
+        PyErr_SetString(PyExc_ValueError, "Parameter 1 (DICO) must be 'C' or 'D'");
+        return NULL;
+    }
+    if (discr && hinv != 'D' && hinv != 'I') {
+        PyErr_SetString(PyExc_ValueError, "Parameter 2 (HINV) must be 'D' or 'I'");
+        return NULL;
+    }
+    if (uplo != 'U' && uplo != 'L') {
+        PyErr_SetString(PyExc_ValueError, "Parameter 3 (UPLO) must be 'U' or 'L'");
+        return NULL;
+    }
+    if (n < 0) {
+        PyErr_SetString(PyExc_ValueError, "n must be non-negative");
+        return NULL;
+    }
+
+    i32 n2 = 2 * n;
+    i32 lda = n > 0 ? n : 1;
+    i32 ldg = n > 0 ? n : 1;
+    i32 ldq = n > 0 ? n : 1;
+    i32 lds = n2 > 0 ? n2 : 1;
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (!a_array) goto cleanup;
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    if (n > 0) lda = (i32)PyArray_DIM(a_array, 0);
+
+    g_array = (PyArrayObject*)PyArray_FROM_OTF(g_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_IN_ARRAY);
+    if (!g_array) goto cleanup;
+    f64 *g_data = (f64*)PyArray_DATA(g_array);
+    if (n > 0) ldg = (i32)PyArray_DIM(g_array, 0);
+
+    q_array = (PyArrayObject*)PyArray_FROM_OTF(q_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_IN_ARRAY);
+    if (!q_array) goto cleanup;
+    f64 *q_data = (f64*)PyArray_DATA(q_array);
+    if (n > 0) ldq = (i32)PyArray_DIM(q_array, 0);
+
+    f64 *s_data = NULL;
+    if (n > 0) {
+        s_data = (f64*)malloc(lds * n2 * sizeof(f64));
+        if (!s_data) {
+            PyErr_NoMemory();
+            goto cleanup;
+        }
+    }
+
+    i32 ldwork = discr ? (4 * n > 2 ? 4 * n : 2) : 1;
+    f64 *dwork = (f64*)malloc(ldwork * sizeof(f64));
+    i32 *iwork = (i32*)malloc((n2 > 0 ? n2 : 1) * sizeof(i32));
+
+    if (!dwork || !iwork) {
+        free(dwork);
+        free(iwork);
+        free(s_data);
+        PyErr_NoMemory();
+        goto cleanup;
+    }
+
+    sb02mu(dico_str, hinv_str, uplo_str, n, a_data, lda, g_data, ldg,
+           q_data, ldq, s_data, lds, iwork, dwork, ldwork, &info);
+
+    f64 rcond = discr ? dwork[1] : 1.0;
+
+    free(dwork);
+    free(iwork);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    Py_DECREF(a_array);
+    Py_DECREF(g_array);
+    Py_DECREF(q_array);
+    a_array = g_array = q_array = NULL;
+
+    if (info < 0) {
+        free(s_data);
+        PyErr_Format(PyExc_ValueError, "Parameter %d had an illegal value", -info);
+        return NULL;
+    }
+
+    npy_intp s_dims[2] = {n2, n2};
+    npy_intp s_strides[2] = {sizeof(f64), lds * sizeof(f64)};
+    if (n > 0) {
+        s_array = (PyArrayObject*)PyArray_New(&PyArray_Type, 2, s_dims, NPY_DOUBLE,
+                                               s_strides, s_data, 0, NPY_ARRAY_FARRAY, NULL);
+        if (!s_array) {
+            free(s_data);
+            return PyErr_NoMemory();
+        }
+        PyArray_ENABLEFLAGS(s_array, NPY_ARRAY_OWNDATA);
+    } else {
+        npy_intp zero_dims[2] = {0, 0};
+        s_array = (PyArrayObject*)PyArray_ZEROS(2, zero_dims, NPY_DOUBLE, 1);
+        if (!s_array) {
+            return PyErr_NoMemory();
+        }
+    }
+
+    PyObject *result = Py_BuildValue("Odi", s_array, rcond, info);
+    Py_DECREF(s_array);
+    return result;
+
+cleanup:
+    Py_XDECREF(a_array);
+    Py_XDECREF(g_array);
+    Py_XDECREF(q_array);
+    return NULL;
+}
+
 /* Python wrapper for sb02mt */
 static PyObject* py_sb02mt(PyObject* self, PyObject* args) {
     const char *jobg_str, *jobl_str, *fact_str, *uplo_str;
@@ -11141,6 +11273,30 @@ static PyMethodDef SlicotMethods[] = {
      "  - rcond: Reciprocal condition number\n"
      "  - iwarn: Warning (6 = A not stable)\n"
      "  - info: Exit code (0=success, 1=Schur failed)\n"},
+
+    {"sb02mu", (PyCFunction)py_sb02mu, METH_VARARGS,
+     "Construct Hamiltonian or symplectic matrix for Riccati equations.\n\n"
+     "For continuous-time (DICO='C'), constructs Hamiltonian:\n"
+     "  S = [  A   -G ]\n"
+     "      [ -Q   -A']\n\n"
+     "For discrete-time (DICO='D', HINV='D'), constructs symplectic:\n"
+     "  S = [  A^(-1)        A^(-1)*G     ]\n"
+     "      [ Q*A^(-1)   A' + Q*A^(-1)*G  ]\n\n"
+     "For discrete-time (DICO='D', HINV='I'), constructs inverse symplectic:\n"
+     "  S = [ A + G*A^(-T)*Q   -G*A^(-T) ]\n"
+     "      [    -A^(-T)*Q       A^(-T)  ]\n\n"
+     "Parameters:\n"
+     "  dico (str): 'C' continuous-time, 'D' discrete-time\n"
+     "  hinv (str): 'D' or 'I' (only for discrete-time)\n"
+     "  uplo (str): 'U' upper triangle, 'L' lower triangle\n"
+     "  n (int): Order of A, G, Q (n >= 0)\n"
+     "  a (ndarray): Matrix A (n x n, F-order)\n"
+     "  g (ndarray): Symmetric matrix G (n x n, F-order)\n"
+     "  q (ndarray): Symmetric matrix Q (n x n, F-order)\n\n"
+     "Returns:\n"
+     "  - S: Hamiltonian/symplectic matrix (2n x 2n)\n"
+     "  - rcond: Reciprocal condition number of A (discrete) or 1.0 (continuous)\n"
+     "  - info: Exit code (0=success)\n"},
 
     {"sb02mt", (PyCFunction)py_sb02mt, METH_VARARGS,
      "Riccati preprocessing - convert coupling weight problems to standard form.\n\n"
