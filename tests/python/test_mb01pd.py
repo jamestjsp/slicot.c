@@ -40,41 +40,61 @@ class TestMB01PDBasic:
         Random seed: 123 (for reproducibility)
         """
         from slicot import mb01pd
+        import sys
 
         np.random.seed(123)
         m, n = 3, 3
-        a = np.random.randn(m, n).astype(float, order='F')
-        a = a * 1e-310
-        a_original = a.copy()
-        anrm = np.linalg.norm(a, ord='fro')
+        smlnum = sys.float_info.min / sys.float_info.epsilon
+        anrm_target = smlnum / 10
 
-        a_out, info = mb01pd('S', 'G', m, n, 0, 0, anrm, 0, None, a)
+        a = np.random.randn(m, n).astype(float, order='F')
+        actual_norm = np.linalg.norm(a, ord='fro')
+        scale = anrm_target / actual_norm
+        a = a * scale
+        a_before = a.copy()
+
+        a_out, info = mb01pd('S', 'G', m, n, 0, 0, anrm_target, 0, None, a)
 
         assert info == 0
-        a_norm_after = np.linalg.norm(a_out, ord='fro')
-        assert a_norm_after > anrm or anrm == 0.0
+        ratio = a_out / a_before
+        nz_mask = a_before != 0
+        if np.any(nz_mask):
+            ratios = ratio[nz_mask]
+            np.testing.assert_allclose(ratios, ratios[0], rtol=1e-14)
+            assert ratios[0] > 1.0
 
     def test_scale_full_matrix_very_large_norm(self):
         """
         Test scaling a full matrix with very large norm down to BIGNUM.
 
         When ANRM > BIGNUM, matrix is scaled by BIGNUM/ANRM.
+        Uses manual anrm value to avoid floating-point overflow in norm computation.
         Random seed: 456 (for reproducibility)
         """
         from slicot import mb01pd
+        import sys
 
         np.random.seed(456)
         m, n = 3, 3
-        a = np.random.randn(m, n).astype(float, order='F')
-        a = a * 1e300
-        a_original = a.copy()
-        anrm = np.linalg.norm(a, ord='fro')
+        smlnum = sys.float_info.min / sys.float_info.epsilon
+        bignum = 1.0 / smlnum
+        anrm_target = bignum * 10
 
-        a_out, info = mb01pd('S', 'G', m, n, 0, 0, anrm, 0, None, a)
+        a = np.random.randn(m, n).astype(float, order='F')
+        actual_norm = np.linalg.norm(a, ord='fro')
+        scale = anrm_target / actual_norm
+        a = a * scale
+        a_before = a.copy()
+
+        a_out, info = mb01pd('S', 'G', m, n, 0, 0, anrm_target, 0, None, a)
 
         assert info == 0
-        a_norm_after = np.linalg.norm(a_out, ord='fro')
-        assert a_norm_after < anrm
+        ratio = a_out / a_before
+        nz_mask = a_before != 0
+        if np.any(nz_mask):
+            ratios = ratio[nz_mask]
+            np.testing.assert_allclose(ratios, ratios[0], rtol=1e-14)
+            assert ratios[0] < 1.0
 
     def test_undo_scaling(self):
         """
@@ -84,21 +104,23 @@ class TestMB01PDBasic:
         Random seed: 789 (for reproducibility)
         """
         from slicot import mb01pd
+        import sys
 
         np.random.seed(789)
         m, n = 4, 4
+        smlnum = sys.float_info.min / sys.float_info.epsilon
+        anrm_target = smlnum / 10
+
         a = np.random.randn(m, n).astype(float, order='F')
-        a = a * 1e-310
+        actual_norm = np.linalg.norm(a, ord='fro')
+        scale = anrm_target / actual_norm
+        a = a * scale
         a_original = a.copy()
-        anrm = np.linalg.norm(a, ord='fro')
 
-        if anrm == 0.0:
-            pytest.skip("Zero norm matrix - no scaling needed")
-
-        a_scaled, info = mb01pd('S', 'G', m, n, 0, 0, anrm, 0, None, a)
+        a_scaled, info = mb01pd('S', 'G', m, n, 0, 0, anrm_target, 0, None, a)
         assert info == 0
 
-        a_restored, info = mb01pd('U', 'G', m, n, 0, 0, anrm, 0, None, a_scaled)
+        a_restored, info = mb01pd('U', 'G', m, n, 0, 0, anrm_target, 0, None, a_scaled)
         assert info == 0
 
         np.testing.assert_allclose(a_restored, a_original, rtol=1e-14)
@@ -115,21 +137,23 @@ class TestMB01PDTriangular:
         Random seed: 111 (for reproducibility)
         """
         from slicot import mb01pd
+        import sys
 
         np.random.seed(111)
         n = 4
+        smlnum = sys.float_info.min / sys.float_info.epsilon
+        anrm_target = smlnum / 10
+
         a = np.tril(np.random.randn(n, n)).astype(float, order='F')
-        a = a * 1e-310
+        actual_norm = np.linalg.norm(a, ord='fro')
+        scale = anrm_target / actual_norm
+        a = a * scale
         a_original = a.copy()
-        anrm = np.linalg.norm(a, ord='fro')
 
-        if anrm == 0.0:
-            pytest.skip("Zero norm matrix")
-
-        a_scaled, info = mb01pd('S', 'L', n, n, 0, 0, anrm, 0, None, a)
+        a_scaled, info = mb01pd('S', 'L', n, n, 0, 0, anrm_target, 0, None, a)
         assert info == 0
 
-        a_restored, info = mb01pd('U', 'L', n, n, 0, 0, anrm, 0, None, a_scaled)
+        a_restored, info = mb01pd('U', 'L', n, n, 0, 0, anrm_target, 0, None, a_scaled)
         assert info == 0
 
         np.testing.assert_allclose(a_restored, a_original, rtol=1e-14)
@@ -142,21 +166,23 @@ class TestMB01PDTriangular:
         Random seed: 222 (for reproducibility)
         """
         from slicot import mb01pd
+        import sys
 
         np.random.seed(222)
         n = 4
+        smlnum = sys.float_info.min / sys.float_info.epsilon
+        anrm_target = smlnum / 10
+
         a = np.triu(np.random.randn(n, n)).astype(float, order='F')
-        a = a * 1e-310
+        actual_norm = np.linalg.norm(a, ord='fro')
+        scale = anrm_target / actual_norm
+        a = a * scale
         a_original = a.copy()
-        anrm = np.linalg.norm(a, ord='fro')
 
-        if anrm == 0.0:
-            pytest.skip("Zero norm matrix")
-
-        a_scaled, info = mb01pd('S', 'U', n, n, 0, 0, anrm, 0, None, a)
+        a_scaled, info = mb01pd('S', 'U', n, n, 0, 0, anrm_target, 0, None, a)
         assert info == 0
 
-        a_restored, info = mb01pd('U', 'U', n, n, 0, 0, anrm, 0, None, a_scaled)
+        a_restored, info = mb01pd('U', 'U', n, n, 0, 0, anrm_target, 0, None, a_scaled)
         assert info == 0
 
         np.testing.assert_allclose(a_restored, a_original, rtol=1e-14)
@@ -169,21 +195,23 @@ class TestMB01PDTriangular:
         Random seed: 333 (for reproducibility)
         """
         from slicot import mb01pd
+        import sys
 
         np.random.seed(333)
         n = 4
+        smlnum = sys.float_info.min / sys.float_info.epsilon
+        anrm_target = smlnum / 10
+
         a = np.triu(np.random.randn(n, n), -1).astype(float, order='F')
-        a = a * 1e-310
+        actual_norm = np.linalg.norm(a, ord='fro')
+        scale = anrm_target / actual_norm
+        a = a * scale
         a_original = a.copy()
-        anrm = np.linalg.norm(a, ord='fro')
 
-        if anrm == 0.0:
-            pytest.skip("Zero norm matrix")
-
-        a_scaled, info = mb01pd('S', 'H', n, n, 0, 0, anrm, 0, None, a)
+        a_scaled, info = mb01pd('S', 'H', n, n, 0, 0, anrm_target, 0, None, a)
         assert info == 0
 
-        a_restored, info = mb01pd('U', 'H', n, n, 0, 0, anrm, 0, None, a_scaled)
+        a_restored, info = mb01pd('U', 'H', n, n, 0, 0, anrm_target, 0, None, a_scaled)
         assert info == 0
 
         np.testing.assert_allclose(a_restored, a_original, rtol=1e-14)
@@ -199,26 +227,28 @@ class TestMB01PDBlock:
         Random seed: 444 (for reproducibility)
         """
         from slicot import mb01pd
+        import sys
 
         np.random.seed(444)
         n = 6
         nbl = 2
         nrows = np.array([3, 3], dtype=np.int32)
+        smlnum = sys.float_info.min / sys.float_info.epsilon
+        anrm_target = smlnum / 10
+
         a = np.zeros((n, n), dtype=float, order='F')
         a[:3, :3] = np.random.randn(3, 3)
         a[3:, :3] = np.random.randn(3, 3)
         a[3:, 3:] = np.random.randn(3, 3)
-        a = a * 1e-310
+        actual_norm = np.linalg.norm(a, ord='fro')
+        scale = anrm_target / actual_norm
+        a = a * scale
         a_original = a.copy()
-        anrm = np.linalg.norm(a, ord='fro')
 
-        if anrm == 0.0:
-            pytest.skip("Zero norm matrix")
-
-        a_scaled, info = mb01pd('S', 'L', n, n, 0, 0, anrm, nbl, nrows, a)
+        a_scaled, info = mb01pd('S', 'L', n, n, 0, 0, anrm_target, nbl, nrows, a)
         assert info == 0
 
-        a_restored, info = mb01pd('U', 'L', n, n, 0, 0, anrm, nbl, nrows, a_scaled)
+        a_restored, info = mb01pd('U', 'L', n, n, 0, 0, anrm_target, nbl, nrows, a_scaled)
         assert info == 0
 
         np.testing.assert_allclose(a_restored, a_original, rtol=1e-14)
@@ -230,26 +260,28 @@ class TestMB01PDBlock:
         Random seed: 555 (for reproducibility)
         """
         from slicot import mb01pd
+        import sys
 
         np.random.seed(555)
         n = 6
         nbl = 2
         nrows = np.array([3, 3], dtype=np.int32)
+        smlnum = sys.float_info.min / sys.float_info.epsilon
+        anrm_target = smlnum / 10
+
         a = np.zeros((n, n), dtype=float, order='F')
         a[:3, :3] = np.random.randn(3, 3)
         a[:3, 3:] = np.random.randn(3, 3)
         a[3:, 3:] = np.random.randn(3, 3)
-        a = a * 1e-310
+        actual_norm = np.linalg.norm(a, ord='fro')
+        scale = anrm_target / actual_norm
+        a = a * scale
         a_original = a.copy()
-        anrm = np.linalg.norm(a, ord='fro')
 
-        if anrm == 0.0:
-            pytest.skip("Zero norm matrix")
-
-        a_scaled, info = mb01pd('S', 'U', n, n, 0, 0, anrm, nbl, nrows, a)
+        a_scaled, info = mb01pd('S', 'U', n, n, 0, 0, anrm_target, nbl, nrows, a)
         assert info == 0
 
-        a_restored, info = mb01pd('U', 'U', n, n, 0, 0, anrm, nbl, nrows, a_scaled)
+        a_restored, info = mb01pd('U', 'U', n, n, 0, 0, anrm_target, nbl, nrows, a_scaled)
         assert info == 0
 
         np.testing.assert_allclose(a_restored, a_original, rtol=1e-14)
@@ -284,21 +316,23 @@ class TestMB01PDEdgeCases:
         Random seed: 666 (for reproducibility)
         """
         from slicot import mb01pd
+        import sys
 
         np.random.seed(666)
         m, n = 5, 3
+        smlnum = sys.float_info.min / sys.float_info.epsilon
+        anrm_target = smlnum / 10
+
         a = np.random.randn(m, n).astype(float, order='F')
-        a = a * 1e-310
+        actual_norm = np.linalg.norm(a, ord='fro')
+        scale = anrm_target / actual_norm
+        a = a * scale
         a_original = a.copy()
-        anrm = np.linalg.norm(a, ord='fro')
 
-        if anrm == 0.0:
-            pytest.skip("Zero norm matrix")
-
-        a_scaled, info = mb01pd('S', 'G', m, n, 0, 0, anrm, 0, None, a)
+        a_scaled, info = mb01pd('S', 'G', m, n, 0, 0, anrm_target, 0, None, a)
         assert info == 0
 
-        a_restored, info = mb01pd('U', 'G', m, n, 0, 0, anrm, 0, None, a_scaled)
+        a_restored, info = mb01pd('U', 'G', m, n, 0, 0, anrm_target, 0, None, a_scaled)
         assert info == 0
 
         np.testing.assert_allclose(a_restored, a_original, rtol=1e-14)
@@ -367,25 +401,27 @@ class TestMB01PDMathematicalProperties:
         Random seed: 888 (for reproducibility)
         """
         from slicot import mb01pd
+        import sys
 
         np.random.seed(888)
         m, n = 4, 4
+        smlnum = sys.float_info.min / sys.float_info.epsilon
+        anrm_target = smlnum / 10
+
         a = np.random.randn(m, n).astype(float, order='F')
-        a = a * 1e-310
+        actual_norm = np.linalg.norm(a, ord='fro')
+        scale = anrm_target / actual_norm
+        a = a * scale
         a_original = a.copy()
-        anrm = np.linalg.norm(a, ord='fro')
 
-        if anrm == 0.0:
-            pytest.skip("Zero norm matrix")
-
-        a_scaled, info = mb01pd('S', 'G', m, n, 0, 0, anrm, 0, None, a)
+        a_scaled, info = mb01pd('S', 'G', m, n, 0, 0, anrm_target, 0, None, a)
         assert info == 0
 
         a_scaled_norm = np.linalg.norm(a_scaled, ord='fro')
         if a_scaled_norm > 0:
             np.testing.assert_allclose(
                 a_scaled / a_scaled_norm,
-                a_original / anrm,
+                a_original / anrm_target,
                 rtol=1e-14
             )
 
@@ -397,18 +433,20 @@ class TestMB01PDMathematicalProperties:
         Random seed: 999 (for reproducibility)
         """
         from slicot import mb01pd
+        import sys
 
         np.random.seed(999)
         m, n = 3, 3
+        smlnum = sys.float_info.min / sys.float_info.epsilon
+        anrm_target = smlnum / 10
+
         a = np.random.randn(m, n).astype(float, order='F')
-        a = a * 1e-310
+        actual_norm = np.linalg.norm(a, ord='fro')
+        scale = anrm_target / actual_norm
+        a = a * scale
         a_original = a.copy()
-        anrm = np.linalg.norm(a, ord='fro')
 
-        if anrm == 0.0:
-            pytest.skip("Zero norm matrix")
-
-        a_scaled, info = mb01pd('S', 'G', m, n, 0, 0, anrm, 0, None, a)
+        a_scaled, info = mb01pd('S', 'G', m, n, 0, 0, anrm_target, 0, None, a)
         assert info == 0
 
         nz_mask = a_original != 0

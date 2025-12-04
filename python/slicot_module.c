@@ -12,6 +12,54 @@
 #include <ctype.h>
 #include "slicot.h"
 
+/* Python wrapper for mb01pd */
+static PyObject* py_mb01pd(PyObject* self, PyObject* args) {
+    const char *scun_str, *type_str;
+    i32 m, n, kl, ku, nbl, lda;
+    f64 anrm;
+    PyObject *a_obj, *nrows_obj = NULL;
+    PyArrayObject *a_array, *nrows_array = NULL;
+    i32 info;
+
+    if (!PyArg_ParseTuple(args, "ssiiiidiOO",
+                          &scun_str, &type_str, &m, &n, &kl, &ku, &anrm,
+                          &nbl, &nrows_obj, &a_obj)) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                               NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) {
+        return NULL;
+    }
+
+    npy_intp *a_dims = PyArray_DIMS(a_array);
+    lda = (i32)a_dims[0];
+
+    i32 *nrows_ptr = NULL;
+    if (nrows_obj != NULL && nrows_obj != Py_None && nbl > 0) {
+        nrows_array = (PyArrayObject*)PyArray_FROM_OTF(nrows_obj, NPY_INT32,
+                                                       NPY_ARRAY_IN_ARRAY);
+        if (nrows_array == NULL) {
+            Py_DECREF(a_array);
+            return NULL;
+        }
+        nrows_ptr = (i32*)PyArray_DATA(nrows_array);
+    }
+
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    mb01pd(scun_str, type_str, m, n, kl, ku, anrm, nbl, nrows_ptr, a_data, lda, &info);
+
+    if (nrows_array != NULL) {
+        Py_DECREF(nrows_array);
+    }
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyObject *result = Py_BuildValue("Oi", a_array, info);
+    Py_DECREF(a_array);
+    return result;
+}
+
 /* Python wrapper for mb01qd */
 static PyObject* py_mb01qd(PyObject* self, PyObject* args) {
     char type;
@@ -10011,6 +10059,24 @@ static PyMethodDef SlicotMethods[] = {
      "  a (ndarray): Symmetric matrix (n x n, F-order), modified in place\n\n"
      "Returns:\n"
      "  a (ndarray): Completed symmetric matrix with both triangles\n"},
+
+    {"mb01pd", py_mb01pd, METH_VARARGS,
+     "Scale matrix to safe numerical range or undo scaling.\n\n"
+     "Scales matrix so its norm is in [SMLNUM, BIGNUM] or undoes such scaling.\n"
+     "Preserves ANRM between scale and undo operations.\n\n"
+     "Parameters:\n"
+     "  scun (str): 'S' to scale, 'U' to undo scaling\n"
+     "  type (str): Matrix storage type ('G', 'L', 'U', 'H', 'B', 'Q', 'Z')\n"
+     "  m (int): Number of rows\n"
+     "  n (int): Number of columns\n"
+     "  kl (int): Lower bandwidth (for B/Q/Z types)\n"
+     "  ku (int): Upper bandwidth (for B/Q/Z types)\n"
+     "  anrm (float): Norm of initial matrix (>= 0)\n"
+     "  nbl (int): Number of diagonal blocks (0 = no block structure)\n"
+     "  nrows (ndarray or None): Block sizes (int32)\n"
+     "  a (ndarray): Matrix array (column-major, shape (m,n))\n\n"
+     "Returns:\n"
+     "  (a, info): Modified matrix and exit code\n"},
 
     {"mb01qd", py_mb01qd, METH_VARARGS,
      "Multiply matrix by scalar CTO/CFROM without overflow/underflow.\n\n"
