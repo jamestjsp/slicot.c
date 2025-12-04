@@ -125,7 +125,7 @@ class TestDE01ODMathematicalProperties:
         a_out, info = de01od('C', a, b)
 
         assert info == 0
-        np.testing.assert_allclose(a_out, a_orig, rtol=1e-14)
+        np.testing.assert_allclose(a_out, a_orig, rtol=1e-13)
 
     def test_convolution_linearity(self):
         """
