@@ -1833,6 +1833,58 @@ void tb01wd(
 );
 
 /**
+ * @brief Special similarity transformation of dual state-space system.
+ *
+ * Applies the transformation:
+ *   A <-- P * A' * P,  B <-- P * C',  C <-- B' * P
+ *
+ * where P is a matrix with 1 on the secondary diagonal (anti-identity).
+ * Matrix A can be specified as a band matrix. Optionally, matrix D
+ * is transposed.
+ *
+ * This is a special similarity transformation of the dual system.
+ *
+ * @param[in] jobd Specifies D handling:
+ *                 'D' = D is present and will be transposed
+ *                 'Z' = D is zero (not referenced)
+ * @param[in] n Order of matrix A, rows of B, columns of C (N >= 0)
+ * @param[in] m Number of columns of B (M >= 0)
+ * @param[in] p Number of rows of C (P >= 0)
+ * @param[in] kl Number of subdiagonals of A to transform (0 <= KL <= max(0,N-1))
+ * @param[in] ku Number of superdiagonals of A to transform (0 <= KU <= max(0,N-1))
+ * @param[in,out] a State matrix, dimension (LDA,N).
+ *                  On entry: original matrix A.
+ *                  On exit: transformed matrix P*A'*P.
+ * @param[in] lda Leading dimension of A (LDA >= max(1,N))
+ * @param[in,out] b Input matrix, dimension (LDB,max(M,P)).
+ *                  On entry: N-by-M original input matrix.
+ *                  On exit: N-by-P dual input matrix P*C'.
+ * @param[in] ldb Leading dimension of B (LDB >= max(1,N) if M>0 or P>0, else >= 1)
+ * @param[in,out] c Output matrix, dimension (LDC,N).
+ *                  On entry: P-by-N original output matrix.
+ *                  On exit: M-by-N dual output matrix B'*P.
+ * @param[in] ldc Leading dimension of C (LDC >= max(1,M,P) if N>0, else >= 1)
+ * @param[in,out] d Direct transmission matrix, dimension (LDD,max(M,P)).
+ *                  On entry if JOBD='D': P-by-M original D matrix.
+ *                  On exit if JOBD='D': M-by-P transposed D matrix.
+ *                  Not referenced if JOBD='Z'.
+ * @param[in] ldd Leading dimension of D (LDD >= max(1,M,P) if JOBD='D', else >= 1)
+ * @param[out] info Exit code:
+ *                  = 0: success
+ *                  < 0: if INFO = -i, the i-th argument had an illegal value
+ */
+void tb01xd(
+    const char* jobd,
+    const i32 n, const i32 m, const i32 p,
+    const i32 kl, const i32 ku,
+    f64* a, const i32 lda,
+    f64* b, const i32 ldb,
+    f64* c, const i32 ldc,
+    f64* d, const i32 ldd,
+    i32* info
+);
+
+/**
  * @brief Convert discrete-time system to output normal form.
  *
  * Converts a stable discrete-time system (A, B, C, D) with initial state x0
