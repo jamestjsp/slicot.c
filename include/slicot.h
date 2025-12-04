@@ -56,6 +56,41 @@ void mb01qd(char type, i32 m, i32 n, i32 kl, i32 ku,
             f64* a, i32 lda, i32* info);
 
 /**
+ * @brief Scale a matrix to safe numerical range.
+ *
+ * Scales a matrix so its norm is in the safe range [SMLNUM, BIGNUM],
+ * or undoes such scaling. Scaling is performed if needed to ensure the
+ * matrix norm is within representable floating-point numbers.
+ *
+ * The scaling factor is represented as a ratio: for scaling up (when
+ * ANRM < SMLNUM), matrix is multiplied by SMLNUM/ANRM. For scaling
+ * down (when ANRM > BIGNUM), matrix is multiplied by BIGNUM/ANRM.
+ *
+ * @param[in] scun Operation: 'S' = scale, 'U' = undo scaling
+ * @param[in] type Matrix storage type:
+ *                 'G' = full matrix
+ *                 'L' = (block) lower triangular
+ *                 'U' = (block) upper triangular
+ *                 'H' = (block) upper Hessenberg
+ *                 'B' = symmetric band (lower half)
+ *                 'Q' = symmetric band (upper half)
+ *                 'Z' = general band
+ * @param[in] m Number of rows (M >= 0)
+ * @param[in] n Number of columns (N >= 0)
+ * @param[in] kl Lower bandwidth (for 'B', 'Q', 'Z' types)
+ * @param[in] ku Upper bandwidth (for 'B', 'Q', 'Z' types)
+ * @param[in] anrm Norm of the matrix (ANRM >= 0). Must be preserved
+ *                 between scaling and undo operations.
+ * @param[in] nbl Number of diagonal blocks (0 = no block structure)
+ * @param[in] nrows Block sizes, dimension max(1,nbl), may be NULL if nbl=0
+ * @param[in,out] a Matrix array, dimension (lda,n), column-major storage
+ * @param[in] lda Leading dimension (lda >= max(1,m))
+ * @param[out] info Exit code: 0 = success, < 0 = -i means i-th arg invalid
+ */
+void mb01pd(const char* scun, const char* type, i32 m, i32 n, i32 kl, i32 ku,
+            f64 anrm, i32 nbl, const i32* nrows, f64* a, i32 lda, i32* info);
+
+/**
  * @brief Bilinear transformation of state-space system.
  *
  * Performs discrete-time <-> continuous-time conversion via bilinear
