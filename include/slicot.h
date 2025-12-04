@@ -3332,6 +3332,75 @@ void mb05my(
 );
 
 /**
+ * @brief Hamiltonian or symplectic matrix construction for Riccati equations.
+ *
+ * Constructs the 2n-by-2n Hamiltonian or symplectic matrix S associated
+ * to the linear-quadratic optimization problem, used to solve the
+ * continuous- or discrete-time algebraic Riccati equation.
+ *
+ * For continuous-time (dico='C'), constructs Hamiltonian matrix:
+ *     S = [  A   -G ]
+ *         [ -Q   -A']
+ *
+ * For discrete-time (dico='D', hinv='D'), constructs symplectic matrix:
+ *     S = [  A^(-1)        A^(-1)*G     ]
+ *         [ Q*A^(-1)   A' + Q*A^(-1)*G  ]
+ *
+ * For discrete-time (dico='D', hinv='I'), constructs inverse symplectic:
+ *     S = [ A + G*A^(-T)*Q   -G*A^(-T) ]
+ *         [    -A^(-T)*Q       A^(-T)  ]
+ *
+ * @param[in] dico 'C' for continuous-time, 'D' for discrete-time
+ * @param[in] hinv For dico='D': 'D' for matrix (2), 'I' for matrix (3)
+ *                 Not referenced if dico='C'
+ * @param[in] uplo 'U' = upper triangle of G, Q stored
+ *                 'L' = lower triangle of G, Q stored
+ * @param[in] n Order of matrices A, G, Q (n >= 0)
+ * @param[in,out] a N-by-N matrix A, dimension (lda,n)
+ *                  For dico='D': on exit contains A^(-1) if info=0
+ *                  For dico='C': unchanged on exit
+ * @param[in] lda Leading dimension of A (lda >= max(1,n))
+ * @param[in] g N-by-N symmetric matrix G, dimension (ldg,n)
+ *              Only upper or lower triangle referenced per uplo
+ * @param[in] ldg Leading dimension of G (ldg >= max(1,n))
+ * @param[in] q N-by-N symmetric matrix Q, dimension (ldq,n)
+ *              Only upper or lower triangle referenced per uplo
+ * @param[in] ldq Leading dimension of Q (ldq >= max(1,n))
+ * @param[out] s 2N-by-2N Hamiltonian or symplectic matrix, dimension (lds,2*n)
+ * @param[in] lds Leading dimension of S (lds >= max(1,2*n))
+ * @param[out] iwork Integer workspace, dimension (2*n)
+ * @param[out] dwork Double workspace, dimension (ldwork)
+ *                   On exit: dwork[0] = optimal ldwork
+ *                   For dico='D': dwork[1] = reciprocal condition number of A
+ * @param[in] ldwork Workspace size:
+ *                   >= 1 if dico='C'
+ *                   >= max(2,4*n) if dico='D'
+ *                   If ldwork=-1: workspace query
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  < 0 = invalid parameter -info
+ *                  1..n = leading i-by-i submatrix of A is singular (discrete)
+ *                  n+1 = A is numerically singular (discrete)
+ */
+void sb02mu(
+    const char* dico,
+    const char* hinv,
+    const char* uplo,
+    const i32 n,
+    f64* a,
+    const i32 lda,
+    const f64* g,
+    const i32 ldg,
+    const f64* q,
+    const i32 ldq,
+    f64* s,
+    const i32 lds,
+    i32* iwork,
+    f64* dwork,
+    const i32 ldwork,
+    i32* info);
+
+/**
  * @brief Riccati preprocessing - convert coupling weight problems to standard form.
  *
  * Computes:

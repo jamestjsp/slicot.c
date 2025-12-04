@@ -29,6 +29,7 @@ set(SLICOT_SOURCES
     MA/ma02ed.c
     MA/ma02fd.c
     SB/sb02mt.c
+    SB/sb02mu.c
     SB/sb02nd.c
     SB/sb02oy.c
     SB/sb02rd.c
