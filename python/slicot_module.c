@@ -9684,6 +9684,44 @@ static PyObject* py_dg01md(PyObject* self, PyObject* args) {
     return result;
 }
 
+/* Python wrapper for de01od */
+static PyObject* py_de01od(PyObject* self, PyObject* args) {
+    const char *conv_str;
+    PyObject *a_obj, *b_obj;
+    PyArrayObject *a_array, *b_array;
+
+    if (!PyArg_ParseTuple(args, "sOO", &conv_str, &a_obj, &b_obj)) {
+        return NULL;
+    }
+
+    a_array = (PyArrayObject*)PyArray_FROM_OTF(a_obj, NPY_DOUBLE,
+                                                NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (a_array == NULL) {
+        return NULL;
+    }
+
+    b_array = (PyArrayObject*)PyArray_FROM_OTF(b_obj, NPY_DOUBLE,
+                                                NPY_ARRAY_FARRAY | NPY_ARRAY_WRITEBACKIFCOPY);
+    if (b_array == NULL) {
+        Py_DECREF(a_array);
+        return NULL;
+    }
+
+    i32 n = (i32)PyArray_SIZE(a_array);
+    f64 *a_data = (f64*)PyArray_DATA(a_array);
+    f64 *b_data = (f64*)PyArray_DATA(b_array);
+    i32 info;
+
+    de01od(conv_str, n, a_data, b_data, &info);
+
+    PyArray_ResolveWritebackIfCopy(a_array);
+    PyArray_ResolveWritebackIfCopy(b_array);
+    PyObject *result = Py_BuildValue("Oi", a_array, info);
+    Py_DECREF(a_array);
+    Py_DECREF(b_array);
+    return result;
+}
+
 /* Python wrapper for dk01md */
 static PyObject* py_dk01md(PyObject* self, PyObject* args) {
     const char *type_str;
@@ -11491,6 +11529,15 @@ static PyMethodDef SlicotMethods[] = {
      "Returns:\n"
      "  (a, b, c, maxred, scale, info): Balanced matrices,\n"
      "    norm ratio, scale factors, exit code\n"},
+
+    {"de01od", py_de01od, METH_VARARGS,
+     "Compute convolution or deconvolution of two real signals.\n\n"
+     "Parameters:\n"
+     "  conv (str): 'C'=convolution, 'D'=deconvolution\n"
+     "  a (ndarray): First signal (N samples, must be power of 2)\n"
+     "  b (ndarray): Second signal (N samples, overwritten)\n\n"
+     "Returns:\n"
+     "  (a, info): Result signal and exit code\n"},
 
     {"dg01md", py_dg01md, METH_VARARGS,
      "Compute discrete Fourier transform or inverse of complex signal.\n\n"

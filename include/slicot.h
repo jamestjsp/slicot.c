@@ -4340,6 +4340,31 @@ void tb01id(const char* job, i32 n, i32 m, i32 p, f64* maxred,
 void dg01md(const char* indi, i32 n, f64* xr, f64* xi, i32* info);
 
 /**
+ * @brief Convolution or deconvolution of two real signals.
+ *
+ * Computes the convolution or deconvolution of two real signals A and B
+ * using an FFT algorithm (DG01MD). O(N*log(N)) complexity.
+ *
+ * Convolution: C = A * B (in frequency domain, element-wise multiplication)
+ * Deconvolution: C = A / B (in frequency domain, element-wise division)
+ *
+ * @param[in] conv Operation type:
+ *                 'C' = Convolution
+ *                 'D' = Deconvolution
+ * @param[in] n Number of samples (n >= 2, must be power of 2)
+ * @param[in,out] a First signal array, dimension (n)
+ *                  In: First signal
+ *                  Out: Convolution or deconvolution result
+ * @param[in,out] b Second signal array, dimension (n)
+ *                  Note: This array is overwritten
+ * @param[out] info Exit code:
+ *                  0 = success
+ *                  -1 = invalid CONV
+ *                  -2 = N < 2 or N not power of 2
+ */
+void de01od(const char* conv, i32 n, f64* a, f64* b, i32* info);
+
+/**
  * @brief Apply anti-aliasing window to a real signal.
  *
  * Applies a windowing function (Hamming, Hann, or Quadratic) to a real signal
