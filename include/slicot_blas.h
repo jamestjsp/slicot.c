@@ -473,6 +473,18 @@ void SLC_FC_FUNC(dormrz, DORMRZ)(const char* side, const char* trans,
 int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* opts,
                                 const int* n1, const int* n2, const int* n3, const int* n4);
 
+void SLC_FC_FUNC(dgeqlf, DGEQLF)(const int* m, const int* n, f64* a, const int* lda,
+                                  f64* tau, f64* work, const int* lwork, int* info);
+
+void SLC_FC_FUNC(dormql, DORMQL)(const char* side, const char* trans, const int* m,
+                                  const int* n, const int* k, const f64* a, const int* lda,
+                                  const f64* tau, f64* c, const int* ldc, f64* work,
+                                  const int* lwork, int* info);
+
+void SLC_FC_FUNC(dtrcon, DTRCON)(const char* norm, const char* uplo, const char* diag,
+                                  const int* n, const f64* a, const int* lda, f64* rcond,
+                                  f64* work, int* iwork, int* info);
+
 #undef int
 
 /* Convenience macros for calling BLAS/LAPACK */
@@ -573,6 +585,9 @@ int SLC_FC_FUNC(ilaenv, ILAENV)(const int* ispec, const char* name, const char* 
 #define SLC_DTZRZF   SLC_FC_FUNC(dtzrzf, DTZRZF)
 #define SLC_DORMRZ   SLC_FC_FUNC(dormrz, DORMRZ)
 #define SLC_ILAENV   SLC_FC_FUNC(ilaenv, ILAENV)
+#define SLC_DGEQLF   SLC_FC_FUNC(dgeqlf, DGEQLF)
+#define SLC_DORMQL   SLC_FC_FUNC(dormql, DORMQL)
+#define SLC_DTRCON   SLC_FC_FUNC(dtrcon, DTRCON)
 
 #ifdef __cplusplus
 }

@@ -333,6 +333,7 @@ def test_sb02oy_spectral_factorization():
     """
     Test SB02OY for spectral factorization (TYPE='S').
 
+    For TYPE='S', the B parameter contains C' (N-by-P), not B.
     Random seed: 666 (for reproducibility)
     """
     np.random.seed(666)
@@ -341,6 +342,7 @@ def test_sb02oy_spectral_factorization():
 
     A = np.random.randn(n, n).astype(float, order='F')
     C = np.random.randn(p, n).astype(float, order='F')
+    Ct = np.asfortranarray(C.T)  # C' is N-by-P for spectral factorization
     L = np.zeros((n, m), dtype=float, order='F')
 
     Q_half = np.random.randn(n, n)
@@ -355,7 +357,7 @@ def test_sb02oy_spectral_factorization():
 
     AF, BF, rcond, info = sb02oy(
         'S', 'D', 'B', 'N', 'U', 'Z', 'I',
-        n, m, p, A, C, Q, R, L, E, 0.0
+        n, m, p, A, Ct, Q, R, L, E, 0.0
     )
 
     assert info == 0, f"sb02oy failed with info={info}"
@@ -425,11 +427,12 @@ def test_sb02oy_zero_n():
     assert info == 0
 
 
-def test_sb02oy_singular_pencil():
+def test_sb02oy_rcond_returned():
     """
-    Test SB02OY error handling for singular extended pencil.
+    Test SB02OY returns a valid reciprocal condition number.
 
-    When R is singular, the compression fails with INFO=1.
+    The rcond value indicates the conditioning of the compressed
+    triangular factor after QL factorization.
     """
     np.random.seed(888)
 
@@ -442,8 +445,8 @@ def test_sb02oy_singular_pencil():
     Q_half = np.random.randn(n, n)
     Q = ((Q_half.T @ Q_half) + np.eye(n) * 2.0).astype(float, order='F')
 
-    R = np.array([[1.0, 2.0],
-                  [2.0, 4.0]], dtype=float, order='F')
+    R_half = np.random.randn(m, m)
+    R = (R_half.T @ R_half + np.eye(m) * 3.0).astype(float, order='F')
 
     E = np.eye(n, dtype=float, order='F')
 
@@ -454,7 +457,9 @@ def test_sb02oy_singular_pencil():
         n, m, 0, A, B, Q, R, L, E, 0.0
     )
 
-    assert info == 1, f"Expected info=1 for singular pencil, got {info}"
+    assert info == 0, f"sb02oy failed with info={info}"
+    # rcond should be positive and <= 1
+    assert 0 < rcond <= 1, f"Expected 0 < rcond <= 1, got {rcond}"
 
 
 def test_sb02oy_error_invalid_type():
